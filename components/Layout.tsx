@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { User, UserRole } from '../types';
 import { useSyncReports } from '../services/syncHook';
+import { usePWAInstall } from '../hooks/usePWAInstall';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -12,6 +13,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
   const location = useLocation();
   const { isOnline, pendingCount, isSyncing, syncReports } = useSyncReports();
+  const { isInstallable, install } = usePWAInstall();
 
   if (!user) {
     return <>{children}</>;
@@ -65,11 +67,23 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
               <p className="text-xs text-gray-300">{user.role}</p>
             </div>
           </div>
+        </div>
+        <div className="p-4 border-t border-red-900">
+          {isInstallable && (
+            <button
+              onClick={install}
+              className="w-full bg-white/10 hover:bg-white/20 text-white p-3 rounded-lg flex items-center gap-3 transition-colors mb-2"
+            >
+              <i className="fas fa-download w-5"></i>
+              <span>Instalar App</span>
+            </button>
+          )}
           <button
             onClick={onLogout}
-            className="w-full py-2 bg-transparent border border-white/30 text-white rounded hover:bg-white/10 text-sm transition"
+            className="w-full bg-red-900 hover:bg-red-800 text-white p-3 rounded-lg flex items-center gap-3 transition-colors"
           >
-            Cerrar Sesión
+            <i className="fas fa-sign-out-alt w-5"></i>
+            <span>Cerrar Sesión</span>
           </button>
         </div>
       </aside>

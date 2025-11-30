@@ -15,9 +15,9 @@ L.Icon.Default.mergeOptions({
 
 // Mock Data for Dashboard Stats (Keep these for now or replace with real counts later)
 // Mock Data for Dashboard Stats (Keep these for now or replace with real counts later)
-const getStats = (reportsCount: number, peopleCount: number) => [
+const getStats = (reportsCount: number, peopleCount: number, uniqueMunicipalities: number) => [
   { label: 'Total de Reportes', value: reportsCount.toLocaleString() },
-  { label: 'Municipios Visitados', value: '11' },
+  { label: 'Municipios Visitados', value: uniqueMunicipalities.toLocaleString() },
   { label: 'Personas Registradas', value: peopleCount.toLocaleString() },
   { label: 'Problema + Reportado', value: 'Infraestructura Vial' },
 ];
@@ -85,12 +85,15 @@ const Dashboard: React.FC = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {getStats(reports.length, peopleCount).map((stat, idx) => (
-          <div key={idx} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">{stat.label}</p>
-            <p className="text-3xl font-extrabold text-brand-primary">{stat.value}</p>
-          </div>
-        ))}
+        {(() => {
+          const uniqueMunicipalities = new Set(reports.map(r => r.municipio)).size;
+          return getStats(reports.length, peopleCount, uniqueMunicipalities).map((stat, idx) => (
+            <div key={idx} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">{stat.label}</p>
+              <p className="text-3xl font-extrabold text-brand-primary">{stat.value}</p>
+            </div>
+          ));
+        })()}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
