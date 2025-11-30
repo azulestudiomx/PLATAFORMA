@@ -1,8 +1,33 @@
 import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, GeoJSON } from 'react-leaflet';
 import L from 'leaflet';
 import { Report } from '../types';
+
+const GeoJSONWrapper = () => {
+  const [geoData, setGeoData] = useState<any>(null);
+
+  useEffect(() => {
+    fetch('/campeche.json')
+      .then(res => res.json())
+      .then(data => setGeoData(data))
+      .catch(err => console.error('Error loading GeoJSON:', err));
+  }, []);
+
+  if (!geoData) return null;
+
+  return (
+    <GeoJSON
+      data={geoData}
+      style={{
+        color: '#8B0000',
+        weight: 2,
+        fillColor: '#8B0000',
+        fillOpacity: 0.1
+      }}
+    />
+  );
+};
 
 // Fix Leaflet marker icons in React
 // @ts-ignore
@@ -101,9 +126,22 @@ const Dashboard: React.FC = () => {
         <div className="lg:col-span-2 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-bold text-gray-700">Mapa de Reportes (En Vivo)</h3>
-            <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">
-              {loading ? 'Cargando...' : `${reports.length} reportes`}
-            </span>
+            <div className="flex gap-2 items-center">
+              <button
+                onClick={() => {
+                  navigator.geolocation.getCurrentPosition(
+                    (pos) => alert(`Ubicación capturada: ${pos.coords.latitude}, ${pos.coords.longitude}`),
+                    (err) => alert('Error al obtener ubicación: ' + err.message)
+                  );
+                }}
+                className="bg-brand-primary text-white px-3 py-1 rounded text-xs font-bold hover:bg-red-800 transition"
+              >
+                <i className="fas fa-map-marker-alt mr-1"></i> Capturar Ubicación
+              </button>
+              <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">
+                {loading ? 'Cargando...' : `${reports.length} reportes`}
+              </span>
+            </div>
           </div>
           <div className="h-[400px] w-full rounded-lg overflow-hidden relative z-0">
             <MapContainer
@@ -116,6 +154,10 @@ const Dashboard: React.FC = () => {
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
+
+              {/* Offline GeoJSON Layer */}
+              <GeoJSONWrapper />
+
               {reports.map((report) => (
                 report.location && (
                   <Marker

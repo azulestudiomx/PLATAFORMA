@@ -1,9 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../services/db';
 import { NeedType, Report, LocationData } from '../types';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMapEvents, GeoJSON } from 'react-leaflet';
 import L from 'leaflet';
 import { useConfig } from '../contexts/ConfigContext';
+
+const GeoJSONWrapper = () => {
+  const [geoData, setGeoData] = useState<any>(null);
+
+  useEffect(() => {
+    fetch('/campeche.json')
+      .then(res => res.json())
+      .then(data => setGeoData(data))
+      .catch(err => console.error('Error loading GeoJSON:', err));
+  }, []);
+
+  if (!geoData) return null;
+
+  return (
+    <GeoJSON
+      data={geoData}
+      style={{
+        color: '#8B0000',
+        weight: 2,
+        fillColor: '#8B0000',
+        fillOpacity: 0.1
+      }}
+    />
+  );
+};
 
 // Fix Leaflet marker icons in React
 // @ts-ignore
@@ -317,6 +342,7 @@ const CaptureForm: React.FC = () => {
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               />
+              <GeoJSONWrapper />
               <LocationSelector location={location} onLocationSelect={setLocation} />
             </MapContainer>
           </div>

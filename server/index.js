@@ -103,7 +103,10 @@ const PersonSchema = new mongoose.Schema({
   phone: String,
   address: String,
   ine: { type: String, unique: true },
-  createdAt: { type: Date, default: Date.now }
+  photo: String, // Base64
+  inePhoto: String, // Base64
+  createdAt: { type: Date, default: Date.now },
+  synced: { type: Number, default: 1 } // 1=Synced, 0=Pending
 });
 
 const PersonModel = mongoose.model('Persona', PersonSchema);
