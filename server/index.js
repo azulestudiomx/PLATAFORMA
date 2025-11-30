@@ -1,0 +1,94 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+
+const app = express();
+
+// Middleware
+app.use(cors()); // Permite peticiones desde React (CORS)
+app.use(express.json({ limit: '50mb' })); // Aumentamos límite para recibir fotos en Base64
+
+// ------------------------------------------------------------
+// CONFIGURACIÓN DE BASE DE DATOS (Tu conexión real)
+// ------------------------------------------------------------
+// Hemos añadido '/plataforma_campeche' para que se cree una DB específica y organizada.
+const MONGO_URI = 'mongodb+srv://cacenitez3_db_user:icAb0ajgklF5pOqr@cluster0.8rvrsny.mongodb.net/plataforma_campeche?appName=Cluster0';
+
+mongoose.connect(MONGO_URI)
+  .then(() => console.log('✅ Conectado exitosamente a MongoDB Atlas (Nube)'))
+  .catch(err => {
+    console.error('❌ Error conectando a MongoDB:', err);
+    console.error('   Nota: Asegúrate de que tu IP actual esté permitida en MongoDB Atlas (Network Access -> Add IP -> Allow Access from Anywhere)');
+  });
+
+// ------------------------------------------------------------
+// ESQUEMA DE DATOS (Mongoose)
+// ------------------------------------------------------------
+// Define la estructura exacta de cómo se guardarán los datos en la nube
+const ReportSchema = new mongoose.Schema({
+  municipio: String,
+  comunidad: String,
+  location: {
+    lat: Number,
+    lng: Number
+  },
+  needType: String,
+  description: String,
+  evidenceBase64: String, // La imagen se guarda como string Base64
+  timestamp: Number,      // Fecha hora unix
+  user: String,           // Nombre del capturista
+  
+  // Campos de control administrativo
+  status: { type: String, default: 'Pendiente' }, // Pendiente, En Proceso, Resuelto
+  syncedAt: { type: Date, default: Date.now }     // Fecha de llegada al servidor
+});
+
+const ReportModel = mongoose.model('Reporte', ReportSchema);
+
+// ------------------------------------------------------------
+// RUTAS DE LA API (Endpoints)
+// ------------------------------------------------------------
+
+// 1. Endpoint para recibir reportes desde la App (Sincronización)
+app.post('/api/reports', async (req, res) => {
+  try {
+    console.log(`📩 Recibiendo reporte de: ${req.body.municipio} (${req.body.needType})`);
+    
+    const newReport = new ReportModel(req.body);
+    const savedReport = await newReport.save();
+    
+    console.log(`💾 Reporte guardado en la nube con ID: ${savedReport._id}`);
+    
+    // Respondemos con éxito y el ID generado
+    res.status(201).json({ 
+      message: 'Sincronización exitosa', 
+      id: savedReport._id 
+    });
+  } catch (error) {
+    console.error('❌ Error al guardar reporte:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// 2. Endpoint para listar reportes (Para el Dashboard administrativo)
+app.get('/api/reports', async (req, res) => {
+  try {
+    // Devuelve los últimos 100 reportes ordenados por fecha
+    const reports = await ReportModel.find().sort({ timestamp: -1 }).limit(100);
+    res.json(reports);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Ruta de prueba base
+app.get('/', (req, res) => {
+  res.send('🟢 API Plataforma Ciudadana Campeche - ONLINE');
+});
+
+// Iniciar el servidor en el puerto 3000
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`\n🚀 SERVIDOR BACKEND LISTO EN: http://localhost:${PORT}`);
+  console.log(`   Esperando sincronización de reportes...\n`);
+});

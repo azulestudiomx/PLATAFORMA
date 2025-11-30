@@ -1,0 +1,9 @@
+{
+  "name": "Plataforma Ciudadana Campeche",
+  "description": "Sistema para la recopilación y análisis de información ciudadana con soporte offline.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}

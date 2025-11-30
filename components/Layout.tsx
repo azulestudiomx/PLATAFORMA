@@ -1,0 +1,124 @@
+import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { User, UserRole } from '../types';
+import { useSyncReports } from '../services/syncHook';
+
+interface LayoutProps {
+  children: React.ReactNode;
+  user: User | null;
+  onLogout: () => void;
+}
+
+const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
+  const location = useLocation();
+  const { isOnline, pendingCount, isSyncing } = useSyncReports();
+
+  if (!user) {
+    return <>{children}</>;
+  }
+
+  const navItems = [
+    ...(user.role === UserRole.ADMIN ? [{ path: '/', label: 'Dashboard', icon: 'fa-chart-pie' }] : []),
+    { path: '/captura', label: 'Captura', icon: 'fa-clipboard-list' },
+    { path: '/expedientes', label: 'Expedientes', icon: 'fa-folder-open' },
+    { path: '/calendario', label: 'Calendario', icon: 'fa-calendar-alt' },
+  ];
+
+  return (
+    <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
+      {/* Sidebar */}
+      <aside className="w-64 bg-brand-primary text-white flex-col hidden md:flex shadow-xl z-20">
+        <div className="p-6 text-center border-b border-red-900">
+          <h1 className="text-2xl font-bold tracking-wider leading-none">PLATAFORMA<br/><span className="text-brand-accent">CIUDADANA</span></h1>
+          <p className="text-xs text-gray-300 mt-2">CAMPECHE</p>
+        </div>
+        
+        <nav className="flex-1 py-6">
+          <ul className="space-y-1">
+            {navItems.map((item) => (
+              <li key={item.path}>
+                <Link
+                  to={item.path}
+                  className={`flex items-center px-6 py-3 transition-colors ${
+                    location.pathname === item.path
+                      ? 'bg-red-900 border-r-4 border-brand-accent text-white'
+                      : 'text-gray-100 hover:bg-red-800'
+                  }`}
+                >
+                  <i className={`fas ${item.icon} w-6`}></i>
+                  <span className="font-medium">{item.label}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <div className="p-4 bg-red-900">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-full bg-white text-brand-primary flex items-center justify-center font-bold">
+              {user.name.charAt(0)}
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white">{user.name}</p>
+              <p className="text-xs text-gray-300">{user.role}</p>
+            </div>
+          </div>
+          <button 
+            onClick={onLogout}
+            className="w-full py-2 bg-transparent border border-white/30 text-white rounded hover:bg-white/10 text-sm transition"
+          >
+            Cerrar Sesión
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile Header & Content */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        {/* Top Header */}
+        <header className="bg-white shadow-sm h-16 flex items-center justify-between px-6 z-10">
+          <div className="md:hidden text-brand-primary font-bold text-xl">
+            PLATAFORMA CAMPECHE
+          </div>
+          
+          <div className="flex-1 flex justify-end items-center gap-4">
+            {/* Sync Status Indicator */}
+            <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold ${
+              isOnline ? 'bg-green-100 text-green-800' : 'bg-brand-accent text-brand-primary'
+            }`}>
+              <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-brand-primary animate-pulse'}`}></div>
+              {isOnline ? 'ONLINE' : 'OFFLINE'}
+            </div>
+
+            {pendingCount > 0 && (
+               <div className="flex items-center gap-2 text-xs bg-orange-100 text-orange-800 px-3 py-1 rounded-full animate-pulse">
+                 <i className={`fas ${isSyncing ? 'fa-sync fa-spin' : 'fa-cloud-upload-alt'}`}></i>
+                 {isSyncing ? 'Sincronizando...' : `${pendingCount} pendientes`}
+               </div>
+            )}
+          </div>
+        </header>
+
+        {/* Mobile Nav (Bottom) */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-brand-primary text-white flex justify-around py-3 z-30 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
+           {navItems.map((item) => (
+              <Link key={item.path} to={item.path} className={`flex flex-col items-center ${location.pathname === item.path ? 'text-brand-accent' : 'text-gray-300'}`}>
+                <i className={`fas ${item.icon} text-lg mb-1`}></i>
+                <span className="text-[10px]">{item.label}</span>
+              </Link>
+            ))}
+             <button onClick={onLogout} className="flex flex-col items-center text-gray-300">
+                <i className="fas fa-sign-out-alt text-lg mb-1"></i>
+                <span className="text-[10px]">Salir</span>
+            </button>
+        </div>
+
+        {/* Main Content Scrollable Area */}
+        <main className="flex-1 overflow-auto p-4 md:p-8 pb-20 md:pb-8 bg-gray-50">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+};
+
+export default Layout;
