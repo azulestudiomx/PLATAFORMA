@@ -4,30 +4,22 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 
+const compression = require('compression');
+
 const app = express();
 
 // Middleware
 app.use(cors()); // Permite peticiones desde React (CORS)
+app.use(compression()); // Comprime las respuestas HTTP (Gzip)
 app.use(express.json({ limit: '50mb' })); // Aumentamos límite para recibir fotos en Base64
 
-// ------------------------------------------------------------
-// CONFIGURACIÓN DE BASE DE DATOS (Tu conexión real)
-// ------------------------------------------------------------
-const MONGO_URI = process.env.MONGO_URI;
-
-mongoose.connect(MONGO_URI)
+// Conexión a MongoDB
+mongoose.connect(process.env.MONGO_URI)
   .then(() => {
-    console.log('✅ Conectado exitosamente a MongoDB Atlas (Nube)');
-    seedUsers(); // Verificar y crear usuarios por defecto si no existen
+    console.log('✅ Conectado exitosamente a MongoDB Atlas');
+    seedUsers(); // Crear usuarios por defecto si no existen
   })
-  .catch(err => {
-    console.error('❌ Error conectando a MongoDB:', err);
-    console.error('   Nota: Asegúrate de que tu IP actual esté permitida en MongoDB Atlas (Network Access -> Add IP -> Allow Access from Anywhere)');
-  });
-
-// ------------------------------------------------------------
-// ESQUEMAS DE DATOS (Mongoose)
-// ------------------------------------------------------------
+  .catch(err => console.error('❌ Error al conectar a MongoDB:', err));
 
 // 1. Esquema de Reportes
 const ReportSchema = new mongoose.Schema({
@@ -47,6 +39,61 @@ const ReportSchema = new mongoose.Schema({
   status: { type: String, default: 'Pendiente' }, // Pendiente, En Proceso, Resuelto
   syncedAt: { type: Date, default: Date.now },    // Fecha de llegada al servidor
   customData: { type: Map, of: String }           // Datos dinámicos (clave: valor)
+});
+
+// Indexar por timestamp para ordenar rápido
+ReportSchema.index({ timestamp: -1 });
+
+// ... (Other schemas remain same)
+
+// C. REPORTES - Listar (Dashboard) - OPTIMIZADO CON PAGINACIÓN
+app.get('/api/reports', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    // Usamos aggregate para no enviar la imagen base64 completa, solo un flag
+    const reports = await ReportModel.aggregate([
+      { $sort: { timestamp: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $project: {
+          municipio: 1,
+          comunidad: 1,
+          location: 1,
+          needType: 1,
+          timestamp: 1,
+          status: 1,
+          synced: 1,
+          // Crea un campo booleano true si existe evidenceBase64 y no es null/vacio
+          hasEvidence: {
+            $cond: [
+              { $and: [{ $ifNull: ["$evidenceBase64", false] }, { $ne: ["$evidenceBase64", ""] }] },
+              true,
+              false
+            ]
+          }
+        }
+      }
+    ]);
+
+    // Contar total de documentos para la paginación
+    const total = await ReportModel.countDocuments();
+
+    // Mapear _id a id para compatibilidad si es necesario
+    const mappedReports = reports.map(r => ({ ...r, id: r._id }));
+
+    res.json({
+      data: mappedReports,
+      total,
+      page,
+      pages: Math.ceil(total / limit)
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 const ReportModel = mongoose.model('Reporte', ReportSchema);
@@ -238,15 +285,21 @@ app.post('/api/reports', async (req, res) => {
   }
 });
 
-// C. REPORTES - Listar (Dashboard)
-app.get('/api/reports', async (req, res) => {
+// C. REPORTES - Obtener uno por ID (para ver evidencia)
+app.get('/api/reports/:id', async (req, res) => {
   try {
-    const reports = await ReportModel.find().sort({ timestamp: -1 }).limit(100);
-    res.json(reports);
+    const { id } = req.params;
+    const report = await ReportModel.findById(id);
+    if (!report) {
+      return res.status(404).json({ error: 'Reporte no encontrado' });
+    }
+    res.json(report);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Error al obtener el reporte' });
   }
 });
+
+
 
 // D. REPORTES - Actualizar (PUT)
 app.put('/api/reports/:id', async (req, res) => {

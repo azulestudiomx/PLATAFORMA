@@ -42,13 +42,13 @@ const Dashboard: React.FC = () => {
     setLoading(true);
     try {
       const [reportsRes, peopleRes] = await Promise.all([
-        fetch('http://localhost:3000/api/reports'),
+        fetch('http://localhost:3000/api/reports?limit=100'),
         fetch('http://localhost:3000/api/people')
       ]);
 
       if (reportsRes.ok) {
         const data = await reportsRes.json();
-        setReports(data);
+        setReports(data.data || []);
       }
 
       if (peopleRes.ok) {

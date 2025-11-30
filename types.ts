@@ -32,6 +32,7 @@ export interface Report {
   status: 'Pendiente' | 'En Proceso' | 'Resuelto';
   user?: string;
   customData?: Record<string, any>; // For dynamic fields
+  hasEvidence?: boolean;
 }
 
 export interface CalendarEvent {

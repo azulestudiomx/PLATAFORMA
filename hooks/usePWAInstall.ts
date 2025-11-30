@@ -11,12 +11,14 @@ export const usePWAInstall = () => {
 
     useEffect(() => {
         const handler = (e: Event) => {
+            console.log('👋 beforeinstallprompt fired!', e);
             e.preventDefault();
             setDeferredPrompt(e as BeforeInstallPromptEvent);
             setIsInstallable(true);
         };
 
         window.addEventListener('beforeinstallprompt', handler);
+        console.log('👂 Listening for beforeinstallprompt');
 
         return () => {
             window.removeEventListener('beforeinstallprompt', handler);

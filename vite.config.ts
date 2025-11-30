@@ -46,8 +46,7 @@ export default defineConfig(({ mode }) => {
                 expiration: {
                   maxEntries: 50,
                   maxAgeSeconds: 60 * 60 * 24 // 1 day
-                },
-                networkTimeoutSeconds: 10
+                }
               }
             }
           ]
