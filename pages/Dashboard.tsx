@@ -14,10 +14,11 @@ L.Icon.Default.mergeOptions({
 });
 
 // Mock Data for Dashboard Stats (Keep these for now or replace with real counts later)
-const STATS = [
-  { label: 'Total de Reportes', value: '1,250' },
+// Mock Data for Dashboard Stats (Keep these for now or replace with real counts later)
+const getStats = (reportsCount: number, peopleCount: number) => [
+  { label: 'Total de Reportes', value: reportsCount.toLocaleString() },
   { label: 'Municipios Visitados', value: '11' },
-  { label: 'Personas Registradas', value: '850' },
+  { label: 'Personas Registradas', value: peopleCount.toLocaleString() },
   { label: 'Problema + Reportado', value: 'Infraestructura Vial' },
 ];
 
@@ -35,35 +36,56 @@ const Dashboard: React.FC = () => {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    const fetchReports = async () => {
-      try {
-        const response = await fetch('http://localhost:3000/api/reports');
-        if (response.ok) {
-          const data = await response.json();
-          setReports(data);
-        } else {
-          console.error('Error fetching reports');
-        }
-      } catch (error) {
-        console.error('Error connecting to backend:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const [peopleCount, setPeopleCount] = useState<number>(0);
 
-    fetchReports();
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [reportsRes, peopleRes] = await Promise.all([
+        fetch('http://localhost:3000/api/reports'),
+        fetch('http://localhost:3000/api/people')
+      ]);
+
+      if (reportsRes.ok) {
+        const data = await reportsRes.json();
+        setReports(data);
+      }
+
+      if (peopleRes.ok) {
+        const peopleData = await peopleRes.json();
+        setPeopleCount(peopleData.length);
+      }
+    } catch (error) {
+      console.error('Error connecting to backend:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 30000); // Auto-refresh every 30s
+    return () => clearInterval(interval);
   }, []);
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b-2 border-brand-accent pb-2 inline-block">
-        Panel de Control
-      </h2>
+      <div className="flex justify-between items-center mb-6 border-b-2 border-brand-accent pb-2">
+        <h2 className="text-2xl font-bold text-gray-800">
+          Panel de Control
+        </h2>
+        <button
+          onClick={fetchData}
+          className="text-brand-primary hover:text-red-800 transition flex items-center gap-2 text-sm font-bold"
+          title="Actualizar datos"
+        >
+          <i className={`fas fa-sync-alt ${loading ? 'animate-spin' : ''}`}></i> Actualizar
+        </button>
+      </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {STATS.map((stat, idx) => (
+        {getStats(reports.length, peopleCount).map((stat, idx) => (
           <div key={idx} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">{stat.label}</p>
             <p className="text-3xl font-extrabold text-brand-primary">{stat.value}</p>

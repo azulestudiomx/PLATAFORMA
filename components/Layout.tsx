@@ -19,10 +19,12 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
   const navItems = [
     { path: '/', label: 'Dashboard', icon: 'fa-chart-pie', roles: [UserRole.ADMIN] },
-    { path: '/captura', label: 'Captura', icon: 'fa-camera', roles: [UserRole.ADMIN, UserRole.CAPTURIST] },
-    { path: '/expedientes', label: 'Expedientes', icon: 'fa-folder-open', roles: [UserRole.ADMIN, UserRole.CAPTURIST] },
-    { path: '/calendario', label: 'Calendario', icon: 'fa-calendar-alt', roles: [UserRole.ADMIN, UserRole.CAPTURIST] },
-    { path: '/usuarios', label: 'Usuarios', icon: 'fa-users', roles: [UserRole.ADMIN] },
+    { path: '/capture', label: 'Captura', icon: 'fa-camera', roles: [UserRole.ADMIN, UserRole.CAPTURIST] },
+    { path: '/reports', label: 'Expedientes', icon: 'fa-folder-open', roles: [UserRole.ADMIN, UserRole.CAPTURIST] },
+    { path: '/calendar', label: 'Calendario', icon: 'fa-calendar-alt', roles: [UserRole.ADMIN, UserRole.CAPTURIST] },
+    { path: '/users', label: 'Usuarios', icon: 'fa-users', roles: [UserRole.ADMIN] },
+    { path: '/people', label: 'Padrón', icon: 'fa-address-book', roles: [UserRole.ADMIN] },
+    { path: '/configuracion', label: 'Configuración', icon: 'fa-cog', roles: [UserRole.ADMIN] },
   ];
 
   return (

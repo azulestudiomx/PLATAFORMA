@@ -3,6 +3,7 @@ import { db } from '../services/db';
 import { NeedType, Report, LocationData } from '../types';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
+import { useConfig } from '../contexts/ConfigContext';
 
 // Fix Leaflet marker icons in React
 // @ts-ignore
@@ -14,8 +15,8 @@ L.Icon.Default.mergeOptions({
 });
 
 const MUNICIPALIOS = [
-  "Campeche", "Carmen", "Champotón", "Escárcega", "Calkiní", 
-  "Hecelchakán", "Hopelchén", "Tenabo", "Candelaria", 
+  "Campeche", "Carmen", "Champotón", "Escárcega", "Calkiní",
+  "Hecelchakán", "Hopelchén", "Tenabo", "Candelaria",
   "Calakmul", "Palizada", "Seybaplaya", "Dzitbalché"
 ];
 
@@ -23,12 +24,12 @@ const MUNICIPALIOS = [
 const DEFAULT_CENTER = { lat: 19.8301, lng: -90.5349 };
 
 // Component to handle map clicks and location updates
-const LocationSelector = ({ 
-  location, 
-  onLocationSelect 
-}: { 
-  location: LocationData | null, 
-  onLocationSelect: (loc: LocationData) => void 
+const LocationSelector = ({
+  location,
+  onLocationSelect
+}: {
+  location: LocationData | null,
+  onLocationSelect: (loc: LocationData) => void
 }) => {
   const map = useMapEvents({
     click(e) {
@@ -46,12 +47,14 @@ const LocationSelector = ({
 };
 
 const CaptureForm: React.FC = () => {
+  const { config } = useConfig();
   const [formData, setFormData] = useState({
     municipio: '',
     comunidad: '',
     needType: NeedType.AGUA_POTABLE,
     description: '',
   });
+  const [customData, setCustomData] = useState<Record<string, any>>({});
   const [location, setLocation] = useState<LocationData | null>(null);
   const [loadingLoc, setLoadingLoc] = useState(false);
   const [image, setImage] = useState<string | null>(null);
@@ -93,181 +96,230 @@ const CaptureForm: React.FC = () => {
     }
   };
 
+  const handleCustomFieldChange = (id: string, value: any) => {
+    setCustomData(prev => ({
+      ...prev,
+      [id]: value
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!location) {
       alert("Por favor obtenga la ubicación GPS o selecciónela en el mapa antes de guardar.");
       return;
     }
-    
+
     setIsSaving(true);
 
     const newReport: Report = {
-      ...formData,
-      location,
-      evidenceBase64: image,
+      municipio: formData.municipio,
+      comunidad: formData.comunidad,
+      location: location,
+      needType: formData.needType,
+      description: formData.description,
+      evidenceBase64: image || undefined,
       timestamp: Date.now(),
-      synced: false, // Always false initially, sync service handles upload
-      user: 'Usuario Actual' // In real app, get from auth context
+      synced: 0, // 0 = false (not synced)
+      status: 'Pendiente',
+      customData: customData // Save custom fields
     };
 
     try {
-      // Offline-first approach: Always save to Dexie first
-      await db.reports.add(newReport);
-      
-      setSuccessMsg("Reporte guardado localmente. Se sincronizará cuando haya conexión.");
-      
-      // Reset form
+      // 1. Save to IndexedDB (Offline First)
+      const id = await db.reports.add(newReport);
+      console.log(`Reporte guardado localmente con ID: ${id}`);
+
+      // 2. Try to sync immediately if online
+      if (navigator.onLine) {
+        try {
+          const res = await fetch('http://localhost:3000/api/reports', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newReport)
+          });
+
+          if (res.ok) {
+            const serverData = await res.json();
+            // Update local record as synced
+            await db.reports.update(id, { synced: 1 });
+            console.log('Reporte sincronizado automáticamente');
+          }
+        } catch (err) {
+          console.warn('No se pudo sincronizar inmediatamente, se queda en local.');
+        }
+      }
+
+      setSuccessMsg('Reporte guardado exitosamente.');
       setFormData({
         municipio: '',
         comunidad: '',
         needType: NeedType.AGUA_POTABLE,
         description: '',
       });
+      setCustomData({});
       setLocation(null);
       setImage(null);
-      
+
+      setTimeout(() => setSuccessMsg(''), 3000);
     } catch (error) {
-      console.error("Error al guardar:", error);
-      alert("Error al guardar el reporte.");
+      console.error("Error al guardar reporte:", error);
+      alert("Hubo un error al guardar el reporte.");
     } finally {
       setIsSaving(false);
-      setTimeout(() => setSuccessMsg(''), 5000);
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b-2 border-brand-accent pb-2 inline-block">
-        Registrar Incidencia
-      </h2>
+    <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+      <div className="bg-brand-primary p-6 text-white">
+        <h2 className="text-2xl font-bold flex items-center gap-2">
+          <i className="fas fa-clipboard-list"></i> Nuevo Reporte
+        </h2>
+        <p className="text-red-100 mt-1">Complete la información del levantamiento en campo.</p>
+      </div>
 
-      {successMsg && (
-        <div className="mb-6 p-4 bg-green-100 border-l-4 border-green-500 text-green-700 rounded shadow-sm">
-          <i className="fas fa-check-circle mr-2"></i>
-          {successMsg}
-        </div>
-      )}
+      <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        {successMsg && (
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative animate-fade-in">
+            <strong className="font-bold"><i className="fas fa-check-circle mr-2"></i>¡Éxito!</strong>
+            <span className="block sm:inline">{successMsg}</span>
+          </div>
+        )}
 
-      <form onSubmit={handleSubmit} className="bg-white p-6 md:p-8 rounded-xl shadow-md border border-gray-100">
-        
-        {/* Municipio & Comunidad */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Municipio</label>
+            <label className="block text-gray-700 text-sm font-bold mb-2">Municipio</label>
             <select
-              required
               value={formData.municipio}
-              onChange={e => setFormData({...formData, municipio: e.target.value})}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary bg-gray-50"
+              onChange={(e) => setFormData({ ...formData, municipio: e.target.value })}
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-brand-primary focus:ring-2 focus:ring-red-200 outline-none transition-all"
+              required
             >
-              <option value="">Selecciona una opción</option>
+              <option value="">Seleccione...</option>
               {MUNICIPALIOS.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
+
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Comunidad</label>
+            <label className="block text-gray-700 text-sm font-bold mb-2">Comunidad / Colonia</label>
             <input
-              required
               type="text"
               value={formData.comunidad}
-              onChange={e => setFormData({...formData, comunidad: e.target.value})}
-              placeholder="Ej: Chiná, Lerma..."
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary bg-gray-50"
+              onChange={(e) => setFormData({ ...formData, comunidad: e.target.value })}
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-brand-primary focus:ring-2 focus:ring-red-200 outline-none transition-all"
+              required
+              placeholder="Ej. Centro"
             />
           </div>
         </div>
 
-        {/* GPS & Map */}
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Ubicación (GPS)</label>
-          
-          {/* Coordinates Input & Button */}
-          <div className="flex gap-4 mb-4">
-            <input
-              type="text"
-              readOnly
-              value={location ? `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}` : ''}
-              placeholder="Coordenadas no capturadas"
-              className="flex-1 p-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-            />
+        <div>
+          <label className="block text-gray-700 text-sm font-bold mb-2">Tipo de Necesidad</label>
+          <select
+            value={formData.needType}
+            onChange={(e) => setFormData({ ...formData, needType: e.target.value as NeedType })}
+            className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-brand-primary focus:ring-2 focus:ring-red-200 outline-none transition-all"
+          >
+            {config.needTypes.map((type) => (
+              <option key={type} value={type}>{type}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Dynamic Fields Section */}
+        {config.customFields.length > 0 && (
+          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <h3 className="text-sm font-bold text-gray-500 uppercase mb-4 border-b pb-2">Información Adicional</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {config.customFields.map((field) => (
+                <div key={field.id}>
+                  <label className="block text-gray-700 text-sm font-bold mb-2">{field.label}</label>
+                  {field.type === 'select' ? (
+                    <select
+                      value={customData[field.id] || ''}
+                      onChange={(e) => handleCustomFieldChange(field.id, e.target.value)}
+                      className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-brand-primary focus:ring-2 focus:ring-red-200 outline-none"
+                    >
+                      <option value="">Seleccione...</option>
+                      {field.options?.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type={field.type}
+                      value={customData[field.id] || ''}
+                      onChange={(e) => handleCustomFieldChange(field.id, e.target.value)}
+                      className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-brand-primary focus:ring-2 focus:ring-red-200 outline-none"
+                      placeholder={field.label}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-gray-700 text-sm font-bold mb-2">Descripción Detallada</label>
+          <textarea
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-brand-primary focus:ring-2 focus:ring-red-200 outline-none transition-all h-24 resize-none"
+            placeholder="Describa la situación..."
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-gray-700 text-sm font-bold mb-2">Evidencia Fotográfica</label>
+          <div className="flex items-center justify-center w-full">
+            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+              <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                <i className="fas fa-camera text-3xl text-gray-400 mb-2"></i>
+                <p className="mb-2 text-sm text-gray-500"><span className="font-semibold">Toque para subir</span> o tomar foto</p>
+              </div>
+              <input type="file" className="hidden" accept="image/*" capture="environment" onChange={handleFileChange} />
+            </label>
+          </div>
+          {image && (
+            <div className="mt-4 relative w-full h-48 rounded-lg overflow-hidden shadow-md">
+              <img src={image} alt="Preview" className="w-full h-full object-cover" />
+              <button
+                type="button"
+                onClick={() => setImage(null)}
+                className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full shadow-lg hover:bg-red-700 transition-colors"
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-gray-700 text-sm font-bold mb-2">Ubicación GPS</label>
+          <div className="flex gap-2 mb-4">
             <button
               type="button"
               onClick={getLocation}
               disabled={loadingLoc}
-              className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 rounded-lg transition-colors flex items-center justify-center min-w-[50px]"
-              title="Obtener mi ubicación actual"
+              className="flex-1 bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-900 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              {loadingLoc ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-crosshairs"></i>}
+              {loadingLoc ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-map-marker-alt"></i>}
+              Obtener Ubicación
             </button>
           </div>
 
-          {/* Interactive Map */}
-          <div className="h-64 w-full rounded-lg overflow-hidden border border-gray-300 relative z-0">
-             <MapContainer 
-                center={[DEFAULT_CENTER.lat, DEFAULT_CENTER.lng]} 
-                zoom={9} 
-                scrollWheelZoom={false}
-                style={{ height: "100%", width: "100%" }}
-            >
+          <div className="h-64 rounded-lg overflow-hidden border border-gray-300 shadow-inner relative z-0">
+            <MapContainer center={DEFAULT_CENTER} zoom={13} style={{ height: '100%', width: '100%' }}>
               <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               />
-              <LocationSelector 
-                location={location} 
-                onLocationSelect={(loc) => setLocation(loc)} 
-              />
+              <LocationSelector location={location} onLocationSelect={setLocation} />
             </MapContainer>
           </div>
-          <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-             <i className="fas fa-info-circle"></i> 
-             Toca el mapa para ajustar la ubicación manualmente.
-          </p>
-        </div>
-
-        {/* Tipo de Necesidad */}
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-gray-700 mb-3">Tipo de Necesidad</label>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {Object.values(NeedType).map((type) => (
-              <label 
-                key={type} 
-                className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all ${
-                  formData.needType === type 
-                    ? 'border-brand-primary bg-red-50 text-brand-primary font-bold' 
-                    : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="needType"
-                  value={type}
-                  checked={formData.needType === type}
-                  onChange={() => setFormData({...formData, needType: type})}
-                  className="hidden"
-                />
-                <span className="text-sm">{type}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {/* Descripción */}
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Descripción Detallada</label>
-          <textarea
-            required
-            rows={4}
-            value={formData.description}
-            onChange={e => setFormData({...formData, description: e.target.value})}
-            placeholder="Describe con el mayor detalle posible la situación..."
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary bg-gray-50 resize-none"
-          ></textarea>
-        </div>
-
-        {/* Evidencia */}
-        <div className="mb-8">
           <label className="block text-sm font-semibold text-gray-700 mb-2">Evidencia Fotográfica</label>
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors relative">
             <input
@@ -278,8 +330,8 @@ const CaptureForm: React.FC = () => {
             />
             {image ? (
               <div className="flex flex-col items-center">
-                 <img src={image} alt="Preview" className="h-32 object-contain mb-2 rounded shadow" />
-                 <span className="text-xs text-green-600 font-bold">Imagen cargada</span>
+                <img src={image} alt="Preview" className="h-32 object-contain mb-2 rounded shadow" />
+                <span className="text-xs text-green-600 font-bold">Imagen cargada</span>
               </div>
             ) : (
               <div className="text-gray-500">

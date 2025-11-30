@@ -24,12 +24,14 @@ export interface Report {
   municipio: string;
   comunidad: string;
   location: LocationData;
-  needType: NeedType;
+  needType: string;
   description: string;
   evidenceBase64: string | null;
   timestamp: number;
-  synced: boolean;
-  user: string;
+  synced: number; // 0 = false, 1 = true
+  status: 'Pendiente' | 'En Proceso' | 'Resuelto';
+  user?: string;
+  customData?: Record<string, any>; // For dynamic fields
 }
 
 export interface CalendarEvent {
