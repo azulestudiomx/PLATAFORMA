@@ -6,16 +6,20 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "server": "cd server && node index.js"
   },
   "dependencies": {
-    "leaflet": "^1.9.4",
-    "react-router-dom": "^7.9.6",
-    "react-dom": "^19.2.0",
-    "recharts": "^3.5.1",
-    "react": "^19.2.0",
+    "bcryptjs": "^3.0.3",
     "dexie": "^4.2.1",
-    "react-leaflet": "^5.0.0"
+    "jspdf": "^3.0.4",
+    "jspdf-autotable": "^5.0.2",
+    "leaflet": "^1.9.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-leaflet": "^5.0.0",
+    "react-router-dom": "^7.9.6",
+    "recharts": "^3.5.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

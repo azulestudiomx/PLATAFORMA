@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../services/db';
 import { Report } from '../types';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const ReportsList: React.FC = () => {
   const [reports, setReports] = useState<Report[]>([]);
@@ -33,11 +35,50 @@ const ReportsList: React.FC = () => {
     }
   };
 
-  const filteredReports = reports.filter(r => 
+  const filteredReports = reports.filter(r =>
     r.municipio.toLowerCase().includes(searchTerm.toLowerCase()) ||
     r.comunidad.toLowerCase().includes(searchTerm.toLowerCase()) ||
     r.needType.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+
+    // Title
+    doc.setFontSize(18);
+    doc.setTextColor(139, 0, 0); // Brand primary color
+    doc.text('Reporte de Expedientes Ciudadanos', 14, 22);
+
+    // Metadata
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Fecha de emisión: ${new Date().toLocaleDateString('es-MX')}`, 14, 30);
+    if (searchTerm) {
+      doc.text(`Filtro aplicado: "${searchTerm}"`, 14, 35);
+    }
+
+    // Table
+    const tableColumn = ["Folio", "Municipio", "Comunidad", "Necesidad", "Fecha", "Estatus"];
+    const tableRows = filteredReports.map(report => [
+      report.id || '-',
+      report.municipio,
+      report.comunidad,
+      report.needType,
+      new Date(report.timestamp).toLocaleDateString('es-MX'),
+      report.synced ? 'Sincronizado' : 'Pendiente'
+    ]);
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 40,
+      headStyles: { fillColor: [139, 0, 0] }, // Brand primary
+      styles: { fontSize: 9 },
+      alternateRowStyles: { fillColor: [245, 245, 245] }
+    });
+
+    doc.save('reportes_ciudadanos.pdf');
+  };
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -45,7 +86,7 @@ const ReportsList: React.FC = () => {
         <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-brand-accent pb-2">
           Expedientes Ciudadanos
         </h2>
-        
+
         <div className="relative w-full md:w-64">
           <input
             type="text"
@@ -56,6 +97,14 @@ const ReportsList: React.FC = () => {
           />
           <i className="fas fa-search absolute left-3 top-3 text-gray-400"></i>
         </div>
+
+        <button
+          onClick={handleExportPDF}
+          className="bg-brand-primary text-white px-4 py-2 rounded-lg hover:bg-red-800 transition-colors flex items-center gap-2 shadow-sm"
+        >
+          <i className="fas fa-file-pdf"></i>
+          Exportar PDF
+        </button>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -96,19 +145,18 @@ const ReportsList: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-block px-2 py-1 rounded text-xs font-bold ${
-                        report.needType === 'Agua Potable' ? 'bg-blue-100 text-blue-700' :
-                        report.needType === 'Luz Eléctrica' ? 'bg-yellow-100 text-yellow-700' :
-                        report.needType === 'Salud' ? 'bg-red-100 text-red-700' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
+                      <span className={`inline-block px-2 py-1 rounded text-xs font-bold ${report.needType === 'Agua Potable' ? 'bg-blue-100 text-blue-700' :
+                          report.needType === 'Luz Eléctrica' ? 'bg-yellow-100 text-yellow-700' :
+                            report.needType === 'Salud' ? 'bg-red-100 text-red-700' :
+                              'bg-gray-100 text-gray-700'
+                        }`}>
                         {report.needType}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-gray-600">
                       {new Date(report.timestamp).toLocaleDateString('es-MX')}
-                      <br/>
-                      <span className="text-xs text-gray-400">{new Date(report.timestamp).toLocaleTimeString('es-MX', {hour: '2-digit', minute:'2-digit'})}</span>
+                      <br />
+                      <span className="text-xs text-gray-400">{new Date(report.timestamp).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>
                     </td>
                     <td className="px-6 py-4">
                       {report.synced ? (
@@ -123,7 +171,7 @@ const ReportsList: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-center">
                       {report.evidenceBase64 ? (
-                        <button 
+                        <button
                           onClick={() => setSelectedImage(report.evidenceBase64)}
                           className="text-brand-primary hover:text-red-800 transition-colors"
                           title="Ver evidencia"
@@ -135,7 +183,7 @@ const ReportsList: React.FC = () => {
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
-                       <button 
+                      <button
                         onClick={() => report.id && handleDelete(report.id)}
                         className="text-gray-400 hover:text-red-600 transition-colors p-2"
                         title="Eliminar reporte local"
@@ -155,16 +203,16 @@ const ReportsList: React.FC = () => {
       {selectedImage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedImage(null)}>
           <div className="bg-white p-2 rounded-lg max-w-3xl max-h-[90vh] overflow-auto shadow-2xl relative" onClick={e => e.stopPropagation()}>
-             <button 
-               onClick={() => setSelectedImage(null)}
-               className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full text-gray-600 transition-colors"
-             >
-               <i className="fas fa-times"></i>
-             </button>
-             <img src={selectedImage} alt="Evidencia" className="w-full h-auto rounded" />
-             <div className="p-2 text-center">
-                <span className="text-sm font-bold text-gray-600">Evidencia Fotográfica</span>
-             </div>
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full text-gray-600 transition-colors"
+            >
+              <i className="fas fa-times"></i>
+            </button>
+            <img src={selectedImage} alt="Evidencia" className="w-full h-auto rounded" />
+            <div className="p-2 text-center">
+              <span className="text-sm font-bold text-gray-600">Evidencia Fotográfica</span>
+            </div>
           </div>
         </div>
       )}

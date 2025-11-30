@@ -20,6 +20,7 @@ export interface LocationData {
 
 export interface Report {
   id?: number; // Dexie auto-increment
+  _id?: string; // MongoDB ID
   municipio: string;
   comunidad: string;
   location: LocationData;

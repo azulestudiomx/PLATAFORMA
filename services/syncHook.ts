@@ -30,10 +30,10 @@ export const useSyncReports = () => {
   // Check pending reports count
   useEffect(() => {
     const updateCount = async () => {
-      const count = await db.reports.where('synced').equals(0).count();
+      const count = await db.reports.filter(r => r.synced === false || (r as any).synced === 0).count();
       setPendingCount(count);
     };
-    
+
     updateCount();
     // Poll db every few seconds or use useLiveQuery
     const interval = setInterval(updateCount, 3000);
@@ -51,11 +51,11 @@ export const useSyncReports = () => {
   const syncReports = async () => {
     setIsSyncing(true);
     setSyncError(null);
-    
+
     try {
       // 1. Get unsynced reports from local Dexie DB
-      const unsyncedReports = await db.reports.where('synced').equals(0).toArray();
-      
+      const unsyncedReports = await db.reports.filter(r => r.synced === false || (r as any).synced === 0).toArray();
+
       if (unsyncedReports.length === 0) return;
 
       console.log(` Iniciando sincronización de ${unsyncedReports.length} reportes con el servidor...`);
@@ -63,39 +63,39 @@ export const useSyncReports = () => {
       // 2. Iterate and send to backend
       for (const report of unsyncedReports) {
         try {
-            // Prepare payload (exclude local ID if backend generates its own _id)
-            const payload = {
-                municipio: report.municipio,
-                comunidad: report.comunidad,
-                location: report.location,
-                needType: report.needType,
-                description: report.description,
-                evidenceBase64: report.evidenceBase64,
-                timestamp: report.timestamp,
-                user: report.user
-            };
+          // Prepare payload (exclude local ID if backend generates its own _id)
+          const payload = {
+            municipio: report.municipio,
+            comunidad: report.comunidad,
+            location: report.location,
+            needType: report.needType,
+            description: report.description,
+            evidenceBase64: report.evidenceBase64,
+            timestamp: report.timestamp,
+            user: report.user
+          };
 
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload)
-            });
+          const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+          });
 
-            if (!response.ok) {
-                throw new Error(`Server error: ${response.statusText}`);
-            }
+          if (!response.ok) {
+            throw new Error(`Server error: ${response.statusText}`);
+          }
 
-            // 3. Mark as synced locally ONLY if server confirmed receipt
-            if (report.id) {
-                await db.reports.update(report.id, { synced: true });
-                console.log(`Reporte local ID ${report.id} sincronizado exitosamente.`);
-            }
+          // 3. Mark as synced locally ONLY if server confirmed receipt
+          if (report.id !== undefined) {
+            await db.reports.update(report.id, { synced: true });
+            console.log(`Reporte local ID ${report.id} sincronizado exitosamente.`);
+          }
 
         } catch (innerError) {
-            console.error(`Fallo al sincronizar reporte ${report.id}:`, innerError);
-            // We continue to the next report even if one fails
+          console.error(`Fallo al sincronizar reporte ${report.id}:`, innerError);
+          // We continue to the next report even if one fails
         }
       }
 
