@@ -13,20 +13,23 @@ app.use(express.json({ limit: '50mb' })); // Aumentamos límite para recibir fot
 // ------------------------------------------------------------
 // CONFIGURACIÓN DE BASE DE DATOS (Tu conexión real)
 // ------------------------------------------------------------
-// Hemos añadido '/plataforma_campeche' para que se cree una DB específica y organizada.
 const MONGO_URI = process.env.MONGO_URI;
 
 mongoose.connect(MONGO_URI)
-  .then(() => console.log('✅ Conectado exitosamente a MongoDB Atlas (Nube)'))
+  .then(() => {
+    console.log('✅ Conectado exitosamente a MongoDB Atlas (Nube)');
+    seedUsers(); // Verificar y crear usuarios por defecto si no existen
+  })
   .catch(err => {
     console.error('❌ Error conectando a MongoDB:', err);
     console.error('   Nota: Asegúrate de que tu IP actual esté permitida en MongoDB Atlas (Network Access -> Add IP -> Allow Access from Anywhere)');
   });
 
 // ------------------------------------------------------------
-// ESQUEMA DE DATOS (Mongoose)
+// ESQUEMAS DE DATOS (Mongoose)
 // ------------------------------------------------------------
-// Define la estructura exacta de cómo se guardarán los datos en la nube
+
+// 1. Esquema de Reportes
 const ReportSchema = new mongoose.Schema({
   municipio: String,
   comunidad: String,
@@ -42,101 +45,141 @@ const ReportSchema = new mongoose.Schema({
 
   // Campos de control administrativo
   status: { type: String, default: 'Pendiente' }, // Pendiente, En Proceso, Resuelto
-  syncedAt: { type: Date, default: Date.now }     // Fecha de llegada al servidor
+  syncedAt: { type: Date, default: Date.now },    // Fecha de llegada al servidor
+  customData: { type: Map, of: String }           // Datos dinámicos (clave: valor)
 });
 
 const ReportModel = mongoose.model('Reporte', ReportSchema);
 
-// Esquema de Usuario
+const PersonSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  phone: String,
+  address: String,
+  ine: { type: String, unique: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const PersonModel = mongoose.model('Persona', PersonSchema);
+
+// 2. Esquema de Usuarios
 const UserSchema = new mongoose.Schema({
-  username: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  name: String,
-  role: { type: String, default: 'CAPTURIST' } // ADMIN, CAPTURIST
+  username: { type: String, required: true, unique: true }, // Email o Usuario
+  password: { type: String, required: true }, // Hash encriptado
+  name: { type: String, required: true },
+  role: { type: String, enum: ['ADMIN', 'CAPTURIST'], default: 'CAPTURIST' }
 });
 
 const UserModel = mongoose.model('Usuario', UserSchema);
+
+// 3. Esquema de Eventos (Calendario)
+const EventSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  date: { type: Date, required: true },
+  location: String,
+  type: { type: String, default: 'Reunión' }, // Reunión, Visita, Mitin
+  description: String,
+  createdBy: String
+});
+
+const EventModel = mongoose.model('Evento', EventSchema);
+
+// 4. Esquema de Configuración (Temas y Campos)
+const ConfigSchema = new mongoose.Schema({
+  theme: {
+    primary: { type: String, default: '#8B0000' },
+    secondary: { type: String, default: '#FFFFFF' },
+    accent: { type: String, default: '#FFD700' }
+  },
+  needTypes: { type: [String], default: ['Agua Potable', 'Luz Eléctrica', 'Drenaje', 'Salud', 'Educación', 'Seguridad', 'Otro'] },
+  customFields: [{
+    id: String,
+    label: String,
+    type: { type: String, enum: ['text', 'number', 'date', 'select'], default: 'text' },
+    options: [String] // Para tipo select
+  }]
+});
+
+const ConfigModel = mongoose.model('Configuracion', ConfigSchema);
+
+// ------------------------------------------------------------
+// LÓGICA DE SEMILLA (Crear usuarios por defecto)
+// ------------------------------------------------------------
+async function seedUsers() {
+  try {
+    const count = await UserModel.countDocuments();
+    if (count === 0) {
+      console.log('🌱 Base de datos de usuarios vacía. Creando usuarios por defecto...');
+
+      const salt = await bcrypt.genSalt(10);
+
+      // Admin
+      const adminPass = await bcrypt.hash('admin123', salt);
+      const admin = new UserModel({
+        username: 'admin', // Usuario simple por defecto
+        password: adminPass,
+        name: 'Administradora Layda',
+        role: 'ADMIN'
+      });
+
+      // Capturista
+      const userPass = await bcrypt.hash('campo123', salt);
+      const capturist = new UserModel({
+        username: 'campo',
+        password: userPass,
+        name: 'Capturista de Campo',
+        role: 'CAPTURIST'
+      });
+
+      await admin.save();
+      await capturist.save();
+
+      console.log('✅ Usuarios creados:');
+      console.log('   1. Admin: admin / admin123');
+      console.log('   2. Campo: campo / campo123');
+    }
+  } catch (error) {
+    console.error('Error en seedUsers:', error);
+  }
+}
 
 // ------------------------------------------------------------
 // RUTAS DE LA API (Endpoints)
 // ------------------------------------------------------------
 
-// 1. Endpoint para recibir reportes desde la App (Sincronización)
-app.post('/api/reports', async (req, res) => {
+// A. AUTH - Login Real
+app.post('/api/auth/login', async (req, res) => {
   try {
-    console.log(`📩 Recibiendo reporte de: ${req.body.municipio} (${req.body.needType})`);
+    const { username, password } = req.body;
 
-    const newReport = new ReportModel(req.body);
-    const savedReport = await newReport.save();
+    // 1. Buscar usuario
+    const user = await UserModel.findOne({ username });
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
 
-    console.log(`💾 Reporte guardado en la nube con ID: ${savedReport._id}`);
+    // 2. Validar contraseña
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Contraseña incorrecta' });
+    }
 
-    // Respondemos con éxito y el ID generado
-    res.status(201).json({
-      message: 'Sincronización exitosa',
-      id: savedReport._id
+    // 3. Responder con datos del usuario (sin el password)
+    res.json({
+      message: 'Login exitoso',
+      user: {
+        username: user.username,
+        name: user.name,
+        role: user.role
+      }
     });
+
   } catch (error) {
-    console.error('❌ Error al guardar reporte:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    console.error('Error en login:', error);
+    res.status(500).json({ error: 'Error del servidor' });
   }
 });
 
-// 2. Endpoint para listar reportes (Para el Dashboard administrativo)
-app.get('/api/reports', async (req, res) => {
-  try {
-    // Devuelve los últimos 100 reportes ordenados por fecha
-    const reports = await ReportModel.find().sort({ timestamp: -1 }).limit(100);
-    res.json(reports);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// 3. Endpoint para actualizar un reporte (PUT)
-app.put('/api/reports/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const updates = req.body;
-
-    const updatedReport = await ReportModel.findByIdAndUpdate(id, updates, { new: true });
-
-    if (!updatedReport) {
-      return res.status(404).json({ error: 'Reporte no encontrado' });
-    }
-
-    console.log(`🔄 Reporte actualizado: ${id}`);
-    res.json(updatedReport);
-  } catch (error) {
-    console.error('❌ Error al actualizar reporte:', error);
-    res.status(500).json({ error: 'Error al actualizar el reporte' });
-  }
-});
-
-// 4. Endpoint para eliminar un reporte (DELETE)
-app.delete('/api/reports/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const deletedReport = await ReportModel.findByIdAndDelete(id);
-
-    if (!deletedReport) {
-      return res.status(404).json({ error: 'Reporte no encontrado' });
-    }
-
-    console.log(`🗑️ Reporte eliminado: ${id}`);
-    res.json({ message: 'Reporte eliminado correctamente' });
-  } catch (error) {
-    console.error('❌ Error al eliminar reporte:', error);
-    res.status(500).json({ error: 'Error al eliminar el reporte' });
-  }
-});
-
-// ------------------------------------------------------------
-// AUTENTICACIÓN
-// ------------------------------------------------------------
-
-// Registro de usuario (Para crear usuarios iniciales)
+// Registro de usuario (Para crear usuarios desde el panel)
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, password, name, role } = req.body;
@@ -165,35 +208,6 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// Login
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { username, password } = req.body;
-
-    // Buscar usuario
-    const user = await UserModel.findOne({ username });
-    if (!user) {
-      return res.status(400).json({ error: 'Usuario no encontrado' });
-    }
-
-    // Verificar contraseña
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
-      return res.status(400).json({ error: 'Contraseña incorrecta' });
-    }
-
-    // Retornar datos (sin password)
-    res.json({
-      username: user.username,
-      name: user.name,
-      role: user.role
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Error en el servidor' });
-  }
-});
-
 // Listar usuarios (Solo para admins)
 app.get('/api/users', async (req, res) => {
   try {
@@ -204,14 +218,202 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
+// B. REPORTES - Recibir (Sincronización)
+app.post('/api/reports', async (req, res) => {
+  try {
+    console.log(`📩 Recibiendo reporte de: ${req.body.municipio} (${req.body.needType})`);
+
+    const newReport = new ReportModel(req.body);
+    const savedReport = await newReport.save();
+
+    console.log(`💾 Reporte guardado en la nube con ID: ${savedReport._id}`);
+
+    res.status(201).json({
+      message: 'Sincronización exitosa',
+      id: savedReport._id
+    });
+  } catch (error) {
+    console.error('❌ Error al guardar reporte:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// C. REPORTES - Listar (Dashboard)
+app.get('/api/reports', async (req, res) => {
+  try {
+    const reports = await ReportModel.find().sort({ timestamp: -1 }).limit(100);
+    res.json(reports);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// D. REPORTES - Actualizar (PUT)
+app.put('/api/reports/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    const updatedReport = await ReportModel.findByIdAndUpdate(id, updates, { new: true });
+
+    if (!updatedReport) {
+      return res.status(404).json({ error: 'Reporte no encontrado' });
+    }
+
+    console.log(`🔄 Reporte actualizado: ${id}`);
+    res.json(updatedReport);
+  } catch (error) {
+    console.error('❌ Error al actualizar reporte:', error);
+    res.status(500).json({ error: 'Error al actualizar el reporte' });
+  }
+});
+
+// E. REPORTES - Eliminar (DELETE)
+app.delete('/api/reports/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const deletedReport = await ReportModel.findByIdAndDelete(id);
+
+    if (!deletedReport) {
+      return res.status(404).json({ error: 'Reporte no encontrado' });
+    }
+
+    console.log(`🗑️ Reporte eliminado: ${id}`);
+    res.json({ message: 'Reporte eliminado correctamente' });
+  } catch (error) {
+    console.error('❌ Error al eliminar reporte:', error);
+    res.status(500).json({ error: 'Error al eliminar el reporte' });
+  }
+});
+
+// ------------------------------------------------------------
+// EVENTOS (CALENDARIO)
+// ------------------------------------------------------------
+
+// Listar eventos
+app.get('/api/events', async (req, res) => {
+  try {
+    const events = await EventModel.find().sort({ date: 1 });
+    res.json(events);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener eventos' });
+  }
+});
+
+// Crear evento
+app.post('/api/events', async (req, res) => {
+  try {
+    const newEvent = new EventModel(req.body);
+    await newEvent.save();
+    res.status(201).json(newEvent);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al crear evento' });
+  }
+});
+
+// Eliminar evento
+app.delete('/api/events/:id', async (req, res) => {
+  try {
+    await EventModel.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Evento eliminado' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar evento' });
+  }
+});
+
+// ------------------------------------------------------------
+// CONFIGURACIÓN (Temas y Campos)
+// ------------------------------------------------------------
+
+// Obtener configuración (o crear por defecto)
+app.get('/api/config', async (req, res) => {
+  try {
+    let config = await ConfigModel.findOne();
+    if (!config) {
+      config = new ConfigModel({
+        theme: { primary: '#8B0000', secondary: '#FFFFFF', accent: '#FFD700' },
+        needTypes: ['Agua Potable', 'Luz Eléctrica', 'Drenaje', 'Salud', 'Educación', 'Seguridad', 'Otro'],
+        customFields: []
+      });
+      await config.save();
+    }
+    res.json(config);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener configuración' });
+  }
+});
+
+// Actualizar configuración
+app.post('/api/config', async (req, res) => {
+  try {
+    let config = await ConfigModel.findOne();
+    if (!config) {
+      config = new ConfigModel(req.body);
+    } else {
+      config.theme = req.body.theme || config.theme;
+      config.needTypes = req.body.needTypes || config.needTypes;
+      config.customFields = req.body.customFields || config.customFields;
+    }
+    await config.save();
+    res.json(config);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al guardar configuración' });
+  }
+});
+
+// G. PADRÓN DE PERSONAS
+app.get('/api/people', async (req, res) => {
+  try {
+    const people = await PersonModel.find().sort({ createdAt: -1 });
+    res.json(people);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener padrón' });
+  }
+});
+
+app.post('/api/people', async (req, res) => {
+  try {
+    const newPerson = new PersonModel(req.body);
+    await newPerson.save();
+    res.status(201).json(newPerson);
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ error: 'La clave INE ya está registrada' });
+    }
+    res.status(500).json({ error: 'Error al registrar persona' });
+  }
+});
+
+app.delete('/api/people/:id', async (req, res) => {
+  try {
+    await PersonModel.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Persona eliminada' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar persona' });
+  }
+});
+
+app.put('/api/people/:id', async (req, res) => {
+  try {
+    const updatedPerson = await PersonModel.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updatedPerson) return res.status(404).json({ error: 'Persona no encontrada' });
+    res.json(updatedPerson);
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ error: 'La clave INE ya está registrada en otra persona' });
+    }
+    res.status(500).json({ error: 'Error al actualizar persona' });
+  }
+});
+
 // Ruta de prueba base
 app.get('/', (req, res) => {
   res.send('🟢 API Plataforma Ciudadana Campeche - ONLINE');
 });
 
-// Iniciar el servidor en el puerto 3000
+// Iniciar servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`\n🚀 SERVIDOR BACKEND LISTO EN: http://localhost:${PORT}`);
-  console.log(`   Esperando sincronización de reportes...\n`);
 });
