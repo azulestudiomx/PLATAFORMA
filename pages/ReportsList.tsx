@@ -5,6 +5,8 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ReportDetailsModal from '../components/ReportDetailsModal';
 import Swal from 'sweetalert2';
+import { db } from '../services/db';
+import { useSyncReports } from '../services/syncHook';
 
 export const ReportsList: React.FC = () => {
   const [reports, setReports] = useState<Report[]>([]);
@@ -18,23 +20,51 @@ export const ReportsList: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalReports, setTotalReports] = useState(0);
 
+  // Sync Hook
+  const { isOnline, pendingCount, isSyncing, syncReports } = useSyncReports();
+
   useEffect(() => {
     fetchReports();
-  }, [page]);
+  }, [page, isOnline]); // Refetch when online status changes
 
   const fetchReports = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/reports?page=${page}&limit=20`);
-      const data = await response.json();
+      // 1. Fetch Local Unsynced Reports
+      const localUnsynced = await db.reports.where('synced').equals(0).toArray();
 
-      if (data.data) {
-        setReports(data.data);
-        setTotalPages(data.pages);
-        setTotalReports(data.total);
-      } else {
-        setReports(data);
+      // 2. Fetch Server Reports
+      let serverReports: Report[] = [];
+      let serverTotal = 0;
+      let serverPages = 1;
+
+      if (isOnline) {
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/reports?page=${page}&limit=20`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.data) {
+              serverReports = data.data;
+              serverPages = data.pages;
+              serverTotal = data.total;
+            } else {
+              serverReports = data;
+            }
+          }
+        } catch (err) {
+          console.warn('Error fetching server reports:', err);
+        }
       }
+
+      // 3. Merge: Local Unsynced + Server Reports
+      // Filter out server reports that might conflict with local ones (though unlikely if IDs differ)
+      // We display local unsynced at the top
+      const mergedReports = [...localUnsynced, ...serverReports];
+
+      setReports(mergedReports);
+      setTotalPages(serverPages);
+      setTotalReports(serverTotal + localUnsynced.length);
+
     } catch (error) {
       console.error('Error fetching reports:', error);
     } finally {
@@ -42,7 +72,12 @@ export const ReportsList: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleSyncClick = async () => {
+    await syncReports();
+    fetchReports(); // Refresh list after sync
+  };
+
+  const handleDelete = async (id: string | number) => {
     const result = await Swal.fire({
       title: '¿Estás seguro?',
       text: "No podrás revertir esta acción",
@@ -56,10 +91,14 @@ export const ReportsList: React.FC = () => {
 
     if (result.isConfirmed) {
       try {
-        await fetch(`${API_BASE_URL}/api/reports/${id}`, {
-          method: 'DELETE',
-        });
-        setReports(reports.filter(r => r._id !== id));
+        // Check if it's a local-only report (number id) or server report (string _id)
+        if (typeof id === 'number') {
+          await db.reports.delete(id);
+        } else {
+          await fetch(`${API_BASE_URL}/api/reports/${id}`, { method: 'DELETE' });
+        }
+
+        setReports(reports.filter(r => (r._id || r.id) !== id));
         Swal.fire(
           '¡Eliminado!',
           'El reporte ha sido eliminado.',
@@ -84,7 +123,7 @@ export const ReportsList: React.FC = () => {
     doc.text(`Generado el: ${new Date().toLocaleDateString()}`, 14, 30);
 
     const tableData = reports.map(report => [
-      report._id ? report._id.slice(-6) : report.id,
+      report._id ? report._id.slice(-6) : `LOC-${report.id}`,
       report.municipio,
       report.comunidad,
       report.needType,
@@ -115,7 +154,7 @@ export const ReportsList: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Expedientes</h2>
           <p className="text-gray-500">
@@ -123,6 +162,18 @@ export const ReportsList: React.FC = () => {
           </p>
         </div>
         <div className="flex gap-4">
+          {pendingCount > 0 && (
+            <button
+              onClick={handleSyncClick}
+              disabled={!isOnline || isSyncing}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white transition-colors ${isOnline ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'
+                }`}
+            >
+              <i className={`fas ${isSyncing ? 'fa-spinner fa-spin' : 'fa-sync'}`}></i>
+              {isSyncing ? 'Sincronizando...' : `Sincronizar (${pendingCount})`}
+            </button>
+          )}
+
           <button
             onClick={exportToPDF}
             className="flex items-center gap-2 px-4 py-2 bg-red-700 text-white rounded-lg hover:bg-red-800 transition-colors"
@@ -178,9 +229,15 @@ export const ReportsList: React.FC = () => {
                 </tr>
               ) : (
                 filteredReports.map((report) => (
-                  <tr key={report._id || report.id} className="hover:bg-red-50 transition-colors group">
+                  <tr key={report._id || report.id} className={`hover:bg-red-50 transition-colors group ${!report._id ? 'bg-orange-50' : ''}`}>
                     <td className="px-6 py-4 font-medium text-gray-900">
-                      #{report._id ? report._id.slice(-6) : report.id}
+                      {report._id ? (
+                        <span className="text-gray-600">#{report._id.slice(-6)}</span>
+                      ) : (
+                        <span className="text-orange-600 font-bold" title="Pendiente de sincronizar">
+                          <i className="fas fa-cloud-upload-alt mr-1"></i> LOC-{report.id}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900">{report.municipio}</div>
@@ -195,12 +252,18 @@ export const ReportsList: React.FC = () => {
                       {new Date(report.timestamp).toLocaleDateString('es-MX')}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${report.status === 'Resuelto' ? 'bg-green-100 text-green-800' :
-                        report.status === 'En Proceso' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                        {report.status}
-                      </span>
+                      {!report._id ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-800">
+                          <i className="fas fa-sync mr-1"></i> Pendiente
+                        </span>
+                      ) : (
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${report.status === 'Resuelto' ? 'bg-green-100 text-green-800' :
+                          report.status === 'En Proceso' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                          {report.status}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-center">
                       {(report.hasEvidence || report.evidenceBase64) ? (
