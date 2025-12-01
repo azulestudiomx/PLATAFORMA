@@ -39,7 +39,7 @@ export default defineConfig(({ mode }) => {
           globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
           runtimeCaching: [
             {
-              urlPattern: /^http:\/\/localhost:3000\/api\/.*/i,
+             urlPattern: new RegExp(`^${env.VITE_API_URL}/api/.*`, 'i'),
               handler: 'NetworkFirst',
               options: {
                 cacheName: 'api-cache',
