@@ -1,0 +1,26 @@
+services:
+  # Backend Service
+  - type: web
+    name: plataforma-backend
+    env: node
+    plan: free
+    buildCommand: cd server && npm install
+    startCommand: cd server && node index.js
+    envVars:
+      - key: MONGO_URI
+        sync: false # User must provide this in Render dashboard
+      - key: PORT
+        value: 10000
+
+  # Frontend Service
+  - type: static
+    name: plataforma-frontend
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: plataforma-backend
+          property: url

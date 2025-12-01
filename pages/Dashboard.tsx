@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../src/config';
 import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { MapContainer, TileLayer, Marker, Popup, GeoJSON } from 'react-leaflet';
@@ -67,8 +68,8 @@ const Dashboard: React.FC = () => {
     setLoading(true);
     try {
       const [reportsRes, peopleRes] = await Promise.all([
-        fetch('http://localhost:3000/api/reports?limit=100'),
-        fetch('http://localhost:3000/api/people')
+        fetch('${API_BASE_URL}/api/reports?limit=100'),
+        fetch('${API_BASE_URL}/api/people')
       ]);
 
       if (reportsRes.ok) {

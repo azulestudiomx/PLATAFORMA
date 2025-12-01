@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
+import { API_BASE_URL } from '../src/config';
 import { db } from './db';
 
 // URL of your Backend API
-// In development: http://localhost:3000/api/reports
+// In development: ${API_BASE_URL}/api/reports
 // In production: https://tu-api-real.com/api/reports
 // Fix: Cast import.meta to any to avoid TypeScript error "Property 'env' does not exist on type 'ImportMeta'"
-const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000/api/reports';
+const API_URL = (import.meta as any).env?.VITE_API_URL || '${API_BASE_URL}/api/reports';
 
 export const useSyncReports = () => {
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);

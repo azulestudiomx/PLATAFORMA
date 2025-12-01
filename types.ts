@@ -37,10 +37,12 @@ export interface Report {
 
 export interface CalendarEvent {
   id: string;
+  _id?: string; // MongoDB ID
   title: string;
   date: string;
   location: string;
   type: 'Reunión' | 'Visita' | 'Mitin';
+  description?: string;
 }
 
 export interface User {

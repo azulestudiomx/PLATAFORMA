@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { API_BASE_URL } from '../src/config';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Webcam from 'react-webcam';
 import Dexie, { Table } from 'dexie';
+import Swal from 'sweetalert2';
 
 // --- Dexie Database Setup ---
 interface Person {
@@ -59,7 +60,7 @@ const PeoplePage: React.FC = () => {
             const localUnsynced = await db.people.where('synced').equals(0).toArray();
 
             // 2. Try to fetch from server
-            const res = await fetch('http://localhost:3000/api/people');
+            const res = await fetch('${API_BASE_URL}/api/people');
             if (res.ok) {
                 const serverData = await res.json();
 
@@ -98,7 +99,7 @@ const PeoplePage: React.FC = () => {
                 // or just rely on local update.
                 const personToSync = { ...person, synced: 1 };
 
-                const res = await fetch('http://localhost:3000/api/people', {
+                const res = await fetch('${API_BASE_URL}/api/people', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(personToSync)
@@ -157,8 +158,8 @@ const PeoplePage: React.FC = () => {
             // 2. Try to send to Server
             try {
                 const url = editingId
-                    ? `http://localhost:3000/api/people/${editingId}`
-                    : 'http://localhost:3000/api/people';
+                    ? `${API_BASE_URL}/api/people/${editingId}`
+                    : '${API_BASE_URL}/api/people';
                 const method = editingId ? 'PUT' : 'POST';
 
                 // When sending to server, we want it to be marked as synced
@@ -183,21 +184,57 @@ const PeoplePage: React.FC = () => {
             setFormData({ name: '', phone: '', address: '', ine: '', photo: '', inePhoto: '' });
             setEditingId(null);
             fetchPeople();
+            Swal.fire({
+                title: '¡Guardado!',
+                text: 'El registro ha sido guardado exitosamente.',
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+            });
 
         } catch (error) {
-            alert('Error al guardar');
+            console.error('Error al guardar:', error);
+            Swal.fire({
+                title: 'Error',
+                text: 'Error al guardar el registro.',
+                icon: 'error',
+                confirmButtonText: 'Ok'
+            });
         } finally {
             setSaving(false);
         }
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('¿Estás seguro de eliminar a esta persona?')) return;
-        try {
-            await fetch(`http://localhost:3000/api/people/${id}`, { method: 'DELETE' });
-            fetchPeople();
-        } catch (error) {
-            alert('Error al eliminar');
+        const result = await Swal.fire({
+            title: '¿Estás seguro?',
+            text: "No podrás revertir esta acción",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                await fetch(`${API_BASE_URL}/api/people/${id}`, { method: 'DELETE' });
+                fetchPeople();
+                Swal.fire(
+                    '¡Eliminado!',
+                    'El registro ha sido eliminado.',
+                    'success'
+                );
+            } catch (error) {
+                console.error('Error al eliminar:', error);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Error al eliminar el registro.',
+                    icon: 'error',
+                    confirmButtonText: 'Ok'
+                });
+            }
         }
     };
 

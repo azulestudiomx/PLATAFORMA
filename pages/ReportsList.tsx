@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../src/config';
 import { Report } from '../types';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import ReportDetailsModal from '../components/ReportDetailsModal';
+import Swal from 'sweetalert2';
 
 export const ReportsList: React.FC = () => {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
 
   // Pagination State
   const [page, setPage] = useState(1);
@@ -16,22 +19,19 @@ export const ReportsList: React.FC = () => {
 
   useEffect(() => {
     fetchReports();
-  }, [page]); // Reload when page changes
+  }, [page]);
 
   const fetchReports = async () => {
     setLoading(true);
     try {
-      // Fetch with pagination
-      const response = await fetch(`http://localhost:3000/api/reports?page=${page}&limit=20`);
+      const response = await fetch(`${API_BASE_URL}/api/reports?page=${page}&limit=20`);
       const data = await response.json();
 
-      // Handle paginated response
       if (data.data) {
         setReports(data.data);
         setTotalPages(data.pages);
         setTotalReports(data.total);
       } else {
-        // Fallback for non-paginated response (just in case)
         setReports(data);
       }
     } catch (error) {
@@ -42,22 +42,41 @@ export const ReportsList: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('¿Estás seguro de eliminar este reporte?')) {
+    const result = await Swal.fire({
+      title: '¿Estás seguro?',
+      text: "No podrás revertir esta acción",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#8B0000',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    });
+
+    if (result.isConfirmed) {
       try {
-        await fetch(`http://localhost:3000/api/reports/${id}`, {
+        await fetch(`${API_BASE_URL}/api/reports/${id}`, {
           method: 'DELETE',
         });
         setReports(reports.filter(r => r._id !== id));
+        Swal.fire(
+          '¡Eliminado!',
+          'El reporte ha sido eliminado.',
+          'success'
+        );
       } catch (error) {
         console.error('Error deleting report:', error);
-        alert('Error al eliminar el reporte');
+        Swal.fire(
+          'Error',
+          'Hubo un problema al eliminar el reporte.',
+          'error'
+        );
       }
     }
   };
 
   const exportToPDF = () => {
     const doc = new jsPDF();
-
     doc.setFontSize(20);
     doc.text('Reporte de Expedientes', 14, 22);
     doc.setFontSize(10);
@@ -79,6 +98,12 @@ export const ReportsList: React.FC = () => {
     });
 
     doc.save('reportes.pdf');
+  };
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setPage(newPage);
+    }
   };
 
   const filteredReports = reports.filter(r =>
@@ -152,8 +177,8 @@ export const ReportsList: React.FC = () => {
                 </tr>
               ) : (
                 filteredReports.map((report) => (
-                  <tr key={report._id || report.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 font-medium text-gray-900" title={report._id}>
+                  <tr key={report._id || report.id} className="hover:bg-red-50 transition-colors group">
+                    <td className="px-6 py-4 font-medium text-gray-900">
                       #{report._id ? report._id.slice(-6) : report.id}
                     </td>
                     <td className="px-6 py-4">
@@ -166,12 +191,12 @@ export const ReportsList: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
-                      {new Date(report.timestamp).toLocaleDateString()}
+                      {new Date(report.timestamp).toLocaleDateString('es-MX')}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${report.status === 'Resuelto' ? 'bg-green-100 text-green-800' :
                         report.status === 'En Proceso' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-700'
+                          'bg-red-100 text-red-800'
                         }`}>
                         {report.status}
                       </span>
@@ -179,24 +204,7 @@ export const ReportsList: React.FC = () => {
                     <td className="px-6 py-4 text-center">
                       {(report.hasEvidence || report.evidenceBase64) ? (
                         <button
-                          onClick={async () => {
-                            if (report.evidenceBase64) {
-                              setSelectedImage(report.evidenceBase64);
-                            } else {
-                              try {
-                                const res = await fetch(`http://localhost:3000/api/reports/${report._id}`);
-                                const data = await res.json();
-                                if (data.evidenceBase64) {
-                                  setSelectedImage(data.evidenceBase64);
-                                } else {
-                                  alert('No se pudo cargar la imagen');
-                                }
-                              } catch (error) {
-                                console.error('Error loading image:', error);
-                                alert('Error al cargar la imagen');
-                              }
-                            }
-                          }}
+                          onClick={() => setSelectedImage(report.evidenceBase64 || null)}
                           className="text-brand-primary hover:text-red-800 transition-colors"
                           title="Ver evidencia"
                         >
@@ -206,10 +214,17 @@ export const ReportsList: React.FC = () => {
                         <span className="text-gray-300">-</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-right flex justify-end gap-2">
+                      <button
+                        onClick={() => setSelectedReportId(report._id || String(report.id))}
+                        className="text-brand-primary hover:text-brand-accent font-bold text-sm flex items-center gap-1 transition-colors"
+                        title="Ver detalles y editar"
+                      >
+                        Ver / Editar <i className="fas fa-chevron-right text-xs"></i>
+                      </button>
                       <button
                         onClick={() => handleDelete(report._id || report.id!)}
-                        className="text-gray-400 hover:text-red-600 transition-colors"
+                        className="text-gray-400 hover:text-red-600 transition-colors ml-2"
                         title="Eliminar"
                       >
                         <i className="fas fa-trash"></i>
@@ -223,33 +238,25 @@ export const ReportsList: React.FC = () => {
         </div>
 
         {/* Pagination Controls */}
-        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50">
+        <div className="bg-gray-50 p-4 border-t border-gray-200 flex justify-between items-center">
           <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1 || loading}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${page === 1 || loading
-              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300 shadow-sm'
-              }`}
+            onClick={() => handlePageChange(page - 1)}
+            disabled={page === 1}
+            className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <i className="fas fa-chevron-left mr-2"></i>
             Anterior
           </button>
 
           <span className="text-sm text-gray-600">
-            Página <span className="font-medium text-gray-900">{page}</span> de <span className="font-medium text-gray-900">{totalPages}</span>
+            Página <span className="font-bold">{page}</span> de <span className="font-bold">{totalPages}</span>
           </span>
 
           <button
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages || loading}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${page === totalPages || loading
-              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300 shadow-sm'
-              }`}
+            onClick={() => handlePageChange(page + 1)}
+            disabled={page === totalPages}
+            className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Siguiente
-            <i className="fas fa-chevron-right ml-2"></i>
           </button>
         </div>
       </div>
@@ -276,6 +283,15 @@ export const ReportsList: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Report Details Modal */}
+      {selectedReportId && (
+        <ReportDetailsModal
+          reportId={selectedReportId}
+          onClose={() => setSelectedReportId(null)}
+          onUpdate={() => fetchReports()}
+        />
       )}
     </div>
   );

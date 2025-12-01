@@ -20,7 +20,8 @@
     "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.9.6",
     "react-webcam": "^7.2.0",
-    "recharts": "^3.5.1"
+    "recharts": "^3.5.1",
+    "sweetalert2": "^11.26.3"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

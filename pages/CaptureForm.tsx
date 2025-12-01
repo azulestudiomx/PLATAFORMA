@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../src/config';
 import { db } from '../services/db';
 import { NeedType, Report, LocationData } from '../types';
 import { MapContainer, TileLayer, Marker, useMapEvents, GeoJSON } from 'react-leaflet';
 import L from 'leaflet';
 import { useConfig } from '../contexts/ConfigContext';
+import Swal from 'sweetalert2';
 
 const GeoJSONWrapper = () => {
   const [geoData, setGeoData] = useState<any>(null);
@@ -100,24 +101,66 @@ const CaptureForm: React.FC = () => {
         (error) => {
           console.error("Error getting location", error);
           setLoadingLoc(false);
-          alert("No se pudo obtener la ubicación. Verifique los permisos.");
+          Swal.fire('Error', 'No se pudo obtener la ubicación. Verifique los permisos.', 'error');
         },
         { enableHighAccuracy: true }
       );
     } else {
       setLoadingLoc(false);
-      alert("Geolocalización no soportada en este dispositivo.");
+      Swal.fire('Error', 'Geolocalización no soportada en este dispositivo.', 'error');
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+  const resizeImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 1024;
+          const MAX_HEIGHT = 1024;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.7)); // Compress to 70% quality
+        };
+        img.onerror = (error) => reject(error);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const resizedBase64 = await resizeImage(file);
+        setFormData(prev => ({ ...prev, evidenceBase64: resizedBase64 }));
+        setImage(resizedBase64);
+      } catch (error) {
+        console.error("Error resizing image:", error);
+        Swal.fire('Error', 'Error al procesar la imagen', 'error');
+      }
     }
   };
 
@@ -131,7 +174,7 @@ const CaptureForm: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!location) {
-      alert("Por favor obtenga la ubicación GPS o selecciónela en el mapa antes de guardar.");
+      Swal.fire('Atención', 'Por favor obtenga la ubicación GPS o selecciónela en el mapa antes de guardar.', 'warning');
       return;
     }
 
@@ -158,7 +201,7 @@ const CaptureForm: React.FC = () => {
       // 2. Try to sync immediately if online
       if (navigator.onLine) {
         try {
-          const res = await fetch('http://localhost:3000/api/reports', {
+          const res = await fetch('${API_BASE_URL}/api/reports', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newReport)
@@ -176,6 +219,14 @@ const CaptureForm: React.FC = () => {
       }
 
       setSuccessMsg('Reporte guardado exitosamente.');
+      Swal.fire({
+        title: '¡Éxito!',
+        text: 'Reporte guardado exitosamente.',
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false
+      });
+
       setFormData({
         municipio: '',
         comunidad: '',
@@ -189,7 +240,7 @@ const CaptureForm: React.FC = () => {
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (error) {
       console.error("Error al guardar reporte:", error);
-      alert("Hubo un error al guardar el reporte.");
+      Swal.fire('Error', 'Hubo un error al guardar el reporte.', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -305,7 +356,7 @@ const CaptureForm: React.FC = () => {
                 <i className="fas fa-camera text-3xl text-gray-400 mb-2"></i>
                 <p className="mb-2 text-sm text-gray-500"><span className="font-semibold">Toque para subir</span> o tomar foto</p>
               </div>
-              <input type="file" className="hidden" accept="image/*" capture="environment" onChange={handleFileChange} />
+              <input type="file" className="hidden" accept="image/*" capture="environment" onChange={handleImageUpload} />
             </label>
           </div>
           {image && (
@@ -351,7 +402,7 @@ const CaptureForm: React.FC = () => {
             <input
               type="file"
               accept="image/*"
-              onChange={handleFileChange}
+              onChange={handleImageUpload}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />
             {image ? (
