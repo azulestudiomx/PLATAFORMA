@@ -18,6 +18,7 @@ const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({ reportId, onClo
     // Form State
     const [status, setStatus] = useState('');
     const [description, setDescription] = useState('');
+    const [response, setResponse] = useState('');
     const [customData, setCustomData] = useState<Record<string, any>>({});
 
     useEffect(() => {
@@ -34,6 +35,7 @@ const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({ reportId, onClo
             // Initialize form
             setStatus(data.status);
             setDescription(data.description);
+            setResponse(data.response || '');
             setCustomData(data.customData || {});
         } catch (error) {
             console.error(error);
@@ -53,7 +55,9 @@ const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({ reportId, onClo
                 body: JSON.stringify({
                     status,
                     description,
-                    customData
+                    customData,
+                    response: status === 'Resuelto' ? response : undefined,
+                    resolvedAt: status === 'Resuelto' ? new Date() : undefined
                 })
             });
 
@@ -138,6 +142,33 @@ const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({ reportId, onClo
                                     </p>
                                 )}
                             </div>
+
+                            {/* Response Section (Only if Resolved or Editing) */}
+                            {(status === 'Resuelto' || editMode) && (
+                                <div className={`p-4 rounded-lg border ${status === 'Resuelto' ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                        <i className="fas fa-check-circle text-green-600 mr-2"></i>
+                                        Respuesta / Solución
+                                    </label>
+                                    {editMode ? (
+                                        <textarea
+                                            value={response}
+                                            onChange={(e) => setResponse(e.target.value)}
+                                            className="w-full p-3 border rounded-md h-24"
+                                            placeholder="Describa cómo se solucionó el problema..."
+                                        />
+                                    ) : (
+                                        <div className="text-gray-800">
+                                            {response || <span className="text-gray-400 italic">Sin respuesta registrada</span>}
+                                            {report.resolvedAt && (
+                                                <p className="text-xs text-gray-500 mt-2 text-right">
+                                                    Resuelto el: {new Date(report.resolvedAt).toLocaleDateString('es-MX')}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Metadata */}
                             <div className="grid grid-cols-2 gap-4 text-sm">

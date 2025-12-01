@@ -39,8 +39,18 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-      <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md border-t-4 border-brand-primary">
+    <div
+      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
+      style={{
+        backgroundImage: 'url("https://images.unsplash.com/photo-1590523278135-1e290381802d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80")', // Placeholder: Campeche/Mexico style
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      {/* Red Blur Overlay */}
+      <div className="absolute inset-0 bg-red-900/40 backdrop-blur-sm z-0"></div>
+
+      <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md border-t-4 border-brand-primary z-10 relative">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-brand-primary mb-2">PLATAFORMA</h1>
           <p className="text-gray-500 font-medium">Ciudadana Campeche</p>
@@ -96,9 +106,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         </form>
 
         <div className="mt-6 text-center">
-          <div className="text-xs text-gray-400 bg-gray-50 p-2 rounded border border-gray-200 mb-4">
-            <p className="font-bold mb-1">Credenciales por defecto:</p>
-            <p>Admin: admin / password123</p>
+          <div className="text-xs text-gray-400 mb-4">
+            <p className="font-bold">Versión 3.0</p>
           </div>
           <p className="text-gray-500 text-sm">
             ¿Olvidaste tu contraseña? <a href="#" className="text-brand-primary hover:underline font-medium">Contactar Soporte</a>

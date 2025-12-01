@@ -28,10 +28,12 @@ export interface Report {
   description: string;
   evidenceBase64: string | null;
   timestamp: number;
-  synced: number; // 0 = false, 1 = true
-  status: 'Pendiente' | 'En Proceso' | 'Resuelto';
+  synced?: boolean | number; // 0 = false, 1 = true
+  status: string;
   user?: string;
   customData?: Record<string, any>; // For dynamic fields
+  response?: string;
+  resolvedAt?: string | Date;
   hasEvidence?: boolean;
 }
 

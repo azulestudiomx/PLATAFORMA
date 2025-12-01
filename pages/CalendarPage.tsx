@@ -2,10 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../src/config';
 import { CalendarEvent } from '../types';
 import Swal from 'sweetalert2';
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+  isSameMonth,
+  isSameDay,
+  addMonths,
+  subMonths,
+  isToday
+} from 'date-fns';
+import { es } from 'date-fns/locale';
 
 export const CalendarPage: React.FC = () => {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
   // New Event State
   const [showModal, setShowModal] = useState(false);
@@ -139,69 +155,187 @@ export const CalendarPage: React.FC = () => {
     document.body.removeChild(link);
   };
 
+  // Calendar Grid Logic
+  const monthStart = startOfMonth(currentMonth);
+  const monthEnd = endOfMonth(monthStart);
+  const startDate = startOfWeek(monthStart, { weekStartsOn: 0 }); // Sunday start
+  const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
+  const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
+
+  const weekDays = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <h1 className="text-3xl font-bold text-gray-800">Calendario de Eventos</h1>
-        <div className="flex gap-2">
+
+        <div className="flex flex-wrap gap-2 justify-center">
+          {/* View Toggle */}
+          <div className="bg-gray-200 p-1 rounded-lg flex">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${viewMode === 'list' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              <i className="fas fa-list mr-1"></i> Lista
+            </button>
+            <button
+              onClick={() => setViewMode('calendar')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${viewMode === 'calendar' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              <i className="fas fa-calendar-alt mr-1"></i> Mes
+            </button>
+          </div>
+
           <button
             onClick={downloadICS}
-            className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 flex items-center gap-2"
+            className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 flex items-center gap-2 text-sm"
           >
-            <i className="fas fa-file-export"></i> Exportar Todo
+            <i className="fas fa-file-export"></i> Exportar
           </button>
           <button
             onClick={() => setShowModal(true)}
-            className="bg-brand-primary text-white px-4 py-2 rounded hover:bg-red-800 flex items-center gap-2"
+            className="bg-brand-primary text-white px-4 py-2 rounded hover:bg-red-800 flex items-center gap-2 text-sm"
           >
-            <i className="fas fa-plus"></i> Nuevo Evento
+            <i className="fas fa-plus"></i> Nuevo
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {loading ? (
-          <p>Cargando eventos...</p>
-        ) : events.map(event => (
-          <div key={event._id} className="bg-white rounded-lg shadow-md p-6 border-l-4 border-brand-primary hover:shadow-lg transition-shadow">
-            <div className="flex justify-between items-start mb-2">
-              <span className="text-sm font-bold text-brand-primary uppercase tracking-wide">{event.type}</span>
-              <div className="flex gap-2">
-                <a
-                  href={getGoogleCalendarUrl(event)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800"
-                  title="Agregar a Google Calendar"
-                >
-                  <i className="fab fa-google"></i>
-                </a>
-                <button onClick={() => handleDeleteEvent(event._id!)} className="text-gray-400 hover:text-red-600 transition-colors">
-                  <i className="fas fa-trash"></i>
-                </button>
+      {loading ? (
+        <div className="text-center py-12">
+          <i className="fas fa-circle-notch fa-spin text-4xl text-brand-primary mb-4"></i>
+          <p className="text-gray-500">Cargando agenda...</p>
+        </div>
+      ) : viewMode === 'list' ? (
+        // LIST VIEW
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {events.length === 0 ? (
+            <div className="col-span-full text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+              <i className="far fa-calendar-times text-4xl text-gray-400 mb-2"></i>
+              <p className="text-gray-500">No hay eventos programados.</p>
+            </div>
+          ) : (
+            events.map(event => (
+              <div key={event._id} className="bg-white rounded-lg shadow-md p-6 border-l-4 border-brand-primary hover:shadow-lg transition-shadow">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-sm font-bold text-brand-primary uppercase tracking-wide">{event.type}</span>
+                  <div className="flex gap-2">
+                    <a
+                      href={getGoogleCalendarUrl(event)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800"
+                      title="Agregar a Google Calendar"
+                    >
+                      <i className="fab fa-google"></i>
+                    </a>
+                    <button onClick={() => handleDeleteEvent(event._id!)} className="text-gray-400 hover:text-red-600 transition-colors">
+                      <i className="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">{event.title}</h3>
+                <div className="space-y-2 text-gray-600">
+                  <p className="flex items-center gap-2">
+                    <i className="far fa-calendar-alt w-5"></i>
+                    {new Date(event.date).toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Merida' })}
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <i className="far fa-clock w-5"></i>
+                    {new Date(event.date).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Merida' })}
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <i className="fas fa-map-marker-alt w-5"></i>
+                    {event.location}
+                  </p>
+                </div>
+                {event.description && (
+                  <p className="mt-4 text-gray-500 text-sm border-t pt-2">{event.description}</p>
+                )}
               </div>
-            </div>
-            <h3 className="text-xl font-bold text-gray-800 mb-2">{event.title}</h3>
-            <div className="space-y-2 text-gray-600">
-              <p className="flex items-center gap-2">
-                <i className="far fa-calendar-alt w-5"></i>
-                {new Date(event.date).toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Merida' })}
-              </p>
-              <p className="flex items-center gap-2">
-                <i className="far fa-clock w-5"></i>
-                {new Date(event.date).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Merida' })}
-              </p>
-              <p className="flex items-center gap-2">
-                <i className="fas fa-map-marker-alt w-5"></i>
-                {event.location}
-              </p>
-            </div>
-            {event.description && (
-              <p className="mt-4 text-gray-500 text-sm border-t pt-2">{event.description}</p>
-            )}
+            ))
+          )}
+        </div>
+      ) : (
+        // CALENDAR VIEW
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+          {/* Calendar Header */}
+          <div className="flex items-center justify-between p-4 bg-gray-50 border-b border-gray-200">
+            <button
+              onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+              className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+            >
+              <i className="fas fa-chevron-left text-gray-600"></i>
+            </button>
+            <h2 className="text-xl font-bold text-gray-800 capitalize">
+              {format(currentMonth, 'MMMM yyyy', { locale: es })}
+            </h2>
+            <button
+              onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+              className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+            >
+              <i className="fas fa-chevron-right text-gray-600"></i>
+            </button>
           </div>
-        ))}
-      </div>
+
+          {/* Days Header */}
+          <div className="grid grid-cols-7 bg-gray-100 border-b border-gray-200">
+            {weekDays.map(day => (
+              <div key={day} className="py-2 text-center text-sm font-semibold text-gray-600 uppercase tracking-wider">
+                {day}
+              </div>
+            ))}
+          </div>
+
+          {/* Days Grid */}
+          <div className="grid grid-cols-7 auto-rows-fr bg-gray-200 gap-px border-b border-gray-200">
+            {calendarDays.map((day, dayIdx) => {
+              const dayEvents = events.filter(e => isSameDay(new Date(e.date), day));
+              const isCurrentMonth = isSameMonth(day, currentMonth);
+              const isTodayDate = isToday(day);
+
+              return (
+                <div
+                  key={day.toString()}
+                  className={`min-h-[120px] bg-white p-2 relative group transition-colors hover:bg-gray-50 ${!isCurrentMonth ? 'bg-gray-50/50 text-gray-400' : ''}`}
+                >
+                  <div className={`text-right text-sm font-medium mb-1 ${isTodayDate ? 'bg-brand-primary text-white w-7 h-7 rounded-full flex items-center justify-center ml-auto' : 'text-gray-700'}`}>
+                    {format(day, 'd')}
+                  </div>
+
+                  <div className="space-y-1 overflow-y-auto max-h-[80px] custom-scrollbar">
+                    {dayEvents.map(event => (
+                      <div
+                        key={event._id}
+                        className="text-xs p-1.5 rounded bg-red-50 border-l-2 border-brand-primary truncate cursor-pointer hover:bg-red-100 transition-colors"
+                        title={`${event.title} - ${format(new Date(event.date), 'HH:mm')}`}
+                        onClick={() => {
+                          // Optional: Open detail modal or scroll to list
+                          Swal.fire({
+                            title: event.title,
+                            html: `
+                               <div class="text-left">
+                                 <p><strong>Hora:</strong> ${format(new Date(event.date), 'HH:mm')}</p>
+                                 <p><strong>Lugar:</strong> ${event.location}</p>
+                                 <p><strong>Tipo:</strong> ${event.type}</p>
+                                 ${event.description ? `<p class="mt-2 text-sm text-gray-600">${event.description}</p>` : ''}
+                               </div>
+                             `,
+                            confirmButtonColor: '#8B0000'
+                          });
+                        }}
+                      >
+                        <span className="font-bold mr-1">{format(new Date(event.date), 'HH:mm')}</span>
+                        {event.title}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

@@ -38,7 +38,9 @@ const ReportSchema = new mongoose.Schema({
   // Campos de control administrativo
   status: { type: String, default: 'Pendiente' }, // Pendiente, En Proceso, Resuelto
   syncedAt: { type: Date, default: Date.now },    // Fecha de llegada al servidor
-  customData: { type: Map, of: String }           // Datos dinámicos (clave: valor)
+  customData: { type: Map, of: String },          // Datos dinámicos (clave: valor)
+  response: String,                               // Respuesta oficial
+  resolvedAt: Date                                // Fecha de resolución
 });
 
 // Indexar por timestamp para ordenar rápido
@@ -67,6 +69,8 @@ app.get('/api/reports', async (req, res) => {
           timestamp: 1,
           status: 1,
           synced: 1,
+          response: 1,
+          resolvedAt: 1,
           // Crea un campo booleano true si existe evidenceBase64 y no es null/vacio
           hasEvidence: {
             $cond: [
