@@ -1,3 +1,4 @@
+import React, { useState, useEffect, useRef } from 'react';
 import { API_BASE_URL } from '../src/config';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -60,7 +61,7 @@ const PeoplePage: React.FC = () => {
             const localUnsynced = await db.people.where('synced').equals(0).toArray();
 
             // 2. Try to fetch from server
-            const res = await fetch('${API_BASE_URL}/api/people');
+            const res = await fetch(`${API_BASE_URL}/api/people`);
             if (res.ok) {
                 const serverData = await res.json();
 
@@ -99,7 +100,7 @@ const PeoplePage: React.FC = () => {
                 // or just rely on local update.
                 const personToSync = { ...person, synced: 1 };
 
-                const res = await fetch('${API_BASE_URL}/api/people', {
+                const res = await fetch(`${API_BASE_URL}/api/people`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(personToSync)
@@ -159,7 +160,7 @@ const PeoplePage: React.FC = () => {
             try {
                 const url = editingId
                     ? `${API_BASE_URL}/api/people/${editingId}`
-                    : '${API_BASE_URL}/api/people';
+                    : `${API_BASE_URL}/api/people`;
                 const method = editingId ? 'PUT' : 'POST';
 
                 // When sending to server, we want it to be marked as synced

@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../src/config';
 import { Report } from '../types';
 import { jsPDF } from 'jspdf';

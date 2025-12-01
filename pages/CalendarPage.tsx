@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../src/config';
 import { CalendarEvent } from '../types';
 import Swal from 'sweetalert2';
@@ -22,7 +23,7 @@ export const CalendarPage: React.FC = () => {
 
   const fetchEvents = async () => {
     try {
-      const res = await fetch('${API_BASE_URL}/api/events');
+      const res = await fetch(`${API_BASE_URL}/api/events`);
       const data = await res.json();
       setEvents(data);
     } catch (error) {
@@ -35,7 +36,7 @@ export const CalendarPage: React.FC = () => {
   const handleAddEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('${API_BASE_URL}/api/events', {
+      const res = await fetch(`${API_BASE_URL}/api/events`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

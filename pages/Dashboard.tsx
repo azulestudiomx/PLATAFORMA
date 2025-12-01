@@ -61,15 +61,14 @@ const COLORS = ['#8B0000', '#FFD700', '#A52A2A', '#D2691E', '#CD5C5C'];
 const Dashboard: React.FC = () => {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-
   const [peopleCount, setPeopleCount] = useState<number>(0);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const [reportsRes, peopleRes] = await Promise.all([
-        fetch('${API_BASE_URL}/api/reports?limit=100'),
-        fetch('${API_BASE_URL}/api/people')
+        fetch(`${API_BASE_URL}/api/reports?limit=100`),
+        fetch(`${API_BASE_URL}/api/people`)
       ]);
 
       if (reportsRes.ok) {
@@ -93,6 +92,22 @@ const Dashboard: React.FC = () => {
     const interval = setInterval(fetchData, 30000); // Auto-refresh every 30s
     return () => clearInterval(interval);
   }, []);
+
+  // Calculate dynamic stats
+  const stats = {
+    byMunicipio: Object.entries(
+      reports.reduce((acc, curr) => {
+        acc[curr.municipio] = (acc[curr.municipio] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>)
+    ).map(([name, value]) => ({ name, value })),
+    byNeed: Object.entries(
+      reports.reduce((acc, curr) => {
+        acc[curr.needType] = (acc[curr.needType] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>)
+    ).map(([name, value]) => ({ name, value }))
+  };
 
   return (
     <div>
@@ -184,12 +199,12 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Chart Section */}
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <h3 className="font-bold text-gray-700 mb-6">Necesidades Reportadas</h3>
-          <div className="h-[300px] w-full">
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:col-span-1 gap-6">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-96">
+            <h3 className="font-bold text-gray-700 mb-4">Reportes por Municipio</h3>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={CHART_DATA}>
+              <BarChart data={stats.byMunicipio}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
                 <YAxis axisLine={false} tickLine={false} />
@@ -198,7 +213,7 @@ const Dashboard: React.FC = () => {
                   cursor={{ fill: '#f3f4f6' }}
                 />
                 <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                  {CHART_DATA.map((entry, index) => (
+                  {stats.byMunicipio.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Bar>

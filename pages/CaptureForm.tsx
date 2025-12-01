@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../src/config';
 import { db } from '../services/db';
 import { NeedType, Report, LocationData } from '../types';
@@ -201,7 +202,7 @@ const CaptureForm: React.FC = () => {
       // 2. Try to sync immediately if online
       if (navigator.onLine) {
         try {
-          const res = await fetch('${API_BASE_URL}/api/reports', {
+          const res = await fetch(`${API_BASE_URL}/api/reports`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newReport)
