@@ -85,7 +85,8 @@ export const useSyncReports = () => {
           });
 
           if (!response.ok) {
-            throw new Error(`Server error: ${response.statusText}`);
+            const errorText = await response.text();
+            throw new Error(`Server error (${response.status}): ${errorText}`);
           }
 
           // 3. Mark as synced locally ONLY if server confirmed receipt

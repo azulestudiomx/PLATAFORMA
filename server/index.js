@@ -288,7 +288,7 @@ app.post('/api/reports', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error al guardar reporte:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    res.status(500).json({ error: error.message || 'Error interno del servidor' });
   }
 });
 
