@@ -197,8 +197,32 @@ async function seedUsers() {
 }
 
 // ------------------------------------------------------------
+// ------------------------------------------------------------
 // RUTAS DE LA API (Endpoints)
 // ------------------------------------------------------------
+
+// Endpoint de recuperación para crear admin si no existe
+app.get('/api/setup', async (req, res) => {
+  try {
+    const adminExists = await UserModel.findOne({ username: 'admin' });
+    if (adminExists) {
+      return res.json({ message: 'El usuario admin ya existe. (admin / admin123)' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const adminPass = await bcrypt.hash('admin123', salt);
+    const admin = new UserModel({
+      username: 'admin',
+      password: adminPass,
+      name: 'Administradora Layda',
+      role: 'ADMIN'
+    });
+    await admin.save();
+    res.json({ message: '✅ Usuario admin creado exitosamente. Credenciales: admin / admin123' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // A. AUTH - Login Real
 app.post('/api/auth/login', async (req, res) => {
