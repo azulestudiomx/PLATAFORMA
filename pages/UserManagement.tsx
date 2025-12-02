@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserRole } from '../types';
+import { API_BASE_URL } from '../src/config';
 
 interface User {
     _id: string;
@@ -26,7 +27,7 @@ const UserManagement: React.FC = () => {
 
     const fetchUsers = async () => {
         try {
-            const res = await fetch('http://localhost:3000/api/users');
+            const res = await fetch(`${API_BASE_URL}/api/users`);
             const data = await res.json();
             setUsers(data);
         } catch (error) {
@@ -42,7 +43,7 @@ const UserManagement: React.FC = () => {
         setMessage('');
 
         try {
-            const res = await fetch('http://localhost:3000/api/auth/register', {
+            const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newUser)
@@ -158,8 +159,8 @@ const UserManagement: React.FC = () => {
                                             <td className="p-3 text-gray-600">{user.username}</td>
                                             <td className="p-3">
                                                 <span className={`px-2 py-1 rounded-full text-xs font-bold ${user.role === UserRole.ADMIN
-                                                        ? 'bg-purple-100 text-purple-700'
-                                                        : 'bg-blue-100 text-blue-700'
+                                                    ? 'bg-purple-100 text-purple-700'
+                                                    : 'bg-blue-100 text-blue-700'
                                                     }`}>
                                                     {user.role}
                                                 </span>
