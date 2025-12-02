@@ -153,6 +153,27 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
         {/* Main Content Scrollable Area */}
         <main className="flex-1 overflow-auto p-4 md:p-8 pb-20 md:pb-8 bg-gray-50">
+          {/* PWA Install Banner for Mobile */}
+          {isInstallable && (
+            <div className="md:hidden bg-brand-primary text-white p-4 rounded-xl shadow-lg mb-6 flex items-center justify-between animate-pulse">
+              <div className="flex items-center gap-3">
+                <div className="bg-white/20 p-2 rounded-full">
+                  <i className="fas fa-download text-xl"></i>
+                </div>
+                <div>
+                  <p className="font-bold text-sm">Instalar Aplicación</p>
+                  <p className="text-xs text-gray-200">Acceso rápido y sin internet</p>
+                </div>
+              </div>
+              <button
+                onClick={install}
+                className="bg-white text-brand-primary px-4 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-gray-100 transition-colors"
+              >
+                INSTALAR
+              </button>
+            </div>
+          )}
+
           {children}
         </main>
       </div>
