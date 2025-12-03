@@ -8,6 +8,23 @@ import Webcam from 'react-webcam';
 import Dexie, { Table } from 'dexie';
 import Swal from 'sweetalert2';
 
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+// Fix for default marker icon
+import L from 'leaflet';
+
+// Fix for default marker icon
+const iconUrl = 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png';
+const shadowUrl = 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+    iconUrl: iconUrl,
+    shadowUrl: shadowUrl,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
+
 // --- Dexie Database Setup ---
 interface Person {
     id?: number; // Dexie auto-increment ID
@@ -18,6 +35,7 @@ interface Person {
     ine: string;
     photo?: string;
     inePhoto?: string;
+    location?: { lat: number; lng: number }; // Geolocation
     synced?: number; // 0 = Pending, 1 = Synced
 }
 
@@ -50,6 +68,7 @@ const PeoplePage: React.FC = () => {
     });
     const [saving, setSaving] = useState(false);
     const [cameraMode, setCameraMode] = useState<'photo' | 'ine' | null>(null);
+    const [showMap, setShowMap] = useState(false);
     const webcamRef = useRef<Webcam>(null);
 
     useEffect(() => {
@@ -414,6 +433,12 @@ const PeoplePage: React.FC = () => {
                         </button>
                     </div>
                     <button
+                        onClick={() => setShowMap(!showMap)}
+                        className={`px-4 py-2 rounded-lg transition flex items-center gap-2 ${showMap ? 'bg-brand-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                    >
+                        <i className={`fas ${showMap ? 'fa-list' : 'fa-map-marked-alt'}`}></i> {showMap ? 'Ver Lista' : 'Ver Mapa'}
+                    </button>
+                    <button
                         onClick={() => {
                             setEditingId(null);
                             setFormData({ name: '', phone: '', address: '', ine: '', photo: '', inePhoto: '' });
@@ -427,51 +452,80 @@ const PeoplePage: React.FC = () => {
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                        <thead className="bg-gray-50 border-b border-gray-200">
-                            <tr>
-                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Nombre</th>
-                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">INE</th>
-                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Teléfono</th>
-                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Estado</th>
-                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase text-right">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {loading ? (
-                                <tr><td colSpan={5} className="text-center py-8">Cargando...</td></tr>
-                            ) : filteredPeople.length === 0 ? (
-                                <tr><td colSpan={5} className="text-center py-8 text-gray-500">No se encontraron registros.</td></tr>
-                            ) : (
-                                filteredPeople.map((person, idx) => (
-                                    <tr key={person._id || idx} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-6 py-4 font-medium text-gray-900 flex items-center gap-2">
-                                            {person.photo && <img src={person.photo} alt="Foto" className="w-8 h-8 rounded-full object-cover" />}
-                                            {person.name}
-                                        </td>
-                                        <td className="px-6 py-4 text-gray-600 font-mono text-sm">{person.ine}</td>
-                                        <td className="px-6 py-4 text-gray-600">{person.phone}</td>
-                                        <td className="px-6 py-4">
-                                            {person.synced === 0 ? (
-                                                <span className="text-orange-600 text-xs font-bold bg-orange-100 px-2 py-1 rounded">Pendiente</span>
-                                            ) : (
-                                                <span className="text-green-600 text-xs font-bold bg-green-100 px-2 py-1 rounded">Sincronizado</span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 text-right flex justify-end gap-2">
-                                            <button onClick={() => generateCredential(person)} className="text-purple-600 hover:text-purple-800 p-2" title="Generar Credencial">
-                                                <i className="fas fa-id-card"></i>
-                                            </button>
-                                            <button onClick={() => handleEdit(person)} className="text-blue-500 hover:text-blue-700 p-2"><i className="fas fa-edit"></i></button>
-                                            <button onClick={() => person._id && handleDelete(person._id)} className="text-red-500 hover:text-red-700 p-2"><i className="fas fa-trash-alt"></i></button>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                {showMap ? (
+                    <div className="h-[500px] w-full relative z-0">
+                        <MapContainer
+                            center={[19.8301, -90.5349]} // Campeche Center
+                            zoom={8}
+                            style={{ height: "100%", width: "100%" }}
+                        >
+                            <TileLayer
+                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            />
+                            {people.map((person, idx) => (
+                                person.location && (
+                                    <Marker key={idx} position={[person.location.lat, person.location.lng]}>
+                                        <Popup>
+                                            <div className="text-center">
+                                                {person.photo && <img src={person.photo} className="w-12 h-12 rounded-full mx-auto mb-2 object-cover" />}
+                                                <h3 className="font-bold text-sm">{person.name}</h3>
+                                                <p className="text-xs text-gray-600">{person.address}</p>
+                                                <p className="text-xs font-mono mt-1">{person.ine}</p>
+                                            </div>
+                                        </Popup>
+                                    </Marker>
+                                )
+                            ))}
+                        </MapContainer>
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead className="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Nombre</th>
+                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">INE</th>
+                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Teléfono</th>
+                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Estado</th>
+                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {loading ? (
+                                    <tr><td colSpan={5} className="text-center py-8">Cargando...</td></tr>
+                                ) : filteredPeople.length === 0 ? (
+                                    <tr><td colSpan={5} className="text-center py-8 text-gray-500">No se encontraron registros.</td></tr>
+                                ) : (
+                                    filteredPeople.map((person, idx) => (
+                                        <tr key={person._id || idx} className="hover:bg-gray-50 transition-colors">
+                                            <td className="px-6 py-4 font-medium text-gray-900 flex items-center gap-2">
+                                                {person.photo && <img src={person.photo} alt="Foto" className="w-8 h-8 rounded-full object-cover" />}
+                                                {person.name}
+                                            </td>
+                                            <td className="px-6 py-4 text-gray-600 font-mono text-sm">{person.ine}</td>
+                                            <td className="px-6 py-4 text-gray-600">{person.phone}</td>
+                                            <td className="px-6 py-4">
+                                                {person.synced === 0 ? (
+                                                    <span className="text-orange-600 text-xs font-bold bg-orange-100 px-2 py-1 rounded">Pendiente</span>
+                                                ) : (
+                                                    <span className="text-green-600 text-xs font-bold bg-green-100 px-2 py-1 rounded">Sincronizado</span>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 text-right flex justify-end gap-2">
+                                                <button onClick={() => generateCredential(person)} className="text-purple-600 hover:text-purple-800 p-2" title="Generar Credencial">
+                                                    <i className="fas fa-id-card"></i>
+                                                </button>
+                                                <button onClick={() => handleEdit(person)} className="text-blue-500 hover:text-blue-700 p-2"><i className="fas fa-edit"></i></button>
+                                                <button onClick={() => person._id && handleDelete(person._id)} className="text-red-500 hover:text-red-700 p-2"><i className="fas fa-trash-alt"></i></button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
 
             {/* Modal */}
@@ -543,6 +597,27 @@ const PeoplePage: React.FC = () => {
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-1">Dirección</label>
                                     <textarea rows={3} value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} className="w-full p-2 border rounded focus:ring-2 focus:ring-brand-primary outline-none resize-none"></textarea>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            navigator.geolocation.getCurrentPosition(
+                                                (pos) => {
+                                                    setFormData({
+                                                        ...formData,
+                                                        location: { lat: pos.coords.latitude, lng: pos.coords.longitude }
+                                                    });
+                                                    Swal.fire('Ubicación Capturada', '', 'success');
+                                                },
+                                                (err) => Swal.fire('Error', 'No se pudo obtener la ubicación', 'error')
+                                            );
+                                        }}
+                                        className={`text-sm font-bold flex items-center gap-2 ${formData.location ? 'text-green-600' : 'text-gray-500 hover:text-brand-primary'}`}
+                                    >
+                                        <i className="fas fa-map-marker-alt"></i>
+                                        {formData.location ? 'Ubicación Guardada' : 'Capturar Ubicación GPS'}
+                                    </button>
                                 </div>
                                 <div className="pt-2 flex justify-end gap-2">
                                     <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded transition-colors">Cancelar</button>
