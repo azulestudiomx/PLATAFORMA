@@ -39,13 +39,14 @@ export default defineConfig(({ mode }) => {
           globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
           runtimeCaching: [
             {
-             urlPattern: new RegExp(`^${env.VITE_API_URL}/api/.*`, 'i'),
-              handler: 'NetworkFirst',
+              urlPattern: ({ url }) => url.pathname.startsWith('/api'),
+              handler: 'NetworkOnly',
               options: {
-                cacheName: 'api-cache',
-                expiration: {
-                  maxEntries: 50,
-                  maxAgeSeconds: 60 * 60 * 24 // 1 day
+                backgroundSync: {
+                  name: 'api-queue',
+                  options: {
+                    maxRetentionTime: 24 * 60 // Retry for up to 24 hours
+                  }
                 }
               }
             }
