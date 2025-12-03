@@ -366,6 +366,12 @@ const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({ reportId, onClo
                             </button>
                         </>
                     ) : (
+                        <button
+                            onClick={() => setEditMode(true)}
+                            className="px-6 py-2 bg-brand-accent text-brand-primary font-bold rounded-lg hover:bg-yellow-400 transition flex items-center gap-2"
+                        >
+                            <i className="fas fa-edit"></i> Editar Expediente
+                        </button>
                     )}
                     <button
                         onClick={generatePDF}
