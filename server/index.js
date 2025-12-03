@@ -31,7 +31,8 @@ const ReportSchema = new mongoose.Schema({
   },
   needType: String,
   description: String,
-  evidenceBase64: String, // La imagen se guarda como string Base64
+  evidenceBase64: String, // La imagen se guarda como string Base64 (Legacy/Backup)
+  evidenceUrl: String,    // URL de la imagen en Cloudinary
   timestamp: Number,      // Fecha hora unix
   user: String,           // Nombre del capturista
 
@@ -71,10 +72,12 @@ app.get('/api/reports', async (req, res) => {
           synced: 1,
           response: 1,
           resolvedAt: 1,
+          evidenceUrl: 1,
           // Crea un campo booleano true si existe evidenceBase64 y no es null/vacio
           hasEvidence: {
             $cond: [
               { $and: [{ $ifNull: ["$evidenceBase64", false] }, { $ne: ["$evidenceBase64", ""] }] },
+              { $and: [{ $ifNull: ["$evidenceUrl", false] }, { $ne: ["$evidenceUrl", ""] }] },
               true,
               false
             ]
@@ -296,12 +299,43 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
+const cloudinary = require('cloudinary').v2;
+
+// Configuración de Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
 // B. REPORTES - Recibir (Sincronización)
 app.post('/api/reports', async (req, res) => {
   try {
     console.log(`📩 Recibiendo reporte de: ${req.body.municipio} (${req.body.needType})`);
 
-    const newReport = new ReportModel(req.body);
+    let reportData = { ...req.body };
+
+    // Si viene imagen en Base64, subirla a Cloudinary
+    if (reportData.evidenceBase64 && reportData.evidenceBase64.startsWith('data:image')) {
+      try {
+        console.log('☁️ Subiendo imagen a Cloudinary...');
+        const uploadResponse = await cloudinary.uploader.upload(reportData.evidenceBase64, {
+          folder: 'plataforma_ciudadana',
+          resource_type: 'image'
+        });
+
+        console.log(`✅ Imagen subida: ${uploadResponse.secure_url}`);
+
+        // Guardar URL y limpiar Base64 para ahorrar espacio
+        reportData.evidenceUrl = uploadResponse.secure_url;
+        reportData.evidenceBase64 = ''; // Opcional: dejar vacío o eliminar el campo
+      } catch (uploadError) {
+        console.error('⚠️ Error subiendo a Cloudinary (se guardará local):', uploadError.message);
+        // Si falla, se guarda el Base64 original como respaldo
+      }
+    }
+
+    const newReport = new ReportModel(reportData);
     const savedReport = await newReport.save();
 
     console.log(`💾 Reporte guardado en la nube con ID: ${savedReport._id}`);
