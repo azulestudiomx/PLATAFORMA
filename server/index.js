@@ -76,8 +76,12 @@ app.get('/api/reports', async (req, res) => {
           // Crea un campo booleano true si existe evidenceBase64 y no es null/vacio
           hasEvidence: {
             $cond: [
-              { $and: [{ $ifNull: ["$evidenceBase64", false] }, { $ne: ["$evidenceBase64", ""] }] },
-              { $and: [{ $ifNull: ["$evidenceUrl", false] }, { $ne: ["$evidenceUrl", ""] }] },
+              {
+                $or: [
+                  { $and: [{ $ifNull: ["$evidenceBase64", false] }, { $ne: ["$evidenceBase64", ""] }] },
+                  { $and: [{ $ifNull: ["$evidenceUrl", false] }, { $ne: ["$evidenceUrl", ""] }] }
+                ]
+              },
               true,
               false
             ]
