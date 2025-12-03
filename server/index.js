@@ -127,6 +127,10 @@ const PersonSchema = new mongoose.Schema({
   ine: { type: String, unique: true },
   photo: String, // Base64
   inePhoto: String, // Base64
+  location: {
+    lat: Number,
+    lng: Number
+  },
   createdAt: { type: Date, default: Date.now },
   synced: { type: Number, default: 1 } // 1=Synced, 0=Pending
 });

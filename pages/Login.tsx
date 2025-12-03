@@ -72,7 +72,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin o ejemplo@campeche.gob.mx"
+              placeholder="ausuario o correo"
               className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-brand-primary focus:ring-2 focus:ring-red-200 outline-none transition-all"
               required
             />
