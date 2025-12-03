@@ -21,6 +21,11 @@ mongoose.connect(process.env.MONGO_URI)
   })
   .catch(err => console.error('❌ Error al conectar a MongoDB:', err));
 
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+
+// Configuración de Gemini AI
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
 // 1. Esquema de Reportes
 const ReportSchema = new mongoose.Schema({
   municipio: String,
@@ -41,7 +46,11 @@ const ReportSchema = new mongoose.Schema({
   syncedAt: { type: Date, default: Date.now },    // Fecha de llegada al servidor
   customData: { type: Map, of: String },          // Datos dinámicos (clave: valor)
   response: String,                               // Respuesta oficial
-  resolvedAt: Date                                // Fecha de resolución
+  resolvedAt: Date,                               // Fecha de resolución
+
+  // AI Analysis
+  sentiment: String, // Positivo, Neutral, Negativo
+  urgency: String    // Alta, Media, Baja
 });
 
 // Indexar por timestamp para ordenar rápido
@@ -73,6 +82,8 @@ app.get('/api/reports', async (req, res) => {
           response: 1,
           resolvedAt: 1,
           evidenceUrl: 1,
+          sentiment: 1,
+          urgency: 1,
           // Crea un campo booleano true si existe evidenceBase64 y no es null/vacio
           hasEvidence: {
             $cond: [
@@ -336,6 +347,36 @@ app.post('/api/reports', async (req, res) => {
       } catch (uploadError) {
         console.error('⚠️ Error subiendo a Cloudinary (se guardará local):', uploadError.message);
         // Si falla, se guarda el Base64 original como respaldo
+      }
+    }
+
+    // AI Analysis (Gemini)
+    if (reportData.description && process.env.GEMINI_API_KEY) {
+      try {
+        console.log('🤖 Analizando reporte con Gemini AI...');
+        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        const prompt = `Analiza el siguiente reporte ciudadano y devuelve un JSON con dos campos: "sentiment" (Positivo, Neutral, Negativo) y "urgency" (Alta, Media, Baja).
+        
+        Reporte: "${reportData.description}"
+        Tipo: "${reportData.needType}"
+        
+        JSON:`;
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+
+        // Extract JSON from response (handle potential markdown code blocks)
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const analysis = JSON.parse(jsonMatch[0]);
+          reportData.sentiment = analysis.sentiment;
+          reportData.urgency = analysis.urgency;
+          console.log('🤖 Análisis completado:', analysis);
+        }
+      } catch (aiError) {
+        console.error('⚠️ Error en análisis de IA:', aiError.message);
+        // No fallar el reporte si falla la IA
       }
     }
 

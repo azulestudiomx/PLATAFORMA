@@ -1,7 +1,7 @@
 import { API_BASE_URL } from '../src/config';
 import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { MapContainer, TileLayer, Marker, Popup, GeoJSON } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, GeoJSON, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { Report } from '../types';
 
@@ -58,10 +58,35 @@ const CHART_DATA = [
 
 const COLORS = ['#8B0000', '#FFD700', '#A52A2A', '#D2691E', '#CD5C5C'];
 
+import 'leaflet.heat';
+
+const HeatmapLayer = ({ points }: { points: [number, number, number][] }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!points.length) return;
+
+    // @ts-ignore
+    const heat = L.heatLayer(points, {
+      radius: 25,
+      blur: 15,
+      maxZoom: 10,
+      gradient: { 0.4: 'blue', 0.65: 'lime', 1: 'red' }
+    }).addTo(map);
+
+    return () => {
+      map.removeLayer(heat);
+    };
+  }, [points, map]);
+
+  return null;
+};
+
 const Dashboard: React.FC = () => {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [peopleCount, setPeopleCount] = useState<number>(0);
+  const [showHeatmap, setShowHeatmap] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -143,6 +168,22 @@ const Dashboard: React.FC = () => {
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-bold text-gray-700">Mapa de Reportes (En Vivo)</h3>
             <div className="flex gap-2 items-center">
+              {/* Toggle Heatmap */}
+              <div className="bg-gray-100 p-1 rounded-lg flex text-xs font-bold">
+                <button
+                  onClick={() => setShowHeatmap(false)}
+                  className={`px-3 py-1 rounded transition ${!showHeatmap ? 'bg-white shadow text-brand-primary' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Marcadores
+                </button>
+                <button
+                  onClick={() => setShowHeatmap(true)}
+                  className={`px-3 py-1 rounded transition ${showHeatmap ? 'bg-brand-primary shadow text-white' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Mapa de Calor
+                </button>
+              </div>
+
               <button
                 onClick={() => {
                   navigator.geolocation.getCurrentPosition(
@@ -152,11 +193,8 @@ const Dashboard: React.FC = () => {
                 }}
                 className="bg-brand-primary text-white px-3 py-1 rounded text-xs font-bold hover:bg-red-800 transition"
               >
-                <i className="fas fa-map-marker-alt mr-1"></i> Capturar Ubicación
+                <i className="fas fa-map-marker-alt mr-1"></i> Capturar
               </button>
-              <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">
-                {loading ? 'Cargando...' : `${reports.length} reportes`}
-              </span>
             </div>
           </div>
           <div className="h-[400px] w-full rounded-lg overflow-hidden relative z-0">
@@ -174,27 +212,35 @@ const Dashboard: React.FC = () => {
               {/* Offline GeoJSON Layer */}
               <GeoJSONWrapper />
 
-              {reports.map((report) => (
-                report.location && (
-                  <Marker
-                    key={report._id || report.id}
-                    position={[report.location.lat, report.location.lng]}
-                  >
-                    <Popup>
-                      <div className="p-1">
-                        <h4 className="font-bold text-brand-primary mb-1">{report.municipio}</h4>
-                        <span className="text-xs font-semibold bg-gray-100 px-2 py-0.5 rounded text-gray-600 mb-2 inline-block">
-                          {report.needType}
-                        </span>
-                        <p className="text-sm text-gray-700 leading-snug">{report.description}</p>
-                        <p className="text-xs text-gray-400 mt-2">
-                          {new Date(report.timestamp).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </Popup>
-                  </Marker>
-                )
-              ))}
+              {showHeatmap ? (
+                <HeatmapLayer
+                  points={reports
+                    .filter(r => r.location && r.location.lat && r.location.lng)
+                    .map(r => [r.location.lat, r.location.lng, 1])} // lat, lng, intensity
+                />
+              ) : (
+                reports.map((report) => (
+                  report.location && (
+                    <Marker
+                      key={report._id || report.id}
+                      position={[report.location.lat, report.location.lng]}
+                    >
+                      <Popup>
+                        <div className="p-1">
+                          <h4 className="font-bold text-brand-primary mb-1">{report.municipio}</h4>
+                          <span className="text-xs font-semibold bg-gray-100 px-2 py-0.5 rounded text-gray-600 mb-2 inline-block">
+                            {report.needType}
+                          </span>
+                          <p className="text-sm text-gray-700 leading-snug">{report.description}</p>
+                          <p className="text-xs text-gray-400 mt-2">
+                            {new Date(report.timestamp).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  )
+                ))
+              )}
             </MapContainer>
           </div>
         </div>

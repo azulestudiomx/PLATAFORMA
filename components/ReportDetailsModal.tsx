@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../src/config';
 import { Report } from '../types';
+import { jsPDF } from 'jspdf';
 import Swal from 'sweetalert2';
 
 interface ReportDetailsModalProps {
@@ -72,6 +73,88 @@ const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({ reportId, onClo
         } finally {
             setSaving(false);
         }
+    };
+
+    const generatePDF = () => {
+        if (!report) return;
+
+        const doc = new jsPDF();
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const margin = 20;
+
+        // Header
+        doc.setFillColor(139, 0, 0); // #8B0000
+        doc.rect(0, 0, pageWidth, 40, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Ficha Técnica de Reporte', margin, 25);
+        doc.setFontSize(10);
+        doc.text('Plataforma Ciudadana Campeche', margin, 35);
+
+        // Info Section
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+
+        let y = 60;
+
+        // Folio & Date
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Folio: ${report._id ? report._id.slice(-6) : 'PENDIENTE'}`, margin, y);
+        doc.text(`Fecha: ${new Date(report.timestamp).toLocaleDateString('es-MX')}`, pageWidth - margin - 50, y);
+        y += 10;
+
+        // Location
+        doc.text(`Municipio: ${report.municipio}`, margin, y);
+        doc.text(`Comunidad: ${report.comunidad}`, pageWidth / 2, y);
+        y += 10;
+
+        doc.text(`Tipo de Necesidad: ${report.needType}`, margin, y);
+        doc.text(`Estatus: ${report.status}`, pageWidth / 2, y);
+        y += 15;
+
+        // Description
+        doc.setFillColor(245, 245, 245);
+        doc.rect(margin, y, pageWidth - (margin * 2), 30, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.text('Descripción del Problema:', margin + 5, y + 8);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        const splitDesc = doc.splitTextToSize(report.description, pageWidth - (margin * 2) - 10);
+        doc.text(splitDesc, margin + 5, y + 15);
+        y += 40;
+
+        // Evidence Image
+        if (report.evidenceBase64 || report.evidenceUrl) {
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Evidencia Fotográfica:', margin, y);
+            y += 5;
+            try {
+                const imgData = report.evidenceBase64 || report.evidenceUrl;
+                if (imgData) {
+                    doc.addImage(imgData, 'JPEG', margin, y, 100, 75);
+                    y += 80;
+                }
+            } catch (e) {
+                console.error('Error adding image to PDF', e);
+                doc.text('(Error al cargar la imagen)', margin, y + 10);
+                y += 20;
+            }
+        }
+
+        // Map Link
+        doc.setFontSize(10);
+        doc.setTextColor(0, 0, 255);
+        doc.textWithLink('Ver ubicación en Google Maps', margin, y, { url: `https://www.google.com/maps/search/?api=1&query=${report.location.lat},${report.location.lng}` });
+
+        // Footer
+        doc.setTextColor(100, 100, 100);
+        doc.setFontSize(8);
+        doc.text(`Generado el: ${new Date().toLocaleString()}`, margin, doc.internal.pageSize.getHeight() - 10);
+
+        doc.save(`Ficha_Reporte_${report.municipio}_${report.needType}.pdf`);
     };
 
     if (loading) {
@@ -283,13 +366,13 @@ const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({ reportId, onClo
                             </button>
                         </>
                     ) : (
-                        <button
-                            onClick={() => setEditMode(true)}
-                            className="px-6 py-2 bg-brand-accent text-brand-primary font-bold rounded-lg hover:bg-yellow-400 transition flex items-center gap-2"
-                        >
-                            <i className="fas fa-edit"></i> Editar Expediente
-                        </button>
                     )}
+                    <button
+                        onClick={generatePDF}
+                        className="px-6 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition flex items-center gap-2"
+                    >
+                        <i className="fas fa-file-pdf"></i> Exportar Ficha
+                    </button>
                 </div>
             </div>
         </div>
