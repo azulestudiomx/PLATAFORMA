@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { API_BASE_URL } from '../src/config';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import QRCode from 'qrcode';
+import * as XLSX from 'xlsx';
 import Webcam from 'react-webcam';
 import Dexie, { Table } from 'dexie';
 import Swal from 'sweetalert2';
@@ -137,277 +139,425 @@ const PeoplePage: React.FC = () => {
         doc.save('padron_personas.pdf');
     };
 
-    const capturePhoto = () => {
-        const imageSrc = webcamRef.current?.getScreenshot();
-        if (imageSrc) {
-            if (cameraMode === 'photo') setFormData({ ...formData, photo: imageSrc });
-            if (cameraMode === 'ine') setFormData({ ...formData, inePhoto: imageSrc });
-            setCameraMode(null);
-        }
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setSaving(true);
-
-        const newPerson = { ...formData, synced: 0 }; // Default to unsynced for local storage
-
+    const generateCredential = async (person: Person) => {
         try {
-            // 1. Save to Dexie (Offline First)
-            const id = await db.people.add(newPerson);
-
-            // 2. Try to send to Server
-            try {
-                const url = editingId
-                    ? `${API_BASE_URL}/api/people/${editingId}`
-                    : `${API_BASE_URL}/api/people`;
-                const method = editingId ? 'PUT' : 'POST';
-
-                // When sending to server, we want it to be marked as synced
-                const personToSend = { ...newPerson, synced: 1 };
-
-                const res = await fetch(url, {
-                    method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(personToSend)
-                });
-
-                if (res.ok) {
-                    const saved = await res.json();
-                    // Update Dexie as synced
-                    await db.people.update(id, { synced: 1, _id: saved._id });
-                }
-            } catch (serverError) {
-                console.log('Server unreachable, saved locally.');
-            }
-
-            setShowModal(false);
-            setFormData({ name: '', phone: '', address: '', ine: '', photo: '', inePhoto: '' });
-            setEditingId(null);
-            fetchPeople();
-            Swal.fire({
-                title: '¡Guardado!',
-                text: 'El registro ha sido guardado exitosamente.',
-                icon: 'success',
-                timer: 2000,
-                showConfirmButton: false
+            const doc = new jsPDF({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: [85.6, 53.98] // Standard ID-1 card size
             });
 
+            // Background
+            doc.setFillColor(245, 245, 245);
+            doc.rect(0, 0, 85.6, 53.98, 'F');
+
+            // Header Strip
+            doc.setFillColor(139, 0, 0); // Brand Red
+            doc.rect(0, 0, 85.6, 10, 'F');
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'bold');
+            doc.text('PLATAFORMA CIUDADANA', 42.8, 6, { align: 'center' });
+
+            // Photo
+            if (person.photo) {
+                try {
+                    doc.addImage(person.photo, 'JPEG', 3, 13, 25, 25);
+                } catch (e) {
+                    console.error('Error adding photo', e);
+                    doc.rect(3, 13, 25, 25); // Placeholder
+                }
+            } else {
+                doc.setDrawColor(200);
+                doc.rect(3, 13, 25, 25);
+                doc.setFontSize(6);
+                doc.setTextColor(150);
+                doc.text('Sin Foto', 15.5, 25, { align: 'center' });
+            }
+
+            // Info
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.text(person.name.substring(0, 25), 30, 18);
+
+            doc.setFontSize(6);
+            doc.setFont('helvetica', 'normal');
+            doc.text('CLAVE INE:', 30, 23);
+            doc.setFont('helvetica', 'bold');
+            doc.text(person.ine || 'N/A', 30, 26);
+
+            doc.setFont('helvetica', 'normal');
+            doc.text('TELÉFONO:', 30, 31);
+            doc.setFont('helvetica', 'bold');
+            doc.text(person.phone || 'N/A', 30, 34);
+
+            // QR Code
+            const qrData = `ID:${person._id}|INE:${person.ine}|NAME:${person.name}`;
+            const qrUrl = await QRCode.toDataURL(qrData);
+            doc.addImage(qrUrl, 'PNG', 62, 13, 20, 20);
+
+            // Footer
+            doc.setFontSize(5);
+            doc.setTextColor(100);
+            doc.text(`ID: ${person._id?.slice(-6) || 'LOCAL'}`, 3, 50);
+            doc.text('Documento oficial de identificación', 82, 50, { align: 'right' });
+
+            doc.save(`Credencial_${person.name.replace(/\s+/g, '_')}.pdf`);
         } catch (error) {
-            console.error('Error al guardar:', error);
+            console.error('Error generating credential:', error);
+            Swal.fire('Error', 'No se pudo generar la credencial', 'error');
+        }
+    }
+};
+
+const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLoading(true);
+    try {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data);
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+        let importedCount = 0;
+        let errorCount = 0;
+
+        for (const row of jsonData as any[]) {
+            // Map columns (adjust keys as needed based on expected Excel format)
+            const name = row['Nombre'] || row['nombre'] || row['Name'];
+            const ine = row['INE'] || row['ine'] || row['Clave'] || '';
+            const phone = row['Telefono'] || row['telefono'] || row['Phone'] || '';
+            const address = row['Direccion'] || row['direccion'] || row['Address'] || '';
+
+            if (!name) {
+                errorCount++;
+                continue;
+            }
+
+            const newPerson: Person = {
+                name,
+                ine: ine.toString().toUpperCase(),
+                phone: phone.toString(),
+                address,
+                synced: 0
+            };
+
+            // Add to Dexie (Offline First)
+            await db.people.add(newPerson);
+            importedCount++;
+        }
+
+        Swal.fire({
+            title: 'Importación Completada',
+            text: `Se importaron ${importedCount} registros. ${errorCount > 0 ? `${errorCount} errores.` : ''}`,
+            icon: 'success'
+        });
+
+        fetchPeople(); // Refresh list
+
+        // Trigger sync attempt in background
+        handleSync();
+
+    } catch (error) {
+        console.error('Error importing file:', error);
+        Swal.fire('Error', 'No se pudo procesar el archivo', 'error');
+    } finally {
+        setLoading(false);
+        // Reset input
+        e.target.value = '';
+    }
+};
+
+const capturePhoto = () => {
+    const imageSrc = webcamRef.current?.getScreenshot();
+    if (imageSrc) {
+        if (cameraMode === 'photo') setFormData({ ...formData, photo: imageSrc });
+        if (cameraMode === 'ine') setFormData({ ...formData, inePhoto: imageSrc });
+        setCameraMode(null);
+    }
+};
+
+const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+
+    const newPerson = { ...formData, synced: 0 }; // Default to unsynced for local storage
+
+    try {
+        // 1. Save to Dexie (Offline First)
+        const id = await db.people.add(newPerson);
+
+        // 2. Try to send to Server
+        try {
+            const url = editingId
+                ? `${API_BASE_URL}/api/people/${editingId}`
+                : `${API_BASE_URL}/api/people`;
+            const method = editingId ? 'PUT' : 'POST';
+
+            // When sending to server, we want it to be marked as synced
+            const personToSend = { ...newPerson, synced: 1 };
+
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(personToSend)
+            });
+
+            if (res.ok) {
+                const saved = await res.json();
+                // Update Dexie as synced
+                await db.people.update(id, { synced: 1, _id: saved._id });
+            }
+        } catch (serverError) {
+            console.log('Server unreachable, saved locally.');
+        }
+
+        setShowModal(false);
+        setFormData({ name: '', phone: '', address: '', ine: '', photo: '', inePhoto: '' });
+        setEditingId(null);
+        fetchPeople();
+        Swal.fire({
+            title: '¡Guardado!',
+            text: 'El registro ha sido guardado exitosamente.',
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false
+        });
+
+    } catch (error) {
+        console.error('Error al guardar:', error);
+        Swal.fire({
+            title: 'Error',
+            text: 'Error al guardar el registro.',
+            icon: 'error',
+            confirmButtonText: 'Ok'
+        });
+    } finally {
+        setSaving(false);
+    }
+};
+
+const handleDelete = async (id: string) => {
+    const result = await Swal.fire({
+        title: '¿Estás seguro?',
+        text: "No podrás revertir esta acción",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (result.isConfirmed) {
+        try {
+            await fetch(`${API_BASE_URL}/api/people/${id}`, { method: 'DELETE' });
+            fetchPeople();
+            Swal.fire(
+                '¡Eliminado!',
+                'El registro ha sido eliminado.',
+                'success'
+            );
+        } catch (error) {
+            console.error('Error al eliminar:', error);
             Swal.fire({
                 title: 'Error',
-                text: 'Error al guardar el registro.',
+                text: 'Error al eliminar el registro.',
                 icon: 'error',
                 confirmButtonText: 'Ok'
             });
-        } finally {
-            setSaving(false);
         }
-    };
+    }
+};
 
-    const handleDelete = async (id: string) => {
-        const result = await Swal.fire({
-            title: '¿Estás seguro?',
-            text: "No podrás revertir esta acción",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Sí, eliminar',
-            cancelButtonText: 'Cancelar'
-        });
+const filteredPeople = people.filter(p =>
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.ine.toLowerCase().includes(searchTerm.toLowerCase())
+);
 
-        if (result.isConfirmed) {
-            try {
-                await fetch(`${API_BASE_URL}/api/people/${id}`, { method: 'DELETE' });
-                fetchPeople();
-                Swal.fire(
-                    '¡Eliminado!',
-                    'El registro ha sido eliminado.',
-                    'success'
-                );
-            } catch (error) {
-                console.error('Error al eliminar:', error);
-                Swal.fire({
-                    title: 'Error',
-                    text: 'Error al eliminar el registro.',
-                    icon: 'error',
-                    confirmButtonText: 'Ok'
-                });
-            }
-        }
-    };
+return (
+    <div className="max-w-6xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-brand-accent pb-2">
+                Padrón de Personas
+            </h2>
+            <div className="flex gap-4 w-full md:w-auto">
+                <div className="relative flex-1 md:w-64">
+                    <i className="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                    <input
+                        type="text"
+                        placeholder="Buscar por nombre o INE..."
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-brand-primary outline-none"
+                    />
+                </div>
+                <button onClick={handleSync} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+                    <i className="fas fa-sync"></i> Sincronizar
+                </button>
+                <button onClick={handleExportPDF} className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition flex items-center gap-2">
+                    <i className="fas fa-file-pdf text-red-600"></i> PDF
+                </button>
+                <div className="relative">
+                    <input
+                        type="file"
+                        accept=".xlsx, .xls, .csv"
+                        onChange={handleImport}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        title="Importar Excel"
+                    />
+                    <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition flex items-center gap-2">
+                        <i className="fas fa-file-excel"></i> Importar
+                    </button>
+                </div>
+                <button
+                    onClick={() => {
+                        setEditingId(null);
+                        setFormData({ name: '', phone: '', address: '', ine: '', photo: '', inePhoto: '' });
+                        setShowModal(true);
+                    }}
+                    className="bg-brand-primary text-white px-4 py-2 rounded-lg hover:bg-red-800 transition flex items-center gap-2"
+                >
+                    <i className="fas fa-user-plus"></i> Agregar
+                </button>
+            </div>
+        </div>
 
-    const filteredPeople = people.filter(p =>
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.ine.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                            <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Nombre</th>
+                            <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">INE</th>
+                            <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Teléfono</th>
+                            <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Estado</th>
+                            <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                        {loading ? (
+                            <tr><td colSpan={5} className="text-center py-8">Cargando...</td></tr>
+                        ) : filteredPeople.length === 0 ? (
+                            <tr><td colSpan={5} className="text-center py-8 text-gray-500">No se encontraron registros.</td></tr>
+                        ) : (
+                            filteredPeople.map((person, idx) => (
+                                <tr key={person._id || idx} className="hover:bg-gray-50 transition-colors">
+                                    <td className="px-6 py-4 font-medium text-gray-900 flex items-center gap-2">
+                                        {person.photo && <img src={person.photo} alt="Foto" className="w-8 h-8 rounded-full object-cover" />}
+                                        {person.name}
+                                    </td>
+                                    <td className="px-6 py-4 text-gray-600 font-mono text-sm">{person.ine}</td>
+                                    <td className="px-6 py-4 text-gray-600">{person.phone}</td>
+                                    <td className="px-6 py-4">
+                                        {person.synced === 0 ? (
+                                            <span className="text-orange-600 text-xs font-bold bg-orange-100 px-2 py-1 rounded">Pendiente</span>
+                                        ) : (
+                                            <span className="text-green-600 text-xs font-bold bg-green-100 px-2 py-1 rounded">Sincronizado</span>
+                                        )}
+                                    </td>
+                                    <td className="px-6 py-4 text-right flex justify-end gap-2">
+                                        <button onClick={() => generateCredential(person)} className="text-purple-600 hover:text-purple-800 p-2" title="Generar Credencial">
+                                            <i className="fas fa-id-card"></i>
+                                        </button>
+                                        <button onClick={() => handleEdit(person)} className="text-blue-500 hover:text-blue-700 p-2"><i className="fas fa-edit"></i></button>
+                                        <button onClick={() => person._id && handleDelete(person._id)} className="text-red-500 hover:text-red-700 p-2"><i className="fas fa-trash-alt"></i></button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-    return (
-        <div className="max-w-6xl mx-auto">
-            <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-                <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-brand-accent pb-2">
-                    Padrón de Personas
-                </h2>
-                <div className="flex gap-4 w-full md:w-auto">
-                    <div className="relative flex-1 md:w-64">
-                        <i className="fas fa-search absolute left-3 top-3 text-gray-400"></i>
-                        <input
-                            type="text"
-                            placeholder="Buscar por nombre o INE..."
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-brand-primary outline-none"
-                        />
+        {/* Modal */}
+        {showModal && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+                <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up my-8">
+                    <div className="bg-brand-primary p-4 text-white flex justify-between items-center">
+                        <h3 className="font-bold text-lg">{editingId ? 'Editar Persona' : 'Registrar Persona'}</h3>
+                        <button onClick={() => setShowModal(false)} className="hover:text-gray-200"><i className="fas fa-times"></i></button>
                     </div>
-                    <button onClick={handleSync} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
-                        <i className="fas fa-sync"></i> Sincronizar
-                    </button>
-                    <button onClick={handleExportPDF} className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition flex items-center gap-2">
-                        <i className="fas fa-file-pdf text-red-600"></i> PDF
-                    </button>
-                    <button
-                        onClick={() => {
-                            setEditingId(null);
-                            setFormData({ name: '', phone: '', address: '', ine: '', photo: '', inePhoto: '' });
-                            setShowModal(true);
-                        }}
-                        className="bg-brand-primary text-white px-4 py-2 rounded-lg hover:bg-red-800 transition flex items-center gap-2"
-                    >
-                        <i className="fas fa-user-plus"></i> Agregar
-                    </button>
-                </div>
-            </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                        <thead className="bg-gray-50 border-b border-gray-200">
-                            <tr>
-                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Nombre</th>
-                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">INE</th>
-                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Teléfono</th>
-                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Estado</th>
-                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase text-right">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {loading ? (
-                                <tr><td colSpan={5} className="text-center py-8">Cargando...</td></tr>
-                            ) : filteredPeople.length === 0 ? (
-                                <tr><td colSpan={5} className="text-center py-8 text-gray-500">No se encontraron registros.</td></tr>
-                            ) : (
-                                filteredPeople.map((person, idx) => (
-                                    <tr key={person._id || idx} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-6 py-4 font-medium text-gray-900 flex items-center gap-2">
-                                            {person.photo && <img src={person.photo} alt="Foto" className="w-8 h-8 rounded-full object-cover" />}
-                                            {person.name}
-                                        </td>
-                                        <td className="px-6 py-4 text-gray-600 font-mono text-sm">{person.ine}</td>
-                                        <td className="px-6 py-4 text-gray-600">{person.phone}</td>
-                                        <td className="px-6 py-4">
-                                            {person.synced === 0 ? (
-                                                <span className="text-orange-600 text-xs font-bold bg-orange-100 px-2 py-1 rounded">Pendiente</span>
-                                            ) : (
-                                                <span className="text-green-600 text-xs font-bold bg-green-100 px-2 py-1 rounded">Sincronizado</span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 text-right flex justify-end gap-2">
-                                            <button onClick={() => handleEdit(person)} className="text-blue-500 hover:text-blue-700 p-2"><i className="fas fa-edit"></i></button>
-                                            <button onClick={() => person._id && handleDelete(person._id)} className="text-red-500 hover:text-red-700 p-2"><i className="fas fa-trash-alt"></i></button>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            {/* Modal */}
-            {showModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up my-8">
-                        <div className="bg-brand-primary p-4 text-white flex justify-between items-center">
-                            <h3 className="font-bold text-lg">{editingId ? 'Editar Persona' : 'Registrar Persona'}</h3>
-                            <button onClick={() => setShowModal(false)} className="hover:text-gray-200"><i className="fas fa-times"></i></button>
+                    {cameraMode ? (
+                        <div className="p-4 bg-black flex flex-col items-center">
+                            {/* @ts-ignore */}
+                            <Webcam
+                                audio={false}
+                                ref={webcamRef}
+                                screenshotFormat="image/jpeg"
+                                className="w-full rounded-lg mb-4"
+                                videoConstraints={{ facingMode: "user" }}
+                            />
+                            <div className="flex gap-4">
+                                <button onClick={capturePhoto} className="bg-white text-black px-6 py-2 rounded-full font-bold hover:bg-gray-200">
+                                    <i className="fas fa-camera"></i> Capturar
+                                </button>
+                                <button onClick={() => setCameraMode(null)} className="text-white px-4 py-2">Cancelar</button>
+                            </div>
                         </div>
-
-                        {cameraMode ? (
-                            <div className="p-4 bg-black flex flex-col items-center">
-                                {/* @ts-ignore */}
-                                <Webcam
-                                    audio={false}
-                                    ref={webcamRef}
-                                    screenshotFormat="image/jpeg"
-                                    className="w-full rounded-lg mb-4"
-                                    videoConstraints={{ facingMode: "user" }}
-                                />
-                                <div className="flex gap-4">
-                                    <button onClick={capturePhoto} className="bg-white text-black px-6 py-2 rounded-full font-bold hover:bg-gray-200">
-                                        <i className="fas fa-camera"></i> Capturar
-                                    </button>
-                                    <button onClick={() => setCameraMode(null)} className="text-white px-4 py-2">Cancelar</button>
+                    ) : (
+                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                            {/* Photos Section */}
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 cursor-pointer" onClick={() => setCameraMode('photo')}>
+                                    {formData.photo ? (
+                                        <img src={formData.photo} alt="Persona" className="w-full h-32 object-cover rounded" />
+                                    ) : (
+                                        <div className="text-gray-400 py-8">
+                                            <i className="fas fa-user-circle text-3xl mb-2"></i>
+                                            <p className="text-xs">Foto Persona</p>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 cursor-pointer" onClick={() => setCameraMode('ine')}>
+                                    {formData.inePhoto ? (
+                                        <img src={formData.inePhoto} alt="INE" className="w-full h-32 object-cover rounded" />
+                                    ) : (
+                                        <div className="text-gray-400 py-8">
+                                            <i className="fas fa-id-card text-3xl mb-2"></i>
+                                            <p className="text-xs">Foto INE</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-                        ) : (
-                            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                                {/* Photos Section */}
-                                <div className="grid grid-cols-2 gap-4 mb-4">
-                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 cursor-pointer" onClick={() => setCameraMode('photo')}>
-                                        {formData.photo ? (
-                                            <img src={formData.photo} alt="Persona" className="w-full h-32 object-cover rounded" />
-                                        ) : (
-                                            <div className="text-gray-400 py-8">
-                                                <i className="fas fa-user-circle text-3xl mb-2"></i>
-                                                <p className="text-xs">Foto Persona</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 cursor-pointer" onClick={() => setCameraMode('ine')}>
-                                        {formData.inePhoto ? (
-                                            <img src={formData.inePhoto} alt="INE" className="w-full h-32 object-cover rounded" />
-                                        ) : (
-                                            <div className="text-gray-400 py-8">
-                                                <i className="fas fa-id-card text-3xl mb-2"></i>
-                                                <p className="text-xs">Foto INE</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
 
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">Nombre Completo</label>
+                                <input required type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full p-2 border rounded focus:ring-2 focus:ring-brand-primary outline-none" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Nombre Completo</label>
-                                    <input required type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full p-2 border rounded focus:ring-2 focus:ring-brand-primary outline-none" />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">INE (Clave)</label>
-                                        <input required type="text" value={formData.ine} onChange={e => setFormData({ ...formData, ine: e.target.value.toUpperCase() })} className="w-full p-2 border rounded focus:ring-2 focus:ring-brand-primary outline-none uppercase" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">Teléfono</label>
-                                        <input type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="w-full p-2 border rounded focus:ring-2 focus:ring-brand-primary outline-none" />
-                                    </div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">INE (Clave)</label>
+                                    <input required type="text" value={formData.ine} onChange={e => setFormData({ ...formData, ine: e.target.value.toUpperCase() })} className="w-full p-2 border rounded focus:ring-2 focus:ring-brand-primary outline-none uppercase" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Dirección</label>
-                                    <textarea rows={3} value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} className="w-full p-2 border rounded focus:ring-2 focus:ring-brand-primary outline-none resize-none"></textarea>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Teléfono</label>
+                                    <input type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="w-full p-2 border rounded focus:ring-2 focus:ring-brand-primary outline-none" />
                                 </div>
-                                <div className="pt-2 flex justify-end gap-2">
-                                    <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded transition-colors">Cancelar</button>
-                                    <button type="submit" disabled={saving} className="bg-brand-primary text-white px-6 py-2 rounded shadow hover:bg-red-800 transition-colors disabled:opacity-70">
-                                        {saving ? 'Guardando...' : (editingId ? 'Actualizar' : 'Guardar Registro')}
-                                    </button>
-                                </div>
-                            </form>
-                        )}
-                    </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">Dirección</label>
+                                <textarea rows={3} value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} className="w-full p-2 border rounded focus:ring-2 focus:ring-brand-primary outline-none resize-none"></textarea>
+                            </div>
+                            <div className="pt-2 flex justify-end gap-2">
+                                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded transition-colors">Cancelar</button>
+                                <button type="submit" disabled={saving} className="bg-brand-primary text-white px-6 py-2 rounded shadow hover:bg-red-800 transition-colors disabled:opacity-70">
+                                    {saving ? 'Guardando...' : (editingId ? 'Actualizar' : 'Guardar Registro')}
+                                </button>
+                            </div>
+                        </form>
+                    )}
                 </div>
-            )}
-        </div>
-    );
+            </div>
+        )}
+    </div>
+);
 };
 
 export default PeoplePage;
