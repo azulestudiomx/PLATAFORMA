@@ -35,6 +35,7 @@ export interface Report {
   response?: string;
   resolvedAt?: string | Date;
   hasEvidence?: boolean;
+  evidenceUrl?: string;
 }
 
 export interface CalendarEvent {

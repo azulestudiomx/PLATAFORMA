@@ -31,7 +31,9 @@ export const ReportsList: React.FC = () => {
     setLoading(true);
     try {
       // 1. Fetch Local Unsynced Reports
-      const localUnsynced = await db.reports.where('synced').equals(0).toArray();
+      // Dexie doesn't support OR in a simple where clause easily for mixed types, so we filter in memory or use logic
+      const allLocal = await db.reports.toArray();
+      const localUnsynced = allLocal.filter(r => r.synced === 0 || r.synced === false);
 
       // 2. Fetch Server Reports
       let serverReports: Report[] = [];
@@ -266,9 +268,9 @@ export const ReportsList: React.FC = () => {
                       )}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      {(report.hasEvidence || report.evidenceBase64) ? (
+                      {(report.hasEvidence || report.evidenceBase64 || report.evidenceUrl) ? (
                         <button
-                          onClick={() => setSelectedImage(report.evidenceBase64 || null)}
+                          onClick={() => setSelectedImage(report.evidenceUrl || report.evidenceBase64 || null)}
                           className="text-brand-primary hover:text-red-800 transition-colors"
                           title="Ver evidencia"
                         >
