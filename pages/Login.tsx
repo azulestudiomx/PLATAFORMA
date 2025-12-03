@@ -108,7 +108,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
         <div className="mt-6 text-center">
           <div className="text-xs text-gray-400 mb-4">
-            <p className="font-bold">Versión 3.1</p>
+            <p className="font-bold">Versión 3.2</p>
           </div>
           <p className="text-gray-500 text-sm">
             ¿Olvidaste tu contraseña? <a href="#" className="text-brand-primary hover:underline font-medium">Contactar Soporte</a>
