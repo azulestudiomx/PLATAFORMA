@@ -88,7 +88,7 @@ const App: React.FC = () => {
 
             <Route path="/people" element={
               <ProtectedRoute user={user}>
-                {user?.role === UserRole.ADMIN ? <PeoplePage /> : <Navigate to="/" replace />}
+                {(user?.role === UserRole.ADMIN || user?.role === UserRole.CAPTURIST) ? <PeoplePage /> : <Navigate to="/" replace />}
               </ProtectedRoute>
             } />
 
