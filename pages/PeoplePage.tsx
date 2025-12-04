@@ -177,7 +177,7 @@ const PeoplePage: React.FC = () => {
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(8);
             doc.setFont('helvetica', 'bold');
-            doc.text('PLATAFORMA CIUDADANA', 42.8, 6, { align: 'center' });
+            doc.text('REGISTRO', 42.8, 6, { align: 'center' });
 
             // Photo
             if (person.photo) {
@@ -221,7 +221,7 @@ const PeoplePage: React.FC = () => {
             doc.setFontSize(5);
             doc.setTextColor(100);
             doc.text(`ID: ${person._id?.slice(-6) || 'LOCAL'}`, 3, 50);
-            doc.text('Documento oficial de identificación', 82, 50, { align: 'right' });
+            doc.text('Para uso interno de la Plataforma', 82, 50, { align: 'right' });
 
             doc.save(`Credencial_${person.name.replace(/\s+/g, '_')}.pdf`);
         } catch (error) {
