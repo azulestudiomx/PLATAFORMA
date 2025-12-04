@@ -43,7 +43,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     <div
       className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
       style={{
-        backgroundImage: 'url("https://images.unsplash.com/photo-1590523278135-1e290381802d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80")', // Placeholder: Campeche/Mexico style
+        backgroundImage: 'url("https://res.cloudinary.com/dheyxobwr/image/upload/v1764813384/camp_wqz3u4.jpg")', // Placeholder: Campeche/Mexico style
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       }}

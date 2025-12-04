@@ -290,6 +290,15 @@ const PeoplePage: React.FC = () => {
         }
     };
 
+    const handleDownloadTemplate = () => {
+        const ws = XLSX.utils.json_to_sheet([
+            { Nombre: 'Juan Pérez (Ejemplo)', INE: 'ABC1234567890', Telefono: '9811234567', Direccion: 'Calle 10, Centro, Campeche' }
+        ]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Plantilla");
+        XLSX.writeFile(wb, "plantilla_padron.xlsx");
+    };
+
     const capturePhoto = () => {
         const imageSrc = webcamRef.current?.getScreenshot();
         if (imageSrc) {
@@ -419,6 +428,9 @@ const PeoplePage: React.FC = () => {
                     </button>
                     <button onClick={handleExportPDF} className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition flex items-center gap-2">
                         <i className="fas fa-file-pdf text-red-600"></i> PDF
+                    </button>
+                    <button onClick={handleDownloadTemplate} className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition flex items-center gap-2" title="Descargar Plantilla Excel">
+                        <i className="fas fa-download text-green-600"></i> Plantilla
                     </button>
                     <div className="relative">
                         <input
