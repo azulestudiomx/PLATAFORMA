@@ -114,6 +114,12 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             ¿Olvidaste tu contraseña? <a href="#" className="text-brand-primary hover:underline font-medium">Contactar Soporte</a>
           </p>
         </div>
+
+        <div className="mt-8 pt-4 border-t border-gray-100 text-center">
+          <p className="text-[10px] text-gray-400 font-bold tracking-widest uppercase">
+            Desarrollado por <span className="text-brand-primary">Azul Estudios MX</span>
+          </p>
+        </div>
       </div>
     </div>
   );
