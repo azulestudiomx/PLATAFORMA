@@ -110,7 +110,12 @@ const PeoplePage: React.FC = () => {
     const handleSync = async () => {
         const unsynced = await db.people.where('synced').equals(0).toArray();
         if (unsynced.length === 0) {
-            alert('No hay datos pendientes de sincronizar.');
+            Swal.fire({
+                title: 'Todo en orden',
+                text: 'No hay datos pendientes de sincronizar.',
+                icon: 'info',
+                confirmButtonColor: '#8B0000'
+            });
             return;
         }
 
@@ -136,7 +141,12 @@ const PeoplePage: React.FC = () => {
                 console.error('Sync failed for:', person.name);
             }
         }
-        alert(`Sincronizados ${syncedCount} de ${unsynced.length} registros.`);
+        Swal.fire({
+            title: 'Sincronización Completada',
+            text: `Sincronizados ${syncedCount} de ${unsynced.length} registros.`,
+            icon: 'success',
+            confirmButtonColor: '#8B0000'
+        });
         fetchPeople();
     };
 
@@ -226,7 +236,12 @@ const PeoplePage: React.FC = () => {
             doc.save(`Credencial_${person.name.replace(/\s+/g, '_')}.pdf`);
         } catch (error) {
             console.error('Error generating credential:', error);
-            Swal.fire('Error', 'No se pudo generar la credencial', 'error');
+            Swal.fire({
+                title: 'Error',
+                text: 'No se pudo generar la credencial',
+                icon: 'error',
+                confirmButtonColor: '#8B0000'
+            });
         }
     };
 
@@ -272,7 +287,8 @@ const PeoplePage: React.FC = () => {
             Swal.fire({
                 title: 'Importación Completada',
                 text: `Se importaron ${importedCount} registros. ${errorCount > 0 ? `${errorCount} errores.` : ''}`,
-                icon: 'success'
+                icon: 'success',
+                confirmButtonColor: '#8B0000'
             });
 
             fetchPeople(); // Refresh list
@@ -282,7 +298,12 @@ const PeoplePage: React.FC = () => {
 
         } catch (error) {
             console.error('Error importing file:', error);
-            Swal.fire('Error', 'No se pudo procesar el archivo', 'error');
+            Swal.fire({
+                title: 'Error',
+                text: 'No se pudo procesar el archivo',
+                icon: 'error',
+                confirmButtonColor: '#8B0000'
+            });
         } finally {
             setLoading(false);
             // Reset input
@@ -361,7 +382,8 @@ const PeoplePage: React.FC = () => {
                 title: 'Error',
                 text: 'Error al guardar el registro.',
                 icon: 'error',
-                confirmButtonText: 'Ok'
+                confirmButtonText: 'Ok',
+                confirmButtonColor: '#8B0000'
             });
         } finally {
             setSaving(false);
@@ -375,7 +397,7 @@ const PeoplePage: React.FC = () => {
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
-            cancelButtonColor: '#6b7280',
+            cancelButtonColor: '#3085d6',
             confirmButtonText: 'Sí, eliminar',
             cancelButtonText: 'Cancelar'
         });
@@ -384,18 +406,20 @@ const PeoplePage: React.FC = () => {
             try {
                 await fetch(`${API_BASE_URL}/api/people/${id}`, { method: 'DELETE' });
                 fetchPeople();
-                Swal.fire(
-                    '¡Eliminado!',
-                    'El registro ha sido eliminado.',
-                    'success'
-                );
+                Swal.fire({
+                    title: '¡Eliminado!',
+                    text: 'El registro ha sido eliminado.',
+                    icon: 'success',
+                    confirmButtonColor: '#8B0000'
+                });
             } catch (error) {
                 console.error('Error al eliminar:', error);
                 Swal.fire({
                     title: 'Error',
                     text: 'Error al eliminar el registro.',
                     icon: 'error',
-                    confirmButtonText: 'Ok'
+                    confirmButtonText: 'Ok',
+                    confirmButtonColor: '#8B0000'
                 });
             }
         }

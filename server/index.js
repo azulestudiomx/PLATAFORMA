@@ -581,6 +581,6 @@ app.get('/', (req, res) => {
 
 // Iniciar servidor
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`\n🚀 SERVIDOR BACKEND LISTO EN: http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`\n🚀 SERVIDOR BACKEND LISTO EN: http://0.0.0.0:${PORT}`);
 });

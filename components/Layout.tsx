@@ -32,10 +32,10 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
       {/* Sidebar */}
-      <aside className="w-64 bg-brand-primary text-white flex-col hidden md:flex shadow-xl z-20">
-        <div className="p-6 text-center border-b border-red-900">
+      <aside className="w-64 bg-brand-gradient text-white flex-col hidden md:flex shadow-xl z-20">
+        <div className="p-6 text-center border-b border-white/10">
           <h1 className="text-2xl font-bold tracking-wider leading-none">PLATAFORMA<br /><span className="text-brand-accent">CIUDADANA</span></h1>
-          <p className="text-xs text-gray-300 mt-2">CAMPECHE</p>
+          <p className="text-xs text-white/60 mt-2">CAMPECHE</p>
         </div>
 
         <nav className="flex-1 py-6">
@@ -45,8 +45,8 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                 <Link
                   to={item.path}
                   className={`flex items-center px-6 py-3 transition-colors ${location.pathname === item.path
-                    ? 'bg-red-900 border-r-4 border-brand-accent text-white'
-                    : 'text-gray-100 hover:bg-red-800'
+                    ? 'bg-white/15 border-r-4 border-brand-accent text-white font-bold backdrop-blur-sm'
+                    : 'text-gray-100 hover:bg-white/5'
                     }`}
                 >
                   <i className={`fas ${item.icon} w-6`}></i>
@@ -57,7 +57,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           </ul>
         </nav>
 
-        <div className="p-4 bg-red-900">
+        <div className="p-4 bg-black/10 backdrop-blur-sm">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-full bg-white text-brand-primary flex items-center justify-center font-bold">
               {user.name.charAt(0)}
@@ -68,7 +68,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
             </div>
           </div>
         </div>
-        <div className="p-4 border-t border-red-900">
+        <div className="p-4 border-t border-white/10">
           {isInstallable && (
             <button
               onClick={install}
@@ -80,7 +80,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           )}
           <button
             onClick={onLogout}
-            className="w-full bg-red-900 hover:bg-red-800 text-white p-3 rounded-lg flex items-center gap-3 transition-colors"
+            className="w-full bg-red-900 hover:bg-white/10 text-white p-3 rounded-lg flex items-center gap-3 transition-colors"
           >
             <i className="fas fa-sign-out-alt w-5"></i>
             <span>Cerrar Sesión</span>

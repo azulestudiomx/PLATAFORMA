@@ -191,7 +191,7 @@ const Dashboard: React.FC = () => {
                     (err) => alert('Error al obtener ubicación: ' + err.message)
                   );
                 }}
-                className="bg-brand-primary text-white px-3 py-1 rounded text-xs font-bold hover:bg-red-800 transition"
+                className="bg-brand-gradient text-white px-3 py-1 rounded text-xs font-bold hover:opacity-90 transition shadow-sm"
               >
                 <i className="fas fa-map-marker-alt mr-1"></i> Capturar
               </button>

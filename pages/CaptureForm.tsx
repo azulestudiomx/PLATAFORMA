@@ -2,10 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../src/config';
 import { db } from '../services/db';
 import { NeedType, Report, LocationData } from '../types';
-import { MapContainer, TileLayer, Marker, useMapEvents, GeoJSON } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMapEvents, GeoJSON, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useConfig } from '../contexts/ConfigContext';
 import Swal from 'sweetalert2';
+
+// Fix for map rendering issues
+const MapResizer = () => {
+  const map = useMap();
+  useEffect(() => {
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+  }, [map]);
+  return null;
+};
 
 const GeoJSONWrapper = () => {
   const [geoData, setGeoData] = useState<any>(null);
@@ -390,6 +401,7 @@ const CaptureForm: React.FC = () => {
 
           <div className="h-64 rounded-lg overflow-hidden border border-gray-300 shadow-inner relative z-0">
             <MapContainer center={DEFAULT_CENTER} zoom={13} style={{ height: '100%', width: '100%' }}>
+              <MapResizer />
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

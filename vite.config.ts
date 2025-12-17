@@ -7,8 +7,15 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
     server: {
-      port: 3000,
+      port: 3000, // Frontend tries to use 3000, runs on next available if taken
       host: '0.0.0.0',
+      proxy: {
+        '/api': {
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+          secure: false,
+        }
+      }
     },
     plugins: [
       react(),
