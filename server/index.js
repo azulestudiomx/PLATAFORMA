@@ -16,7 +16,7 @@ app.use(express.json({ limit: '50mb' })); // Aumentamos límite para recibir fot
 // Conexión a MongoDB
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
-    console.log('✅ Conectado exitosamente a MongoDB Atlas');
+    console.log('✅ Conectado exitosamente a MongoDB');
     seedUsers(); // Crear usuarios por defecto si no existen
   })
   .catch(err => console.error('❌ Error al conectar a MongoDB:', err));
