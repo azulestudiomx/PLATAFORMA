@@ -289,10 +289,20 @@ const PeoplePage: React.FC = () => {
                 }
             }
 
+            // Optimistic UI Update: Update the local state immediately
+            if (editingId) {
+                setPeople(prev => prev.map(p => (p.id === personData.id || p._id === personData._id) ? { ...p, ...personData } : p));
+            } else {
+                setPeople(prev => [{ ...personData, id: finalId }, ...prev]);
+            }
+
             setShowModal(false);
             setEditingId(null);
             setFormData({ name: '', phone: '', address: '', ine: '', photo: '', inePhoto: '' });
-            fetchPeople();
+            
+            // Wait 500ms before re-fetching to let server commit transaction
+            setTimeout(() => fetchPeople(), 500);
+
             Swal.fire({ 
                 title: editingId ? '¡Actualizado!' : '¡Guardado!', 
                 text: editingId ? 'Cambios guardados.' : 'Registro completado.', 

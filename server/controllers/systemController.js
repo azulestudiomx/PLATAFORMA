@@ -24,10 +24,15 @@ const createPerson = async (req, res) => {
 
 const updatePerson = async (req, res) => {
   try {
-    const updated = await prisma.person.update({ where: { id: req.params.id }, data: req.body });
+    const { id, _id, createdAt, updatedAt, ...data } = req.body;
+    const updated = await prisma.person.update({ 
+      where: { id: req.params.id }, 
+      data 
+    });
     res.json(updated);
   } catch (error) {
     if (error.code === 'P2002') return res.status(400).json({ error: 'La clave INE ya está registrada en otra persona' });
+    console.error('Backend Person Update Error:', error);
     res.status(500).json({ error: 'Error al actualizar persona' });
   }
 };
