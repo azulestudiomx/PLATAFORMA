@@ -12,10 +12,12 @@ const getPeople = async (req, res) => {
 
 const createPerson = async (req, res) => {
   try {
-    const person = await prisma.person.create({ data: req.body });
+    const { id, _id, ...data } = req.body;
+    const person = await prisma.person.create({ data });
     res.status(201).json(person);
   } catch (error) {
     if (error.code === 'P2002') return res.status(400).json({ error: 'La clave INE ya está registrada' });
+    console.error('Backend Person Create Error:', error);
     res.status(500).json({ error: 'Error al registrar persona' });
   }
 };

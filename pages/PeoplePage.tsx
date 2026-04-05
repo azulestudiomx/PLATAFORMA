@@ -127,8 +127,10 @@ const PeoplePage: React.FC = () => {
         let syncedCount = 0;
         for (const person of unsynced) {
             try {
-                await peopleApi.create(person);
-                await db.people.update(person.id!, { synced: 1 });
+                // Remove local number ID before sending to server
+                const { id: localId, ...apiData } = person;
+                const saved = await peopleApi.create(apiData);
+                await db.people.update(person.id!, { synced: 1, _id: saved.id });
                 syncedCount++;
             } catch (err) {
                 console.error('Sync failed for:', person.name, err);
@@ -246,7 +248,8 @@ const PeoplePage: React.FC = () => {
 
                 // Immediate Sync Attempt
                 try {
-                    const saved = await peopleApi.create(personData);
+                    const { id: localId, ...apiData } = personData;
+                    const saved = await peopleApi.create(apiData);
                     await db.people.update(newId, { synced: 1, _id: saved.id });
                 } catch (syncErr) {
                     console.warn('Sync failed, saved locally only.');
@@ -401,7 +404,7 @@ const PeoplePage: React.FC = () => {
                     </div>
                     <div>
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Pendientes</p>
-                        <p className="text-xl font-brand font-bold text-slate-800 leading-none">{people.filter(p => !p.synced).length}</p>
+                        <p className="text-xl font-brand font-bold text-slate-800 leading-none">{people.filter(p => p.synced !== 1).length}</p>
                     </div>
                 </div>
                 <button onClick={() => setShowMap(!showMap)} className="bg-white p-4 rounded-2xl shadow-card border border-gray-50 flex items-center gap-4 hover:bg-slate-50 transition-colors">
