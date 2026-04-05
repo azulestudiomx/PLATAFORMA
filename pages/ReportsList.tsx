@@ -92,32 +92,59 @@ export const ReportsList: React.FC = () => {
     }
   };
 
-  const exportToPDF = () => {
-    const doc = new jsPDF();
-    doc.setFont('helvetica', 'bold');
-    doc.text('PLATAFORMA CIUDADANA CAMPECHE', 14, 15);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Listado de Expedientes - Generado el ${new Date().toLocaleDateString()}`, 14, 22);
+  const exportToPDF = async () => {
+    try {
+      Swal.fire({
+        title: 'Generando PDF...',
+        text: 'Preparando reporte consolidado',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+      });
 
-    const tableData = reports.map(r => [
-      typeof r.id === 'string' ? r.id.slice(0, 8) : `LOC-${r.id}`,
-      r.municipio,
-      r.comunidad,
-      r.needType,
-      r.status,
-      new Date(r.timestamp).toLocaleDateString()
-    ]);
+      let exportData: Report[] = [];
+      if (isOnline) {
+        const data = await reportsApi.list(1, 1000);
+        exportData = data.data || [];
+      } else {
+        exportData = await db.reports.toArray();
+      }
 
-    autoTable(doc, {
-      head: [['Folio', 'Municipio', 'Comunidad', 'Necesidad', 'Estatus', 'Fecha']],
-      body: tableData,
-      startY: 30,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [139, 0, 0] }
-    });
+      if (exportData.length === 0) {
+        Swal.fire('Atención', 'No hay datos para exportar.', 'info');
+        return;
+      }
 
-    doc.save(`expedientes_${Date.now()}.pdf`);
+      const doc = new jsPDF();
+      doc.setFont('helvetica', 'bold');
+      doc.text('PLATAFORMA CIUDADANA CAMPECHE', 14, 15);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Listado General de Expedientes - Generado el ${new Date().toLocaleDateString()}`, 14, 22);
+
+      const tableData = exportData.map(r => [
+        (typeof r.id === 'string' ? r.id : (r.id ? `LOC-${r.id}` : r._id || 'S/N')).toString().slice(0, 10),
+        r.municipio || '-',
+        r.comunidad || '-',
+        r.needType || '-',
+        r.status || 'Pendiente',
+        r.timestamp ? format(new Date(r.timestamp), 'dd/MM/yyyy') : '-'
+      ]);
+
+      autoTable(doc, {
+        head: [['Folio', 'Municipio', 'Comunidad', 'Necesidad', 'Estatus', 'Fecha']],
+        body: tableData,
+        startY: 30,
+        styles: { fontSize: 7, cellPadding: 2 },
+        headStyles: { fillColor: [139, 0, 0] },
+        alternateRowStyles: { fillColor: [245, 245, 245] }
+      });
+
+      doc.save(`EXPEDIENTES_CAMPECHE_${Date.now()}.pdf`);
+      Swal.fire({ title: '¡PDF Generado!', icon: 'success', timer: 1500, showConfirmButton: false });
+    } catch (error) {
+      console.error('PDF Export Error:', error);
+      Swal.fire('Error', 'No se pudo generar el reporte PDF. Intente de nuevo.', 'error');
+    }
   };
 
   const exportToExcel = async () => {
