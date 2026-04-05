@@ -74,20 +74,39 @@ const PeoplePage: React.FC = () => {
     const fetchPeople = async () => {
         setLoading(true);
         try {
-            // 1. Get local unsynced (Dexie)
-            const localRaw = await db.people.toArray();
-            const localUnsynced = localRaw.filter(r => r.synced === 0);
-
+            // 1. Get all local records
+            const localAll = await db.people.toArray();
+            
             // 2. Fetch from server (API)
             try {
                 const serverData = await peopleApi.list();
-                const serverDataFiltered = serverData.filter((s: Person) =>
-                    !localUnsynced.some(l => l._id === s.id)
-                );
-                setPeople([...localUnsynced, ...serverDataFiltered]);
+                
+                // 3. Smart Merge: Start with local data
+                const combined = [...localAll];
+                
+                // Add server records if they don't exist locally (by INE or _id)
+                serverData.forEach((s: any) => {
+                    const existsLocally = combined.some(l => l.ine === s.ine || l._id === s.id);
+                    if (!existsLocally) {
+                        combined.push({ 
+                          ...s, 
+                          id: undefined, 
+                          _id: s.id, 
+                          synced: 1 
+                        });
+                    } else {
+                        // Update local record with server _id if matched by INE
+                        const idx = combined.findIndex(l => l.ine === s.ine);
+                        if (idx !== -1 && !combined[idx]._id) {
+                            combined[idx]._id = s.id;
+                        }
+                    }
+                });
+
+                setPeople(combined);
             } catch (err) {
                 console.warn('Backend server unreachable, showing local data only.', err);
-                setPeople(localRaw);
+                setPeople(localAll);
             }
         } catch (error) {
             console.error('Error in fetchPeople:', error);
