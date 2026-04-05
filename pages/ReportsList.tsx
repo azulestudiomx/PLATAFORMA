@@ -114,7 +114,7 @@ export const ReportsList: React.FC = () => {
         return;
       }
 
-      const doc = new jsPDF();
+      const doc = new jsPDF({ orientation: 'landscape' });
       doc.setFont('helvetica', 'bold');
       doc.text('PLATAFORMA CIUDADANA CAMPECHE', 14, 15);
       doc.setFontSize(10);
@@ -127,11 +127,12 @@ export const ReportsList: React.FC = () => {
         r.comunidad || '-',
         r.needType || '-',
         r.status || 'Pendiente',
+        r.location?.lat && r.location?.lng ? `${r.location.lat.toFixed(5)}, ${r.location.lng.toFixed(5)}` : 'S/N GPS',
         r.timestamp ? format(new Date(r.timestamp), 'dd/MM/yyyy') : '-'
       ]);
 
       autoTable(doc, {
-        head: [['Folio', 'Municipio', 'Comunidad', 'Necesidad', 'Estatus', 'Fecha']],
+        head: [['Folio', 'Municipio', 'Comunidad', 'Necesidad', 'Estatus', 'GPS', 'Fecha']],
         body: tableData,
         startY: 30,
         styles: { fontSize: 7, cellPadding: 2 },

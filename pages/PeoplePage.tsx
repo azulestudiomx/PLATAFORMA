@@ -219,11 +219,33 @@ const PeoplePage: React.FC = () => {
     };
 
     const handleExportPDF = () => {
-        const doc = new jsPDF();
-        doc.text('Padrón de Ciudadanos - Campeche', 14, 15);
-        const tableData = people.map(p => [p.name, p.ine, p.phone, p.address]);
-        autoTable(doc, { head: [['Nombre', 'Folio INE', 'Teléfono', 'Dirección']], body: tableData, startY: 20 });
-        doc.save('padron_ciudadanos_campeche.pdf');
+        const doc = new jsPDF({ orientation: 'landscape' });
+        doc.setFontSize(16);
+        doc.setTextColor(139, 0, 0);
+        doc.text('PADRÓN DE CIUDADANOS - CAMPECHE', 14, 15);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(`Generado el: ${new Date().toLocaleDateString()}`, 14, 22);
+
+        const tableData = people.map(p => [
+            p.name.toUpperCase(), 
+            p.ine, 
+            p.phone || '-', 
+            p.address || '-',
+            p.lat && p.lng ? `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}` : 'S/N GPS'
+        ]);
+
+        autoTable(doc, { 
+            head: [['Nombre Completo', 'Folio INE', 'Teléfono', 'Domicilio / Referencia', 'Coordenadas GPS']], 
+            body: tableData, 
+            startY: 30,
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [139, 0, 0] },
+            alternateRowStyles: { fillColor: [245, 245, 245] }
+        });
+        
+        doc.save(`PADRON_CAMPECHE_${Date.now()}.pdf`);
     };
 
     const handleEdit = (person: Person) => {
