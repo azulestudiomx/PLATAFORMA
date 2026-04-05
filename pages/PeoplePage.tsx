@@ -7,7 +7,7 @@ import QRCode from 'qrcode';
 import * as XLSX from 'xlsx';
 import Webcam from 'react-webcam';
 import Swal from 'sweetalert2';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -60,12 +60,52 @@ const PeoplePage: React.FC = () => {
     const [cameraMode, setCameraMode] = useState<'photo' | 'ine' | null>(null);
     const [showMap, setShowMap] = useState(false);
     const [viewingIne, setViewingIne] = useState<string | null>(null);
+    const [mapCenter, setMapCenter] = useState<[number, number]>([19.8301, -90.5349]);
+    const [userLoc, setUserLoc] = useState<[number, number] | null>(null);
     const webcamRef = useRef<Webcam>(null);
+
+    const getCurrentLocation = () => {
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const { latitude, longitude } = pos.coords;
+                setUserLoc([latitude, longitude]);
+                setMapCenter([latitude, longitude]);
+                setFormData(prev => ({ ...prev, lat: latitude, lng: longitude }));
+            },
+            (err) => console.warn('Geolocation blocked or failed', err),
+            { enableHighAccuracy: true }
+        );
+    };
+
+    // Auto-get location when opening modal
+    useEffect(() => {
+        if (showModal && !editingId) {
+            getCurrentLocation();
+        }
+    }, [showModal, editingId]);
+
+    const MapPicker = () => {
+        const map = useMap();
+        useEffect(() => {
+            if (userLoc) map.setView(userLoc, 15);
+        }, [userLoc, map]);
+
+        useMapEvents({
+            click(e) {
+                const { lat, lng } = e.latlng;
+                setUserLoc([lat, lng]);
+                setFormData(prev => ({ ...prev, lat, lng }));
+            },
+        });
+        return null;
+    };
     
     const closeModal = () => {
         setShowModal(false);
         setEditingId(null);
-        setFormData({ name: '', phone: '', address: '', ine: '', photo: '', inePhoto: '' });
+        setFormData({ name: '', phone: '', address: '', ine: '', photo: '', inePhoto: '', lat: undefined, lng: undefined });
+        setUserLoc(null);
     };
 
     useEffect(() => {
@@ -653,7 +693,30 @@ const PeoplePage: React.FC = () => {
                                     <div className="space-y-4">
                                         <div>
                                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Dirección / Colonia</label>
-                                            <textarea rows={4} value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} className="input-modern resize-none" placeholder="Calle, Número, Colonia..."></textarea>
+                                            <textarea rows={2} value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} className="input-modern resize-none" placeholder="Calle, Número, Colonia..."></textarea>
+                                        </div>
+                                        <div>
+                                            <div className="flex justify-between items-center mb-1.5">
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block ml-1">Ubicación GPS</label>
+                                                <button type="button" onClick={getCurrentLocation} className="text-[9px] font-bold text-brand-primary uppercase hover:underline">
+                                                    <i className="fas fa-crosshairs mr-1"></i> Capturar GPS
+                                                </button>
+                                            </div>
+                                            <div className="h-40 rounded-2xl overflow-hidden border border-gray-100 relative z-0">
+                                                <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }}>
+                                                    <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+                                                    <MapPicker />
+                                                    {userLoc && <Marker position={userLoc} />}
+                                                </MapContainer>
+                                                {!userLoc && (
+                                                    <div className="absolute inset-0 bg-slate-900/10 backdrop-blur-[1px] flex items-center justify-center z-10 pointer-events-none">
+                                                        <span className="text-[10px] font-bold text-slate-600 bg-white/90 px-3 py-1 rounded-full shadow-sm">Toca el mapa para marcar domicilio</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <p className="text-[9px] text-gray-400 mt-1 italic">
+                                                {userLoc ? `Coordenadas: ${userLoc[0].toFixed(5)}, ${userLoc[1].toFixed(5)}` : 'Ubicación no seleccionada'}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
