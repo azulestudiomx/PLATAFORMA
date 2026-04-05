@@ -136,8 +136,20 @@ const PeoplePage: React.FC = () => {
             try {
                 // Remove local number ID before sending to server
                 const { id: localId, ...apiData } = person;
-                const saved = await peopleApi.create(apiData);
-                await db.people.update(person.id!, { synced: 1, _id: saved.id });
+                
+                let saved;
+                if (person._id) {
+                    // It was an edit to an existing server record
+                    saved = await peopleApi.update(person._id, apiData);
+                } else {
+                    // It's a completely new record
+                    saved = await peopleApi.create(apiData);
+                }
+
+                await db.people.update(person.id!, { 
+                    synced: 1, 
+                    _id: saved.id || person._id 
+                });
                 syncedCount++;
             } catch (err) {
                 console.error('Sync failed for:', person.name, err);
@@ -242,7 +254,8 @@ const PeoplePage: React.FC = () => {
                 // Update Remote if synced
                 if (personData._id) {
                     try {
-                        await peopleApi.update(personData._id, personData);
+                        const { id: localId, ...apiData } = personData;
+                        await peopleApi.update(personData._id, apiData);
                         if (personData.id) await db.people.update(personData.id, { synced: 1 });
                     } catch (syncErr) {
                         console.warn('Remote update failed, kept locally.');
