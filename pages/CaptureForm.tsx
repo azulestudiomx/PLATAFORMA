@@ -389,9 +389,9 @@ const CaptureForm: React.FC = () => {
                         <div className="h-64 sm:h-72 w-full relative z-0 mt-4 border-t border-gray-50">
                             <MapContainer center={DEFAULT_CENTER} zoom={13} style={{ height: '100%', width: '100%' }}>
                                 <MapResizer />
-                                <TileLayer
-                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                    attribution='&copy; OpenStreetMap'
+                                <TileLayer 
+                                    url="https://s.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
                                 />
                                 <GeoJSONWrapper />
                                 <LocationSelector location={location} onLocationSelect={setLocation} />
