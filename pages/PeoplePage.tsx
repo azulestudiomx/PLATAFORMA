@@ -98,7 +98,7 @@ const PeoplePage: React.FC = () => {
 
     const handleSync = async () => {
         const localRaw = await db.people.toArray();
-        const unsynced = localRaw.filter(r => r.synced === 0);
+        const unsynced = localRaw.filter(r => r.synced !== 1);
         
         if (unsynced.length === 0) {
             Swal.fire({ title: 'Sincronizado', text: 'No hay datos nuevos para enviar.', icon: 'info' });
