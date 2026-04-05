@@ -59,6 +59,7 @@ const PeoplePage: React.FC = () => {
     const [saving, setSaving] = useState(false);
     const [cameraMode, setCameraMode] = useState<'photo' | 'ine' | null>(null);
     const [showMap, setShowMap] = useState(false);
+    const [viewingIne, setViewingIne] = useState<string | null>(null);
     const webcamRef = useRef<Webcam>(null);
     
     const closeModal = () => {
@@ -489,7 +490,10 @@ const PeoplePage: React.FC = () => {
                     <div className="h-[600px] w-full relative z-0">
                         <MapContainer center={[19.8301, -90.5349]} zoom={8} style={{ height: "100%", width: "100%" }}>
                             <MapResizer />
-                            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                            <TileLayer 
+                                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                            />
                             {people.map((person, idx) => (
                                 (person.lat && person.lng) && (
                                     <Marker key={idx} position={[person.lat, person.lng]}>
@@ -547,6 +551,9 @@ const PeoplePage: React.FC = () => {
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex justify-end gap-1.5 translate-x-2 group-hover:translate-x-0 transition-transform">
+                                                    <button onClick={() => setViewingIne(p.inePhoto || '')} className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-400 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all" title="Ver INE">
+                                                        <i className="fas fa-id-badge text-xs"></i>
+                                                    </button>
                                                     <button onClick={() => generateCredential(p)} className="w-8 h-8 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center hover:bg-violet-600 hover:text-white transition-all">
                                                         <i className="fas fa-id-card text-xs"></i>
                                                     </button>
@@ -659,6 +666,41 @@ const PeoplePage: React.FC = () => {
                                 </div>
                             </form>
                         )}
+                    </div>
+                </div>
+            )}
+            {/* Visor de Foto INE */}
+            {viewingIne && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                    <div className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl animate-fade-in">
+                        <div className="p-4 border-b flex justify-between items-center">
+                            <h4 className="font-brand font-bold text-slate-800">Expediente: Foto INE</h4>
+                            <button onClick={() => setViewingIne(null)} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors">
+                                <i className="fas fa-times text-slate-500"></i>
+                            </button>
+                        </div>
+                        <div className="p-6 bg-slate-50 flex items-center justify-center min-h-[300px]">
+                            {viewingIne.startsWith('data:image') ? (
+                                <img src={viewingIne} alt="INE Frontal" className="max-w-full max-h-[60vh] rounded-xl shadow-lg border-4 border-white" />
+                            ) : (
+                                <div className="text-center py-12">
+                                    <i className="fas fa-id-card text-slate-200 text-6xl mb-4"></i>
+                                    <p className="text-slate-400 font-medium tracking-tight">No hay foto del INE registrada.</p>
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-4 bg-white border-t flex gap-3">
+                            <button onClick={() => setViewingIne(null)} className="btn-ghost flex-1">Cerrar</button>
+                            {viewingIne.startsWith('data:image') && (
+                                <a 
+                                    href={viewingIne} 
+                                    download={`INE_${filteredPeople.find(p => p.inePhoto === viewingIne)?.name || 'Ciudadano'}.jpg`}
+                                    className="btn-primary flex-1 no-underline text-center justify-center"
+                                >
+                                    <i className="fas fa-download mr-2"></i> Descargar Imagen
+                                </a>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
