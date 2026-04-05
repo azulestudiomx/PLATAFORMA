@@ -138,12 +138,25 @@ const PeoplePage: React.FC = () => {
                 const { id: localId, ...apiData } = person;
                 
                 let saved;
-                if (person._id) {
-                    // It was an edit to an existing server record
-                    saved = await peopleApi.update(person._id, apiData);
-                } else {
-                    // It's a completely new record
-                    saved = await peopleApi.create(apiData);
+                try {
+                    if (person._id) {
+                        saved = await peopleApi.update(person._id, apiData);
+                    } else {
+                        saved = await peopleApi.create(apiData);
+                    }
+                } catch (apiErr: any) {
+                    // Critical fallback: If duplicate INE, it means it's ALREADY on server
+                    if (apiErr.message.includes('ya está registrada') || apiErr.message.includes('400')) {
+                        console.warn('INE Duplicate found during sync. Bridging record...');
+                        const serverAll = await peopleApi.list();
+                        const match = serverAll.find((s: any) => s.ine === person.ine);
+                        if (match) {
+                            await db.people.update(person.id!, { synced: 1, _id: match.id });
+                            syncedCount++;
+                            continue; // Success in bridging!
+                        }
+                    }
+                    throw apiErr; // Rethrow if it's a real error
                 }
 
                 await db.people.update(person.id!, { 
