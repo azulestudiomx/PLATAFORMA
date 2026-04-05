@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { API_BASE_URL } from '../src/config';
+import { configApi } from '../services/api';
 
 interface Theme {
     primary: string;
@@ -18,6 +18,7 @@ export interface CustomField {
 interface Config {
     theme: Theme;
     needTypes: string[];
+    eventTypes: string[];
     customFields: CustomField[];
 }
 
@@ -30,6 +31,7 @@ interface ConfigContextType {
 const defaultConfig: Config = {
     theme: { primary: '#8B0000', secondary: '#FFFFFF', accent: '#FFD700' },
     needTypes: ['Agua Potable', 'Luz Eléctrica', 'Drenaje', 'Salud', 'Educación', 'Seguridad', 'Otro'],
+    eventTypes: ['Jornada de Captura', 'Visita de Campo', 'Reunión Vecinal', 'Entrega de Apoyo'],
     customFields: []
 };
 
@@ -43,7 +45,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         fetchConfig();
     }, []);
 
-    // Apply theme to CSS variables
+    // Apply theme to CSS variables whenever config changes
     useEffect(() => {
         const root = document.documentElement;
         root.style.setProperty('--color-primary', config.theme.primary);
@@ -53,11 +55,15 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     const fetchConfig = async () => {
         try {
-            const res = await fetch(`${API_BASE_URL}/api/config`);
-            if (res.ok) {
-                const data = await res.json();
-                setConfig(data);
+            const data = await configApi.get();
+            // Data cleaning: remove empty strings from arrays
+            if (data && data.needTypes) {
+                data.needTypes = data.needTypes.filter((t: any) => typeof t === 'string' && t.trim() !== '');
             }
+            if (data && data.eventTypes) {
+                data.eventTypes = data.eventTypes.filter((t: any) => typeof t === 'string' && t.trim() !== '');
+            }
+            setConfig(data);
         } catch (error) {
             console.error('Error fetching config:', error);
         } finally {
@@ -66,21 +72,8 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     const updateConfig = async (newConfig: Config) => {
-        try {
-            const res = await fetch(`${API_BASE_URL}/api/config`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newConfig)
-            });
-
-            if (res.ok) {
-                const savedConfig = await res.json();
-                setConfig(savedConfig);
-            }
-        } catch (error) {
-            console.error('Error updating config:', error);
-            throw error;
-        }
+        const saved = await configApi.update(newConfig);
+        setConfig(saved);
     };
 
     return (

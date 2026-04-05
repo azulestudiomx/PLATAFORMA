@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String
+  name      String
+  role      String   @default("CAPTURIST")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Report {
+  id             String    @id @default(uuid())
+  municipio      String?
+  comunidad      String?
+  lat            Float?
+  lng            Float?
+  needType       String?
+  description    String?
+  evidenceBase64 String?
+  evidenceGallery String?
+  evidenceUrl    String?
+  timestamp      Float?
+  user           String?
+  status         String    @default("Pendiente")
+  syncedAt       DateTime  @default(now())
+  customData     String?
+  response       String?
+  resolvedAt     DateTime?
+  sentiment      String?
+  urgency        String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Person {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String?
+  address   String?
+  ine       String?  @unique
+  photo     String?
+  inePhoto  String?
+  lat       Float?
+  lng       Float?
+  synced    Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  date        String
+  location    String?
+  community   String?
+  type        String   @default("Reunión") // Reunión, Visita, Jornada, Mitin
+  description String?
+  assignedTo  String?  // Comma separated users or JSON
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SystemConfig {
+  id           String @id @default(uuid())
+  primaryColor String @default("#8B0000")
+  secondaryCol String @default("#FFFFFF")
+  accentColor  String @default("#FFD700")
+  needTypes    String @default("[\"Agua Potable\", \"Luz Eléctrica\", \"Drenaje\", \"Salud\", \"Educación\", \"Seguridad\", \"Otro\"]")
+  eventTypes   String @default("[\"Jornada de Captura\", \"Visita de Campo\", \"Reunión Vecinal\", \"Entrega de Apoyo\"]")
+  customFields String @default("[]")
+}

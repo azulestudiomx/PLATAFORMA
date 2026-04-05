@@ -3,12 +3,14 @@ import { Report } from '../types';
 
 class PWADataBase extends Dexie {
   reports!: Table<Report, number>;
+  people!: Table<any, number>;
 
   constructor() {
     super('PlataformaCampecheDB');
     // Using 'as any' to bypass TypeScript error where 'version' is not found on the type
-    (this as any).version(1).stores({
-      reports: '++id, timestamp, synced, municipio' // Primary key and indexed props
+    (this as any).version(2).stores({
+      reports: '++id, timestamp, synced, municipio',
+      people: '++id, _id, name, ine, synced'
     });
   }
 }

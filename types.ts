@@ -38,6 +38,7 @@ export interface Report {
   evidenceUrl?: string;
   sentiment?: string;
   urgency?: string;
+  evidenceGallery?: string[];
 }
 
 export interface CalendarEvent {
@@ -46,8 +47,10 @@ export interface CalendarEvent {
   title: string;
   date: string;
   location: string;
-  type: 'Reunión' | 'Visita' | 'Mitin';
+  community?: string;
+  type: string; // 'Reunión' | 'Visita' | 'Jornada' | 'Mitin'
   description?: string;
+  assignedTo?: string;
 }
 
 export interface User {

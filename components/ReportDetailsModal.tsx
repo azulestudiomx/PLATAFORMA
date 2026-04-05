@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../src/config';
 import { Report } from '../types';
+import { reportsApi } from '../services/api';
 import { jsPDF } from 'jspdf';
 import Swal from 'sweetalert2';
 
@@ -21,26 +21,35 @@ const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({ reportId, onClo
     const [description, setDescription] = useState('');
     const [response, setResponse] = useState('');
     const [customData, setCustomData] = useState<Record<string, any>>({});
+    const [tempImage, setTempImage] = useState<string | null>(null);
 
     useEffect(() => {
         fetchReportDetails();
     }, [reportId]);
 
     const fetchReportDetails = async () => {
+        setLoading(true);
         try {
-            const res = await fetch(`${API_BASE_URL}/api/reports/${reportId}`);
-            if (!res.ok) throw new Error('Error al cargar reporte');
-            const data = await res.json();
-            setReport(data);
-
-            // Initialize form
-            setStatus(data.status);
-            setDescription(data.description);
+            const data = await reportsApi.getById(reportId);
+            // Normalize: new SQLite backend uses flat lat/lng, old shape uses location object
+            const normalized: Report = {
+                ...data,
+                // Ensure _id compatibility (new API returns 'id')
+                _id: data._id || data.id,
+                // Rebuild location object from flat lat/lng if needed
+                location: data.location ?? { lat: data.lat ?? 0, lng: data.lng ?? 0 },
+            };
+            setReport(normalized);
+            setStatus(data.status || 'Pendiente');
+            setDescription(data.description || '');
             setResponse(data.response || '');
-            setCustomData(data.customData || {});
-        } catch (error) {
+            // customData is stored as JSON string in SQLite
+            let cd = data.customData;
+            if (typeof cd === 'string') { try { cd = JSON.parse(cd); } catch { cd = {}; } }
+            setCustomData(cd || {});
+        } catch (error: any) {
             console.error(error);
-            Swal.fire('Error', 'Error al cargar los detalles del reporte', 'error');
+            Swal.fire('Error', error.message || 'Error al cargar los detalles del reporte', 'error');
             onClose();
         } finally {
             setLoading(false);
@@ -50,26 +59,20 @@ const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({ reportId, onClo
     const handleSave = async () => {
         setSaving(true);
         try {
-            const res = await fetch(`${API_BASE_URL}/api/reports/${reportId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    status,
-                    description,
-                    customData,
-                    response: status === 'Resuelto' ? response : undefined,
-                    resolvedAt: status === 'Resuelto' ? new Date() : undefined
-                })
+            await reportsApi.update(reportId, {
+                status,
+                description,
+                evidenceBase64: tempImage || report?.evidenceBase64,
+                customData: JSON.stringify(customData),
+                response: status === 'Resuelto' ? response : undefined,
+                resolvedAt: status === 'Resuelto' ? new Date().toISOString() : undefined,
             });
-
-            if (!res.ok) throw new Error('Error al guardar');
-
             await Swal.fire('¡Actualizado!', 'Reporte actualizado correctamente', 'success');
             onUpdate();
             onClose();
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            Swal.fire('Error', 'Error al actualizar el reporte', 'error');
+            Swal.fire('Error', error.message || 'Error al actualizar el reporte', 'error');
         } finally {
             setSaving(false);
         }
@@ -144,10 +147,14 @@ const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({ reportId, onClo
             }
         }
 
-        // Map Link
-        doc.setFontSize(10);
-        doc.setTextColor(0, 0, 255);
-        doc.textWithLink('Ver ubicación en Google Maps', margin, y, { url: `https://www.google.com/maps/search/?api=1&query=${report.location.lat},${report.location.lng}` });
+        // Map Link (guard: location might be missing)
+        const lat = report.location?.lat;
+        const lng = report.location?.lng;
+        if (lat && lng) {
+            doc.setFontSize(10);
+            doc.setTextColor(0, 0, 255);
+            doc.textWithLink('Ver ubicación en Google Maps', margin, y, { url: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}` });
+        }
 
         // Footer
         doc.setTextColor(100, 100, 100);
@@ -296,27 +303,81 @@ const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({ reportId, onClo
 
                         {/* Right Column: Evidence & Map */}
                         <div className="space-y-6">
-                            {/* Evidence Photo */}
+                            {/* Evidence Photo Gallery */}
                             <div>
-                                <h3 className="font-bold text-gray-800 mb-2">Evidencia Fotográfica</h3>
-                                {report.evidenceBase64 ? (
-                                    <img
-                                        src={report.evidenceBase64}
-                                        alt="Evidencia"
-                                        className="w-full h-48 object-cover rounded-lg shadow-md hover:scale-105 transition-transform cursor-pointer"
-                                        onClick={() => {
-                                            const w = window.open("");
-                                            w?.document.write(`<img src="${report.evidenceBase64}" style="width:100%"/>`);
-                                        }}
-                                    />
-                                ) : (
-                                    <div className="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
-                                        <div className="text-center">
-                                            <i className="fas fa-image text-3xl mb-2"></i>
-                                            <p>Sin evidencia</p>
-                                        </div>
+                                <h3 className="font-bold text-gray-800 mb-2">Evidencia Fotográfica Gallery</h3>
+                                <div className="space-y-3">
+                                    {/* Main Display Grid */}
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {(tempImage || report.evidenceBase64 || (report.evidenceGallery && report.evidenceGallery.length > 0)) ? (
+                                            (tempImage ? [tempImage] : report.evidenceGallery && report.evidenceGallery.length > 0 ? report.evidenceGallery : [report.evidenceBase64!]).map((img, idx) => (
+                                                <div key={idx} className="relative group">
+                                                    <img
+                                                        src={img}
+                                                        alt={`Evidencia ${idx + 1}`}
+                                                        className="w-full h-32 object-cover rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:brightness-90 transition-all"
+                                                        onClick={() => {
+                                                            const w = window.open("");
+                                                            w?.document.write(`<img src="${img}" style="width:100%"/>`);
+                                                        }}
+                                                    />
+                                                    {editMode && (
+                                                        <button 
+                                                            onClick={() => {
+                                                                if (tempImage) { setTempImage(null); }
+                                                                else {
+                                                                    const newGallery = (report.evidenceGallery || []).filter((_, i) => i !== idx);
+                                                                    setReport({ ...report, evidenceGallery: newGallery });
+                                                                }
+                                                            }}
+                                                            className="absolute top-1 right-1 w-6 h-6 rounded-lg bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >
+                                                            <i className="fas fa-times text-[10px]"></i>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="col-span-2 w-full h-32 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-200">
+                                                <div className="text-center">
+                                                    <i className="fas fa-image text-2xl mb-1"></i>
+                                                    <p className="text-[10px] font-bold uppercase tracking-wider">Sin evidencias</p>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                )}
+
+                                    {editMode && (
+                                        <div className="flex gap-2">
+                                            <label className="flex-1">
+                                                <div className="btn-ghost text-[10px] cursor-pointer flex items-center justify-center gap-2 border-brand-primary/20 bg-red-50/50 text-brand-primary h-10 rounded-xl font-bold uppercase tracking-widest">
+                                                    <i className="fas fa-camera"></i> Añadir Evidencia
+                                                </div>
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*" 
+                                                    capture="environment"
+                                                    className="hidden" 
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            const reader = new FileReader();
+                                                            reader.onloadend = () => {
+                                                                const base64 = reader.result as string;
+                                                                if (report.evidenceGallery) {
+                                                                    setReport({ ...report, evidenceGallery: [...report.evidenceGallery, base64].slice(0, 4) });
+                                                                } else {
+                                                                    setReport({ ...report, evidenceGallery: [report.evidenceBase64 || base64].slice(0, 4) });
+                                                                }
+                                                            };
+                                                            reader.readAsDataURL(file);
+                                                        }
+                                                    }}
+                                                />
+                                            </label>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Map Placeholder (Could be enhanced with actual Map component) */}

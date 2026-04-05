@@ -1,0 +1,49 @@
+{
+  "currentVersion": "3.1.2",
+  "lastUpdate": "2026-04-05T07:45:00Z",
+  "history": [
+    {
+      "version": "3.1.2",
+      "date": "2026-04-05",
+      "type": "Critical Fixes & UX",
+      "changes": [
+        "Optimización total para tabletas en campo (Vistas responsivas inteligentes)",
+        "Corrección en persistencia de campos personalizados en el backend",
+        "Limpieza automática de duplicados y entradas vacías en catálogos",
+        "Doble sistema de guardado en configuración para mejor accesibilidad"
+      ]
+    },
+    {
+      "version": "3.1.1",
+      "date": "2026-04-05",
+      "type": "UI/UX Modernization",
+      "changes": [
+        "Implementación de tipografía Outfit (Google Fonts) en todo el sistema",
+        "Rediseño Premium de formularios de captura y listados (Fase 3)",
+        "Nuevos componentes visuales: badges, skeleton loaders y cards mejoradas",
+        "Corrección de visualización de expedientes con ID UUID"
+      ]
+    },
+    {
+      "version": "3.1.0",
+      "date": "2026-04-05",
+      "type": "Security & Auth",
+      "changes": [
+        "Migración de gestión de usuarios a servicios autenticados (JWT)",
+        "Refactorización de UserManagement con diseño de tarjetas",
+        "Protección de rutas de configuración en el frontend"
+      ]
+    },
+    {
+      "version": "3.0.0",
+      "date": "2026-04-04",
+      "type": "Core Reconstruction",
+      "changes": [
+        "Cambio de arquitectura Monolítica a Modular (MVC)",
+        "Migración de MongoDB a SQLite con Prisma ORM",
+        "Implementación de sistema de sesiones basado en tokens (JWT)",
+        "Centralización de servicios de API con manejo automático de errores 401"
+      ]
+    }
+  ]
+}

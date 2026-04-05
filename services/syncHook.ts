@@ -1,10 +1,6 @@
 import { useEffect, useState } from 'react';
-import { API_BASE_URL } from '../src/config';
+import { reportsApi } from './api';
 import { db } from './db';
-
-// URL of your Backend API
-// Fix: Use API_BASE_URL from config which already handles the env var logic
-const API_URL = `${API_BASE_URL}/api/reports`;
 
 export const useSyncReports = () => {
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
@@ -70,22 +66,17 @@ export const useSyncReports = () => {
             needType: report.needType,
             description: report.description,
             evidenceBase64: report.evidenceBase64,
+            evidenceGallery: report.evidenceGallery,
             timestamp: report.timestamp,
-            user: report.user
+            user: report.user,
+            urgency: report.urgency,
+            sentiment: report.sentiment,
+            status: report.status || 'Pendiente'
           };
 
-          const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload)
-          });
+          // Uses centralized API service (includes JWT token automatically)
+          await reportsApi.create(payload);
 
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Server error (${response.status}): ${errorText}`);
-          }
 
           // 3. Mark as synced locally ONLY if server confirmed receipt
           if (report.id !== undefined) {

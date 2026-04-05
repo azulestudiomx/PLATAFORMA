@@ -1,56 +1,46 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { API_BASE_URL } from '../src/config';
+import { peopleApi } from '../services/api';
+import { db } from '../services/db'; // Using the centralized Dexie DB
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import QRCode from 'qrcode';
 import * as XLSX from 'xlsx';
 import Webcam from 'react-webcam';
-import Dexie, { Table } from 'dexie';
 import Swal from 'sweetalert2';
-
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-// Fix for default marker icon
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
-// Fix for default marker icon
-const iconUrl = 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png';
-const shadowUrl = 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png';
+// Fix for map rendering issues
+const MapResizer = () => {
+    const map = useMap();
+    useEffect(() => {
+        setTimeout(() => { map.invalidateSize(); }, 200);
+    }, [map]);
+    return null;
+};
 
-let DefaultIcon = L.icon({
-    iconUrl: iconUrl,
-    shadowUrl: shadowUrl,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41]
+// Fix Leaflet marker icons in React
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
-L.Marker.prototype.options.icon = DefaultIcon;
 
-// --- Dexie Database Setup ---
 interface Person {
-    id?: number; // Dexie auto-increment ID
-    _id?: string; // Optional for local, required for server
+    id?: number;
+    _id?: string;
     name: string;
     phone: string;
     address: string;
     ine: string;
     photo?: string;
     inePhoto?: string;
-    location?: { lat: number; lng: number }; // Geolocation
-    synced?: number; // 0 = Pending, 1 = Synced
+    lat?: number;
+    lng?: number;
+    synced?: number;
 }
-
-class PeopleDatabase extends Dexie {
-    people!: Table<Person>;
-
-    constructor() {
-        super('PeopleDatabase');
-        this.version(1).stores({
-            people: '++id, _id, name, ine, synced' // Indexed fields
-        });
-    }
-}
-
-const db = new PeopleDatabase();
 
 const PeoplePage: React.FC = () => {
     const [people, setPeople] = useState<Person[]>([]);
@@ -78,246 +68,68 @@ const PeoplePage: React.FC = () => {
     const fetchPeople = async () => {
         setLoading(true);
         try {
-            // 1. Get local unsynced data first
-            const localUnsynced = await db.people.where('synced').equals(0).toArray();
+            // 1. Get local unsynced (Dexie)
+            const localRaw = await db.people.toArray();
+            const localUnsynced = localRaw.filter(r => r.synced === 0);
 
-            // 2. Try to fetch from server
-            const res = await fetch(`${API_BASE_URL}/api/people`);
-            if (res.ok) {
-                const serverData = await res.json();
-
-                // 3. Merge: Server data + Local Unsynced data
-                // We prioritize local unsynced for display if there's a conflict, 
-                // but generally they should be distinct sets until synced.
-                // Filter out any server records that might conflict with local unsynced (by _id if available)
+            // 2. Fetch from server (API)
+            try {
+                const serverData = await peopleApi.list();
                 const serverDataFiltered = serverData.filter((s: Person) =>
-                    !localUnsynced.some(l => l._id === s._id)
+                    !localUnsynced.some(l => l._id === s.id)
                 );
-
                 setPeople([...localUnsynced, ...serverDataFiltered]);
-            } else {
-                throw new Error('Server error');
+            } catch (err) {
+                console.warn('Backend server unreachable, showing local data only.', err);
+                setPeople(localRaw);
             }
         } catch (error) {
-            console.log('Offline mode or server error, loading from Dexie...');
-            const localData = await db.people.toArray();
-            setPeople(localData);
+            console.error('Error in fetchPeople:', error);
         } finally {
             setLoading(false);
         }
     };
 
     const handleSync = async () => {
-        const unsynced = await db.people.where('synced').equals(0).toArray();
+        const localRaw = await db.people.toArray();
+        const unsynced = localRaw.filter(r => r.synced === 0);
+        
         if (unsynced.length === 0) {
-            Swal.fire({
-                title: 'Todo en orden',
-                text: 'No hay datos pendientes de sincronizar.',
-                icon: 'info',
-                confirmButtonColor: '#8B0000'
-            });
+            Swal.fire({ title: 'Sincronizado', text: 'No hay datos nuevos para enviar.', icon: 'info' });
             return;
         }
 
         let syncedCount = 0;
         for (const person of unsynced) {
             try {
-                // Send with synced: 1 to ensure server stores it as synced (if server respects it)
-                // or just rely on local update.
-                const personToSync = { ...person, synced: 1 };
-
-                const res = await fetch(`${API_BASE_URL}/api/people`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(personToSync)
-                });
-                if (res.ok) {
-                    const saved = await res.json();
-                    // Update local record to synced
-                    await db.people.update(person.id!, { synced: 1, _id: saved._id });
-                    syncedCount++;
-                }
+                await peopleApi.create(person);
+                await db.people.update(person.id!, { synced: 1 });
+                syncedCount++;
             } catch (err) {
-                console.error('Sync failed for:', person.name);
+                console.error('Sync failed for:', person.name, err);
             }
         }
+        
         Swal.fire({
             title: 'Sincronización Completada',
-            text: `Sincronizados ${syncedCount} de ${unsynced.length} registros.`,
-            icon: 'success',
-            confirmButtonColor: '#8B0000'
+            text: `Se enviaron ${syncedCount} registros.`,
+            icon: 'success'
         });
         fetchPeople();
     };
 
-    const handleEdit = (person: Person) => {
-        setEditingId(person._id || null); // Use _id if available
-        setFormData({ ...person });
-        setShowModal(true);
-    };
-
     const handleExportPDF = () => {
         const doc = new jsPDF();
-        doc.text('Padrón de Personas - Plataforma Ciudadana', 14, 15);
+        doc.text('Padrón de Ciudadanos - Campeche', 14, 15);
         const tableData = people.map(p => [p.name, p.ine, p.phone, p.address]);
-        autoTable(doc, {
-            head: [['Nombre', 'INE', 'Teléfono', 'Dirección']],
-            body: tableData,
-            startY: 20,
-        });
-        doc.save('padron_personas.pdf');
+        autoTable(doc, { head: [['Nombre', 'Folio INE', 'Teléfono', 'Dirección']], body: tableData, startY: 20 });
+        doc.save('padron_ciudadanos_campeche.pdf');
     };
 
-    const generateCredential = async (person: Person) => {
-        try {
-            const doc = new jsPDF({
-                orientation: 'landscape',
-                unit: 'mm',
-                format: [85.6, 53.98] // Standard ID-1 card size
-            });
-
-            // Background
-            doc.setFillColor(245, 245, 245);
-            doc.rect(0, 0, 85.6, 53.98, 'F');
-
-            // Header Strip
-            doc.setFillColor(139, 0, 0); // Brand Red
-            doc.rect(0, 0, 85.6, 10, 'F');
-
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(8);
-            doc.setFont('helvetica', 'bold');
-            doc.text('REGISTRO', 42.8, 6, { align: 'center' });
-
-            // Photo
-            if (person.photo) {
-                try {
-                    doc.addImage(person.photo, 'JPEG', 3, 13, 25, 25);
-                } catch (e) {
-                    console.error('Error adding photo', e);
-                    doc.rect(3, 13, 25, 25); // Placeholder
-                }
-            } else {
-                doc.setDrawColor(200);
-                doc.rect(3, 13, 25, 25);
-                doc.setFontSize(6);
-                doc.setTextColor(150);
-                doc.text('Sin Foto', 15.5, 25, { align: 'center' });
-            }
-
-            // Info
-            doc.setTextColor(0, 0, 0);
-            doc.setFontSize(9);
-            doc.setFont('helvetica', 'bold');
-            doc.text(person.name.substring(0, 25), 30, 18);
-
-            doc.setFontSize(6);
-            doc.setFont('helvetica', 'normal');
-            doc.text('CLAVE INE:', 30, 23);
-            doc.setFont('helvetica', 'bold');
-            doc.text(person.ine || 'N/A', 30, 26);
-
-            doc.setFont('helvetica', 'normal');
-            doc.text('TELÉFONO:', 30, 31);
-            doc.setFont('helvetica', 'bold');
-            doc.text(person.phone || 'N/A', 30, 34);
-
-            // QR Code
-            const qrData = `ID:${person._id}|INE:${person.ine}|NAME:${person.name}`;
-            const qrUrl = await QRCode.toDataURL(qrData);
-            doc.addImage(qrUrl, 'PNG', 62, 13, 20, 20);
-
-            // Footer
-            doc.setFontSize(5);
-            doc.setTextColor(100);
-            doc.text(`ID: ${person._id?.slice(-6) || 'LOCAL'}`, 3, 50);
-            doc.text('Para uso interno de la Plataforma', 82, 50, { align: 'right' });
-
-            doc.save(`Credencial_${person.name.replace(/\s+/g, '_')}.pdf`);
-        } catch (error) {
-            console.error('Error generating credential:', error);
-            Swal.fire({
-                title: 'Error',
-                text: 'No se pudo generar la credencial',
-                icon: 'error',
-                confirmButtonColor: '#8B0000'
-            });
-        }
-    };
-
-    const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        setLoading(true);
-        try {
-            const data = await file.arrayBuffer();
-            const workbook = XLSX.read(data);
-            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet);
-
-            let importedCount = 0;
-            let errorCount = 0;
-
-            for (const row of jsonData as any[]) {
-                // Map columns (adjust keys as needed based on expected Excel format)
-                const name = row['Nombre'] || row['nombre'] || row['Name'];
-                const ine = row['INE'] || row['ine'] || row['Clave'] || '';
-                const phone = row['Telefono'] || row['telefono'] || row['Phone'] || '';
-                const address = row['Direccion'] || row['direccion'] || row['Address'] || '';
-
-                if (!name) {
-                    errorCount++;
-                    continue;
-                }
-
-                const newPerson: Person = {
-                    name,
-                    ine: ine.toString().toUpperCase(),
-                    phone: phone.toString(),
-                    address,
-                    synced: 0
-                };
-
-                // Add to Dexie (Offline First)
-                await db.people.add(newPerson);
-                importedCount++;
-            }
-
-            Swal.fire({
-                title: 'Importación Completada',
-                text: `Se importaron ${importedCount} registros. ${errorCount > 0 ? `${errorCount} errores.` : ''}`,
-                icon: 'success',
-                confirmButtonColor: '#8B0000'
-            });
-
-            fetchPeople(); // Refresh list
-
-            // Trigger sync attempt in background
-            handleSync();
-
-        } catch (error) {
-            console.error('Error importing file:', error);
-            Swal.fire({
-                title: 'Error',
-                text: 'No se pudo procesar el archivo',
-                icon: 'error',
-                confirmButtonColor: '#8B0000'
-            });
-        } finally {
-            setLoading(false);
-            // Reset input
-            e.target.value = '';
-        }
-    };
-
-    const handleDownloadTemplate = () => {
-        const ws = XLSX.utils.json_to_sheet([
-            { Nombre: 'Juan Pérez (Ejemplo)', INE: 'ABC1234567890', Telefono: '9811234567', Direccion: 'Calle 10, Centro, Campeche' }
-        ]);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Plantilla");
-        XLSX.writeFile(wb, "plantilla_padron.xlsx");
+    const handleEdit = (person: Person) => {
+        setEditingId(person._id || null);
+        setFormData({ ...person });
+        setShowModal(true);
     };
 
     const capturePhoto = () => {
@@ -329,62 +141,75 @@ const PeoplePage: React.FC = () => {
         }
     };
 
+    const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setLoading(true);
+        try {
+            const data = await file.arrayBuffer();
+            const workbook = XLSX.read(data);
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+            let importedCount = 0;
+            for (const row of jsonData as any[]) {
+                const name = row['Nombre'] || row['nombre'] || row['Name'];
+                const ine = row['INE'] || row['ine'] || row['Clave'] || '';
+                const phone = row['Telefono'] || row['telefono'] || row['Phone'] || '';
+                const address = row['Direccion'] || row['direccion'] || row['Address'] || '';
+                if (!name) continue;
+                const newPerson: Person = {
+                    name, 
+                    ine: ine.toString().toUpperCase(), 
+                    phone: phone.toString(), 
+                    address, 
+                    synced: 0
+                };
+                await db.people.add(newPerson);
+                importedCount++;
+            }
+            Swal.fire('Éxito', `Se importaron ${importedCount} registros correctamente.`, 'success');
+            fetchPeople();
+            handleSync(); // Attempt to sync in background
+        } catch (error) {
+            Swal.fire('Error', 'No se pudo procesar el archivo Excel.', 'error');
+        } finally {
+            setLoading(false);
+            if (e.target) e.target.value = '';
+        }
+    };
+
+    const handleDownloadTemplate = () => {
+        const ws = XLSX.utils.json_to_sheet([
+            { Nombre: 'Juan Pérez', INE: 'ABC1234567890', Telefono: '9811234567', Direccion: 'Centro, Campeche' }
+        ]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Plantilla");
+        XLSX.writeFile(wb, "plantilla_padron.xlsx");
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setSaving(true);
-
-        const newPerson = { ...formData, synced: 0 }; // Default to unsynced for local storage
+        const personData = { ...formData, synced: 0 };
 
         try {
-            // 1. Save to Dexie (Offline First)
-            const id = await db.people.add(newPerson);
+            // Local First
+            const id = await db.people.add(personData);
 
-            // 2. Try to send to Server
+            // Immediate Sync Attempt
             try {
-                const url = editingId
-                    ? `${API_BASE_URL}/api/people/${editingId}`
-                    : `${API_BASE_URL}/api/people`;
-                const method = editingId ? 'PUT' : 'POST';
-
-                // When sending to server, we want it to be marked as synced
-                const personToSend = { ...newPerson, synced: 1 };
-
-                const res = await fetch(url, {
-                    method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(personToSend)
-                });
-
-                if (res.ok) {
-                    const saved = await res.json();
-                    // Update Dexie as synced
-                    await db.people.update(id, { synced: 1, _id: saved._id });
-                }
-            } catch (serverError) {
-                console.log('Server unreachable, saved locally.');
+                const saved = await peopleApi.create(personData);
+                await db.people.update(id, { synced: 1, _id: saved.id });
+            } catch (syncErr) {
+                console.warn('Sync failed, saved locally only.');
             }
 
             setShowModal(false);
             setFormData({ name: '', phone: '', address: '', ine: '', photo: '', inePhoto: '' });
-            setEditingId(null);
             fetchPeople();
-            Swal.fire({
-                title: '¡Guardado!',
-                text: 'El registro ha sido guardado exitosamente.',
-                icon: 'success',
-                timer: 2000,
-                showConfirmButton: false
-            });
-
+            Swal.fire({ title: '¡Guardado!', text: 'Registro completado.', icon: 'success', timer: 1500, showConfirmButton: false });
         } catch (error) {
-            console.error('Error al guardar:', error);
-            Swal.fire({
-                title: 'Error',
-                text: 'Error al guardar el registro.',
-                icon: 'error',
-                confirmButtonText: 'Ok',
-                confirmButtonColor: '#8B0000'
-            });
+            Swal.fire({ title: 'Error', text: 'No se pudo guardar el registro.', icon: 'error' });
         } finally {
             setSaving(false);
         }
@@ -392,36 +217,73 @@ const PeoplePage: React.FC = () => {
 
     const handleDelete = async (id: string) => {
         const result = await Swal.fire({
-            title: '¿Estás seguro?',
-            text: "No podrás revertir esta acción",
+            title: '¿Confirmar eliminación?',
+            text: "Esta acción removerá a la persona del padrón nacional.",
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
+            confirmButtonColor: '#8B0000',
             confirmButtonText: 'Sí, eliminar',
             cancelButtonText: 'Cancelar'
         });
 
         if (result.isConfirmed) {
             try {
-                await fetch(`${API_BASE_URL}/api/people/${id}`, { method: 'DELETE' });
+                await peopleApi.delete(id);
                 fetchPeople();
-                Swal.fire({
-                    title: '¡Eliminado!',
-                    text: 'El registro ha sido eliminado.',
-                    icon: 'success',
-                    confirmButtonColor: '#8B0000'
-                });
+                Swal.fire('Eliminado', 'El registro ha sido removido.', 'success');
             } catch (error) {
-                console.error('Error al eliminar:', error);
-                Swal.fire({
-                    title: 'Error',
-                    text: 'Error al eliminar el registro.',
-                    icon: 'error',
-                    confirmButtonText: 'Ok',
-                    confirmButtonColor: '#8B0000'
-                });
+                Swal.fire('Error', 'Hubo un fallo al intentar eliminar.', 'error');
             }
+        }
+    };
+
+    const generateCredential = async (person: Person) => {
+        try {
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [85.6, 53.98] });
+            
+            // Premium background & Header
+            doc.setFillColor(252, 252, 252); doc.rect(0, 0, 85.6, 53.98, 'F');
+            doc.setFillColor(139, 0, 0); doc.rect(0, 0, 85.6, 12, 'F');
+            
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(8); doc.setFont('helvetica', 'bold');
+            doc.text('PLATAFORMA CIUDADANA CAMPECHE', 42.8, 7, { align: 'center' });
+
+            // Photo with rounded-like rect
+            if (person.photo) {
+                doc.addImage(person.photo, 'JPEG', 4, 15, 22, 22);
+            } else {
+                doc.setDrawColor(230); doc.rect(4, 15, 22, 22);
+                doc.setFontSize(6); doc.setTextColor(180); doc.text('SIN FOTO', 15, 26, { align: 'center' });
+            }
+
+            // Text Info
+            doc.setTextColor(30, 30, 30);
+            doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+            doc.text(person.name.toUpperCase(), 30, 20);
+
+            doc.setFontSize(6); doc.setTextColor(120); doc.setFont('helvetica', 'normal');
+            doc.text('FOLIO INE:', 30, 25);
+            doc.setTextColor(139, 0, 0); doc.setFont('helvetica', 'bold');
+            doc.text(person.ine || 'PENDIENTE', 30, 28);
+
+            doc.setFontSize(6); doc.setTextColor(120); doc.setFont('helvetica', 'normal');
+            doc.text('TELEFONO:', 30, 33);
+            doc.setTextColor(0, 0, 0); doc.setFont('helvetica', 'bold');
+            doc.text(person.phone || 'NO PROPORCIONADO', 30, 36);
+
+            // QR Code
+            const qrData = `INE:${person.ine}|NAME:${person.name}|PLATAFORMA`;
+            const qrUrl = await QRCode.toDataURL(qrData);
+            doc.addImage(qrUrl, 'PNG', 62, 18, 20, 20);
+
+            // Footer branding
+            doc.setFontSize(4); doc.setTextColor(200);
+            doc.text('DESARROLLADO POR AZUL ESTUDIOS MX', 42.8, 51, { align: 'center' });
+
+            doc.save(`Credencial_${person.name.replace(/\s+/g, '_')}.pdf`);
+        } catch (error) {
+            Swal.fire({ title: 'Error', text: 'No se pudo generar la credencial.', icon: 'error' });
         }
     };
 
@@ -431,83 +293,108 @@ const PeoplePage: React.FC = () => {
     );
 
     return (
-        <div className="max-w-6xl mx-auto">
-            <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-                <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-brand-accent pb-2">
-                    Padrón de Personas
-                </h2>
-                <div className="flex gap-4 w-full md:w-auto">
-                    <div className="relative flex-1 md:w-64">
-                        <i className="fas fa-search absolute left-3 top-3 text-gray-400"></i>
-                        <input
-                            type="text"
-                            placeholder="Buscar por nombre o INE..."
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-brand-primary outline-none"
-                        />
-                    </div>
-                    <button onClick={handleSync} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
-                        <i className="fas fa-sync"></i> Sincronizar
+        <div className="max-w-7xl mx-auto space-y-6 pb-20">
+            {/* Header Area */}
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                <div>
+                    <h2 className="font-brand font-bold text-2xl text-gray-900 tracking-tight">Padrón de Ciudadanos</h2>
+                    <p className="text-sm text-gray-400 mt-0.5">Base de datos unificada de beneficiarios y afiliados</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                    <button onClick={handleSync} className="btn-ghost py-2 text-xs h-10 border border-gray-100 bg-white flex-1 lg:flex-none">
+                        <i className="fas fa-sync-alt mr-2 text-blue-500"></i> Sincronizar
                     </button>
-                    <button onClick={handleExportPDF} className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition flex items-center gap-2">
-                        <i className="fas fa-file-pdf text-red-600"></i> PDF
-                    </button>
-                    <button onClick={handleDownloadTemplate} className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition flex items-center gap-2" title="Descargar Plantilla Excel">
-                        <i className="fas fa-download text-green-600"></i> Plantilla
-                    </button>
-                    <div className="relative">
+                    <div className="relative flex-1 lg:flex-none">
                         <input
                             type="file"
                             accept=".xlsx, .xls, .csv"
                             onChange={handleImport}
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            title="Importar Excel"
                         />
-                        <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition flex items-center gap-2">
-                            <i className="fas fa-file-excel"></i> Importar
+                        <button className="btn-ghost w-full py-2 text-xs h-10 border border-gray-100 bg-white">
+                            <i className="fas fa-file-excel mr-2 text-green-600"></i> Importar Excel
                         </button>
                     </div>
-                    <button
-                        onClick={() => setShowMap(!showMap)}
-                        className={`px-4 py-2 rounded-lg transition flex items-center gap-2 ${showMap ? 'bg-brand-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                    >
-                        <i className={`fas ${showMap ? 'fa-list' : 'fa-map-marked-alt'}`}></i> {showMap ? 'Ver Lista' : 'Ver Mapa'}
+                    <button onClick={handleDownloadTemplate} className="btn-ghost py-2 text-xs h-10 border border-gray-100 bg-white flex-1 lg:flex-none" title="Descargar Plantilla">
+                        <i className="fas fa-download mr-2 text-gray-400"></i> Plantilla
                     </button>
-                    <button
-                        onClick={() => {
-                            setEditingId(null);
-                            setFormData({ name: '', phone: '', address: '', ine: '', photo: '', inePhoto: '' });
-                            setShowModal(true);
-                        }}
-                        className="bg-brand-primary text-white px-4 py-2 rounded-lg hover:bg-red-800 transition flex items-center gap-2"
+                    <button 
+                        onClick={() => { setEditingId(null); setFormData({ name: '', phone: '', address: '', ine: '', photo: '', inePhoto: '' }); setShowModal(true); }}
+                        className="btn-primary py-2 text-xs h-10 shadow-glow-red flex-1 lg:flex-none"
                     >
-                        <i className="fas fa-user-plus"></i> Agregar
+                        <i className="fas fa-plus mr-2"></i> Agregar Registro
                     </button>
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            {/* Dashboard Mini Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white p-4 rounded-2xl shadow-card border border-gray-50 flex items-center gap-4 group cursor-pointer hover:border-brand-primary/20 transition-all">
+                    <div className="w-12 h-12 rounded-xl bg-red-50 text-brand-primary flex items-center justify-center shrink-0">
+                        <i className="fas fa-users text-lg"></i>
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Total Padrón</p>
+                        <p className="text-xl font-brand font-bold text-slate-800 leading-none">{people.length}</p>
+                    </div>
+                </div>
+                <div className="bg-white p-4 rounded-2xl shadow-card border border-gray-50 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                        <i className="fas fa-cloud-upload-alt text-lg"></i>
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Pendientes</p>
+                        <p className="text-xl font-brand font-bold text-slate-800 leading-none">{people.filter(p => !p.synced).length}</p>
+                    </div>
+                </div>
+                <button onClick={() => setShowMap(!showMap)} className="bg-white p-4 rounded-2xl shadow-card border border-gray-50 flex items-center gap-4 hover:bg-slate-50 transition-colors">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${showMap ? 'bg-brand-primary text-white' : 'bg-green-50 text-green-600'}`}>
+                        <i className={`fas ${showMap ? 'fa-list-ul' : 'fa-map-marked-alt'} text-lg`}></i>
+                    </div>
+                    <div className="text-left">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Visualización</p>
+                        <p className="text-base font-brand font-bold text-slate-800 leading-none">{showMap ? 'Ver Lista' : 'Ver Mapa'}</p>
+                    </div>
+                </button>
+                <button onClick={handleExportPDF} className="bg-white p-4 rounded-2xl shadow-card border border-gray-50 flex items-center gap-4 hover:bg-slate-50 transition-colors">
+                    <div className="w-12 h-12 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center shrink-0">
+                        <i className="fas fa-file-export text-lg"></i>
+                    </div>
+                    <div className="text-left">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Herramientas</p>
+                        <p className="text-base font-brand font-bold text-slate-800 leading-none">Exportar PDF</p>
+                    </div>
+                </button>
+            </div>
+
+            {/* List & Search */}
+            <div className="bg-white rounded-3xl shadow-card border border-gray-50 overflow-hidden min-h-[500px]">
+                <div className="p-4 sm:p-6 border-b border-gray-50 flex flex-col sm:flex-row gap-4 items-center">
+                    <div className="relative flex-1 w-full">
+                        <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs translate-y-[-1px]"></i>
+                        <input
+                            type="text"
+                            placeholder="Buscar en el padrón por nombre o INE..."
+                            className="input-modern pl-10 h-11 text-sm"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                </div>
+
                 {showMap ? (
-                    <div className="h-[500px] w-full relative z-0">
-                        <MapContainer
-                            center={[19.8301, -90.5349]} // Campeche Center
-                            zoom={8}
-                            style={{ height: "100%", width: "100%" }}
-                        >
-                            <TileLayer
-                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                            />
+                    <div className="h-[600px] w-full relative z-0">
+                        <MapContainer center={[19.8301, -90.5349]} zoom={8} style={{ height: "100%", width: "100%" }}>
+                            <MapResizer />
+                            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                             {people.map((person, idx) => (
-                                person.location && (
-                                    <Marker key={idx} position={[person.location.lat, person.location.lng]}>
+                                (person.lat && person.lng) && (
+                                    <Marker key={idx} position={[person.lat, person.lng]}>
                                         <Popup>
-                                            <div className="text-center">
-                                                {person.photo && <img src={person.photo} className="w-12 h-12 rounded-full mx-auto mb-2 object-cover" />}
-                                                <h3 className="font-bold text-sm">{person.name}</h3>
-                                                <p className="text-xs text-gray-600">{person.address}</p>
-                                                <p className="text-xs font-mono mt-1">{person.ine}</p>
+                                            <div className="p-1 text-center">
+                                                {person.photo && <img src={person.photo} className="w-16 h-16 rounded-xl mx-auto mb-2 object-cover" />}
+                                                <h3 className="font-bold text-sm text-brand-primary">{person.name}</h3>
+                                                <p className="text-[10px] uppercase font-bold text-gray-400">{person.ine}</p>
                                             </div>
                                         </Popup>
                                     </Marker>
@@ -517,43 +404,56 @@ const PeoplePage: React.FC = () => {
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-50 border-b border-gray-200">
-                                <tr>
-                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Nombre</th>
-                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">INE</th>
-                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Teléfono</th>
-                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Estado</th>
-                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase text-right">Acciones</th>
+                        <table className="min-w-full divide-y divide-gray-50 table-fixed lg:table-auto">
+                            <thead>
+                                <tr className="bg-slate-50/50">
+                                    <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest w-1/3">Ciudadano</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">INE / Clave</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest hidden sm:table-cell">Teléfono</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Sinc</th>
+                                    <th className="px-6 py-4 text-right text-[10px] font-bold text-gray-400 uppercase tracking-widest">Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody className="divide-y divide-gray-50">
                                 {loading ? (
-                                    <tr><td colSpan={5} className="text-center py-8">Cargando...</td></tr>
+                                    <tr><td colSpan={5} className="py-20 text-center"><i className="fas fa-circle-notch fa-spin text-2xl text-brand-primary"></i></td></tr>
                                 ) : filteredPeople.length === 0 ? (
-                                    <tr><td colSpan={5} className="text-center py-8 text-gray-500">No se encontraron registros.</td></tr>
+                                    <tr><td colSpan={5} className="py-20 text-center text-gray-400 italic">No hay registros que coincidan con la búsqueda.</td></tr>
                                 ) : (
-                                    filteredPeople.map((person, idx) => (
-                                        <tr key={person._id || idx} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-6 py-4 font-medium text-gray-900 flex items-center gap-2">
-                                                {person.photo && <img src={person.photo} alt="Foto" className="w-8 h-8 rounded-full object-cover" />}
-                                                {person.name}
-                                            </td>
-                                            <td className="px-6 py-4 text-gray-600 font-mono text-sm">{person.ine}</td>
-                                            <td className="px-6 py-4 text-gray-600">{person.phone}</td>
+                                    filteredPeople.map((p, i) => (
+                                        <tr key={p.id || p.id} className="hover:bg-slate-50/50 transition-colors group">
                                             <td className="px-6 py-4">
-                                                {person.synced === 0 ? (
-                                                    <span className="text-orange-600 text-xs font-bold bg-orange-100 px-2 py-1 rounded">Pendiente</span>
-                                                ) : (
-                                                    <span className="text-green-600 text-xs font-bold bg-green-100 px-2 py-1 rounded">Sincronizado</span>
-                                                )}
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-xl bg-gray-100 overflow-hidden shrink-0">
+                                                        {p.photo ? <img src={p.photo} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-300"><i className="fas fa-user"></i></div>}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm font-bold text-slate-800 truncate">{p.name}</p>
+                                                        <p className="text-[10px] text-gray-400 truncate">{p.address || 'Sin dirección'}</p>
+                                                    </div>
+                                                </div>
                                             </td>
-                                            <td className="px-6 py-4 text-right flex justify-end gap-2">
-                                                <button onClick={() => generateCredential(person)} className="text-purple-600 hover:text-purple-800 p-2" title="Generar Credencial">
-                                                    <i className="fas fa-id-card"></i>
-                                                </button>
-                                                <button onClick={() => handleEdit(person)} className="text-blue-500 hover:text-blue-700 p-2"><i className="fas fa-edit"></i></button>
-                                                <button onClick={() => person._id && handleDelete(person._id)} className="text-red-500 hover:text-red-700 p-2"><i className="fas fa-trash-alt"></i></button>
+                                            <td className="px-6 py-4">
+                                                <span className="font-mono text-xs font-bold text-brand-primary bg-red-50 px-2 py-1 rounded-lg">{p.ine}</span>
+                                            </td>
+                                            <td className="px-6 py-4 hidden sm:table-cell">
+                                                <p className="text-xs font-semibold text-slate-600">{p.phone || '—'}</p>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className={`w-2 h-2 rounded-full ${p.synced ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)] animate-pulse'}`} title={p.synced ? 'Sincronizado' : 'Pendiente'}></div>
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <div className="flex justify-end gap-1.5 translate-x-2 group-hover:translate-x-0 transition-transform">
+                                                    <button onClick={() => generateCredential(p)} className="w-8 h-8 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center hover:bg-violet-600 hover:text-white transition-all">
+                                                        <i className="fas fa-id-card text-xs"></i>
+                                                    </button>
+                                                    <button onClick={() => handleEdit(p)} className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all">
+                                                        <i className="fas fa-edit text-xs"></i>
+                                                    </button>
+                                                    <button onClick={() => p.id && handleDelete(String(p.id))} className="w-8 h-8 rounded-lg bg-red-50 text-red-400 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all">
+                                                        <i className="fas fa-trash-alt text-xs"></i>
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))
@@ -564,101 +464,89 @@ const PeoplePage: React.FC = () => {
                 )}
             </div>
 
-            {/* Modal */}
+            {/* Modal de Captura */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up my-8">
-                        <div className="bg-brand-primary p-4 text-white flex justify-between items-center">
-                            <h3 className="font-bold text-lg">{editingId ? 'Editar Persona' : 'Registrar Persona'}</h3>
-                            <button onClick={() => setShowModal(false)} className="hover:text-gray-200"><i className="fas fa-times"></i></button>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+                    <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden animate-fade-in translate-y-[-20px]">
+                        <div className="bg-brand-primary p-6 text-white flex justify-between items-center bg-brand-gradient">
+                            <h3 className="font-brand font-bold text-lg">{editingId ? 'Editar Perfil' : 'Nuevo Registro'}</h3>
+                            <button onClick={() => setShowModal(false)} className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center hover:bg-white/25 transition-all">
+                                <i className="fas fa-times text-xs"></i>
+                            </button>
                         </div>
 
                         {cameraMode ? (
-                            <div className="p-4 bg-black flex flex-col items-center">
-                                {/* @ts-ignore */}
-                                <Webcam
-                                    audio={false}
-                                    ref={webcamRef}
-                                    screenshotFormat="image/jpeg"
-                                    className="w-full rounded-lg mb-4"
-                                    videoConstraints={{ facingMode: "user" }}
-                                />
+                            <div className="p-8 bg-slate-900 flex flex-col items-center">
+                                <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden border-2 border-white/20 mb-6 shadow-2xl">
+                                    <Webcam 
+                                        audio={false} 
+                                        ref={webcamRef} 
+                                        screenshotFormat="image/jpeg" 
+                                        className="w-full h-full object-cover" 
+                                        videoConstraints={{ facingMode: "user" }}
+                                        mirrored={false}
+                                        imageSmoothing={true}
+                                        disablePictureInPicture={true}
+                                        forceScreenshotSourceSize={false}
+                                        onUserMedia={() => {}}
+                                        onUserMediaError={() => {}}
+                                        screenshotQuality={0.92}
+                                    />
+                                </div>
                                 <div className="flex gap-4">
-                                    <button onClick={capturePhoto} className="bg-white text-black px-6 py-2 rounded-full font-bold hover:bg-gray-200">
-                                        <i className="fas fa-camera"></i> Capturar
+                                    <button onClick={capturePhoto} className="btn-primary bg-white text-brand-primary px-8 shadow-glow-white">
+                                        <i className="fas fa-camera mr-2"></i> Capturar Foto
                                     </button>
-                                    <button onClick={() => setCameraMode(null)} className="text-white px-4 py-2">Cancelar</button>
+                                    <button onClick={() => setCameraMode(null)} className="text-white/60 hover:text-white px-4 text-xs font-bold uppercase tracking-widest">Regresar</button>
                                 </div>
                             </div>
                         ) : (
-                            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                                {/* Photos Section */}
-                                <div className="grid grid-cols-2 gap-4 mb-4">
-                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 cursor-pointer" onClick={() => setCameraMode('photo')}>
-                                        {formData.photo ? (
-                                            <img src={formData.photo} alt="Persona" className="w-full h-32 object-cover rounded" />
-                                        ) : (
-                                            <div className="text-gray-400 py-8">
-                                                <i className="fas fa-user-circle text-3xl mb-2"></i>
-                                                <p className="text-xs">Foto Persona</p>
-                                            </div>
+                            <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-5 overflow-y-auto max-h-[75vh]">
+                                {/* Photo Pickers */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button type="button" onClick={() => setCameraMode('photo')} className="relative aspect-square rounded-2xl border-2 border-dashed border-gray-100 bg-gray-50 flex flex-col items-center justify-center group overflow-hidden hover:bg-gray-100 transition-all">
+                                        {formData.photo ? <img src={formData.photo} className="w-full h-full object-cover" /> : (
+                                            <>
+                                                <i className="fas fa-user-circle text-2xl text-gray-300 group-hover:text-brand-primary transition-colors"></i>
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase mt-2">Foto Ciudadano</span>
+                                            </>
                                         )}
+                                    </button>
+                                    <button type="button" onClick={() => setCameraMode('ine')} className="relative aspect-square rounded-2xl border-2 border-dashed border-gray-100 bg-gray-50 flex flex-col items-center justify-center group overflow-hidden hover:bg-gray-100 transition-all">
+                                        {formData.inePhoto ? <img src={formData.inePhoto} className="w-full h-full object-cover" /> : (
+                                            <>
+                                                <i className="fas fa-id-card text-2xl text-gray-300 group-hover:text-brand-primary transition-colors"></i>
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase mt-2">Foto INE / Doc</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Nombre Completo</label>
+                                        <input required type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="input-modern" placeholder="Ej. Juan Pérez" />
                                     </div>
-                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 cursor-pointer" onClick={() => setCameraMode('ine')}>
-                                        {formData.inePhoto ? (
-                                            <img src={formData.inePhoto} alt="INE" className="w-full h-32 object-cover rounded" />
-                                        ) : (
-                                            <div className="text-gray-400 py-8">
-                                                <i className="fas fa-id-card text-3xl mb-2"></i>
-                                                <p className="text-xs">Foto INE</p>
-                                            </div>
-                                        )}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Folio INE</label>
+                                            <input required type="text" value={formData.ine} onChange={e => setFormData({ ...formData, ine: e.target.value.toUpperCase() })} className="input-modern font-mono text-brand-primary" placeholder="IDMEX..." />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Teléfono</label>
+                                            <input type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="input-modern" placeholder="981..." />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Dirección / Colonia</label>
+                                        <textarea rows={2} value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} className="input-modern resize-none" placeholder="Calle, Número, Colonia..."></textarea>
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Nombre Completo</label>
-                                    <input required type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full p-2 border rounded focus:ring-2 focus:ring-brand-primary outline-none" />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">INE (Clave)</label>
-                                        <input required type="text" value={formData.ine} onChange={e => setFormData({ ...formData, ine: e.target.value.toUpperCase() })} className="w-full p-2 border rounded focus:ring-2 focus:ring-brand-primary outline-none uppercase" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">Teléfono</label>
-                                        <input type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="w-full p-2 border rounded focus:ring-2 focus:ring-brand-primary outline-none" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Dirección</label>
-                                    <textarea rows={3} value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} className="w-full p-2 border rounded focus:ring-2 focus:ring-brand-primary outline-none resize-none"></textarea>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            navigator.geolocation.getCurrentPosition(
-                                                (pos) => {
-                                                    setFormData({
-                                                        ...formData,
-                                                        location: { lat: pos.coords.latitude, lng: pos.coords.longitude }
-                                                    });
-                                                    Swal.fire('Ubicación Capturada', '', 'success');
-                                                },
-                                                (err) => Swal.fire('Error', 'No se pudo obtener la ubicación', 'error')
-                                            );
-                                        }}
-                                        className={`text-sm font-bold flex items-center gap-2 ${formData.location ? 'text-green-600' : 'text-gray-500 hover:text-brand-primary'}`}
-                                    >
-                                        <i className="fas fa-map-marker-alt"></i>
-                                        {formData.location ? 'Ubicación Guardada' : 'Capturar Ubicación GPS'}
-                                    </button>
-                                </div>
-                                <div className="pt-2 flex justify-end gap-2">
-                                    <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded transition-colors">Cancelar</button>
-                                    <button type="submit" disabled={saving} className="bg-brand-primary text-white px-6 py-2 rounded shadow hover:bg-red-800 transition-colors disabled:opacity-70">
-                                        {saving ? 'Guardando...' : (editingId ? 'Actualizar' : 'Guardar Registro')}
+                                <div className="pt-4 flex gap-3">
+                                    <button type="button" onClick={() => setShowModal(false)} className="btn-ghost text-xs px-6">Cancelar</button>
+                                    <button type="submit" disabled={saving} className="btn-primary flex-1 shadow-glow-red">
+                                        {saving ? <i className="fas fa-sync fa-spin"></i> : (editingId ? 'Actualizar Perfil' : 'Guardar y Sincronizar')}
                                     </button>
                                 </div>
                             </form>
