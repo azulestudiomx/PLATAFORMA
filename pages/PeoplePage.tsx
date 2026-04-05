@@ -86,8 +86,8 @@ const PeoplePage: React.FC = () => {
                 
                 // Add server records if they don't exist locally (by INE or _id)
                 serverData.forEach((s: any) => {
-                    const existsLocally = combined.some(l => l.ine === s.ine || l._id === s.id);
-                    if (!existsLocally) {
+                    const localIdx = combined.findIndex(l => l.ine === s.ine || l._id === s.id);
+                    if (localIdx === -1) {
                         combined.push({ 
                           ...s, 
                           id: undefined, 
@@ -95,10 +95,17 @@ const PeoplePage: React.FC = () => {
                           synced: 1 
                         });
                     } else {
-                        // Update local record with server _id if matched by INE
-                        const idx = combined.findIndex(l => l.ine === s.ine);
-                        if (idx !== -1 && !combined[idx]._id) {
-                            combined[idx]._id = s.id;
+                        // If local record is already synced (== 1), trust the server data
+                        if (combined[localIdx].synced === 1) {
+                            combined[localIdx] = { 
+                                ...combined[localIdx], 
+                                ...s, 
+                                _id: s.id,
+                                synced: 1 
+                            };
+                        } else {
+                            // If local record is pending, just attach server _id if missing
+                            if (!combined[localIdx]._id) combined[localIdx]._id = s.id;
                         }
                     }
                 });
