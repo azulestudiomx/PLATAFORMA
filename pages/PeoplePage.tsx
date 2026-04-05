@@ -60,6 +60,12 @@ const PeoplePage: React.FC = () => {
     const [cameraMode, setCameraMode] = useState<'photo' | 'ine' | null>(null);
     const [showMap, setShowMap] = useState(false);
     const webcamRef = useRef<Webcam>(null);
+    
+    const closeModal = () => {
+        setShowModal(false);
+        setEditingId(null);
+        setFormData({ name: '', phone: '', address: '', ine: '', photo: '', inePhoto: '' });
+    };
 
     useEffect(() => {
         fetchPeople();
@@ -127,7 +133,7 @@ const PeoplePage: React.FC = () => {
     };
 
     const handleEdit = (person: Person) => {
-        setEditingId(person._id || null);
+        setEditingId(person._id || (person.id ? String(person.id) : null));
         setFormData({ ...person });
         setShowModal(true);
     };
@@ -193,22 +199,54 @@ const PeoplePage: React.FC = () => {
         const personData = { ...formData, synced: 0 };
 
         try {
-            // Local First
-            const id = await db.people.add(personData);
+            let finalId = personData.id;
 
-            // Immediate Sync Attempt
-            try {
-                const saved = await peopleApi.create(personData);
-                await db.people.update(id, { synced: 1, _id: saved.id });
-            } catch (syncErr) {
-                console.warn('Sync failed, saved locally only.');
+            if (editingId) {
+                // Update Local (Dexie)
+                if (personData.id) {
+                    await db.people.update(personData.id, personData);
+                } else {
+                    // Fallback search by INE if somehow ID is missing but we're editing
+                    const existing = await db.people.where('ine').equals(personData.ine).first();
+                    if (existing) await db.people.update(existing.id!, personData);
+                }
+                
+                // Update Remote if synced
+                if (personData._id) {
+                    try {
+                        await peopleApi.update(personData._id, personData);
+                        if (personData.id) await db.people.update(personData.id, { synced: 1 });
+                    } catch (syncErr) {
+                        console.warn('Remote update failed, kept locally.');
+                    }
+                }
+            } else {
+                // Create New Local
+                const newId = await db.people.add(personData);
+                finalId = newId;
+
+                // Immediate Sync Attempt
+                try {
+                    const saved = await peopleApi.create(personData);
+                    await db.people.update(newId, { synced: 1, _id: saved.id });
+                } catch (syncErr) {
+                    console.warn('Sync failed, saved locally only.');
+                }
             }
 
             setShowModal(false);
+            setEditingId(null);
             setFormData({ name: '', phone: '', address: '', ine: '', photo: '', inePhoto: '' });
             fetchPeople();
-            Swal.fire({ title: '¡Guardado!', text: 'Registro completado.', icon: 'success', timer: 1500, showConfirmButton: false });
+            Swal.fire({ 
+                title: editingId ? '¡Actualizado!' : '¡Guardado!', 
+                text: editingId ? 'Cambios guardados.' : 'Registro completado.', 
+                icon: 'success', 
+                timer: 1500, 
+                showConfirmButton: false 
+            });
         } catch (error) {
+            console.error('Save error:', error);
             Swal.fire({ title: 'Error', text: 'No se pudo guardar el registro.', icon: 'error' });
         } finally {
             setSaving(false);
@@ -467,10 +505,10 @@ const PeoplePage: React.FC = () => {
             {/* Modal de Captura */}
             {showModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
-                    <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden animate-fade-in translate-y-[-20px]">
+                    <div className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden animate-fade-in sm:translate-y-[-20px] transform transition-all">
                         <div className="bg-brand-primary p-6 text-white flex justify-between items-center bg-brand-gradient">
                             <h3 className="font-brand font-bold text-lg">{editingId ? 'Editar Perfil' : 'Nuevo Registro'}</h3>
-                            <button onClick={() => setShowModal(false)} className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center hover:bg-white/25 transition-all">
+                            <button onClick={closeModal} className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center hover:bg-white/25 transition-all">
                                 <i className="fas fa-times text-xs"></i>
                             </button>
                         </div>
@@ -483,7 +521,7 @@ const PeoplePage: React.FC = () => {
                                         ref={webcamRef} 
                                         screenshotFormat="image/jpeg" 
                                         className="w-full h-full object-cover" 
-                                        videoConstraints={{ facingMode: "user" }}
+                                        videoConstraints={{ facingMode: "environment" }}
                                         mirrored={false}
                                         imageSmoothing={true}
                                         disablePictureInPicture={true}
@@ -522,29 +560,34 @@ const PeoplePage: React.FC = () => {
                                     </button>
                                 </div>
 
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Nombre Completo</label>
-                                        <input required type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="input-modern" placeholder="Ej. Juan Pérez" />
-                                    </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-4">
                                         <div>
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Folio INE</label>
-                                            <input required type="text" value={formData.ine} onChange={e => setFormData({ ...formData, ine: e.target.value.toUpperCase() })} className="input-modern font-mono text-brand-primary" placeholder="IDMEX..." />
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Nombre Completo</label>
+                                            <input required type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="input-modern" placeholder="Ej. Juan Pérez" />
                                         </div>
-                                        <div>
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Teléfono</label>
-                                            <input type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="input-modern" placeholder="981..." />
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Folio INE</label>
+                                                <input required type="text" value={formData.ine} onChange={e => setFormData({ ...formData, ine: e.target.value.toUpperCase() })} className="input-modern font-mono text-brand-primary" placeholder="IDMEX..." />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Teléfono</label>
+                                                <input type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="input-modern" placeholder="981..." />
+                                            </div>
                                         </div>
                                     </div>
-                                    <div>
-                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Dirección / Colonia</label>
-                                        <textarea rows={2} value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} className="input-modern resize-none" placeholder="Calle, Número, Colonia..."></textarea>
+                                    
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Dirección / Colonia</label>
+                                            <textarea rows={4} value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} className="input-modern resize-none" placeholder="Calle, Número, Colonia..."></textarea>
+                                        </div>
                                     </div>
                                 </div>
 
                                 <div className="pt-4 flex gap-3">
-                                    <button type="button" onClick={() => setShowModal(false)} className="btn-ghost text-xs px-6">Cancelar</button>
+                                    <button type="button" onClick={closeModal} className="btn-ghost text-xs px-6">Cancelar</button>
                                     <button type="submit" disabled={saving} className="btn-primary flex-1 shadow-glow-red">
                                         {saving ? <i className="fas fa-sync fa-spin"></i> : (editingId ? 'Actualizar Perfil' : 'Guardar y Sincronizar')}
                                     </button>
