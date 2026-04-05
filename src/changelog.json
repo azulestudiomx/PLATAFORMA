@@ -1,7 +1,18 @@
 {
-  "currentVersion": "3.1.2",
-  "lastUpdate": "2026-04-05T07:45:00Z",
+  "currentVersion": "5.0.0",
+  "lastUpdate": "2026-04-05T15:45:00Z",
   "history": [
+    {
+      "version": "5.0.0",
+      "date": "2026-04-05",
+      "type": "Deploy Automation & Final Features",
+      "changes": [
+        "Implementación de Scripts de Auto-Despliegue (bash deploy-frontend.sh)",
+        "Integración de Módulo de Cámara Profesional con 4 slots de evidencia",
+        "Exportación masiva a Excel desde la lista de reportes mejorada",
+        "Configuración final de CORS y puertos en VPS para despliegue multiplataforma"
+      ]
+    },
     {
       "version": "3.1.2",
       "date": "2026-04-05",
