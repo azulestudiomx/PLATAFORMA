@@ -46,6 +46,11 @@ model Person {
   name      String
   phone     String?
   address   String?
+  municipio String?
+  localidad String?
+  distrito  String?
+  zona      String?
+  seccion   String?
   ine       String?  @unique
   photo     String?
   inePhoto  String?
@@ -55,6 +60,7 @@ model Person {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
 
 model Event {
   id          String   @id @default(uuid())

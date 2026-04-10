@@ -8,10 +8,11 @@ class PWADataBase extends Dexie {
   constructor() {
     super('PlataformaCampecheDB');
     // Using 'as any' to bypass TypeScript error where 'version' is not found on the type
-    (this as any).version(2).stores({
+    (this as any).version(3).stores({
       reports: '++id, timestamp, synced, municipio',
-      people: '++id, _id, name, ine, synced'
+      people: '++id, _id, name, ine, synced, municipio, localidad, distrito, zona, seccion'
     });
+
   }
 }
 

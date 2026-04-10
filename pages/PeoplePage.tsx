@@ -28,12 +28,23 @@ L.Icon.Default.mergeOptions({
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
+const MUNICIPALIOS = [
+    "Campeche", "Carmen", "Champotón", "Escárcega", "Calkiní",
+    "Hecelchakán", "Hopelchén", "Tenabo", "Candelaria",
+    "Calakmul", "Palizada", "Seybaplaya", "Dzitbalché"
+];
+
 interface Person {
     id?: number;
     _id?: string;
     name: string;
     phone: string;
     address: string;
+    municipio?: string;
+    localidad?: string;
+    distrito?: string;
+    zona?: string;
+    seccion?: string;
     ine: string;
     photo?: string;
     inePhoto?: string;
@@ -42,16 +53,24 @@ interface Person {
     synced?: number;
 }
 
+
 const PeoplePage: React.FC = () => {
     const [people, setPeople] = useState<Person[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [filterMunicipio, setFilterMunicipio] = useState('');
+    const [filterSeccion, setFilterSeccion] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState<Person>({
         name: '',
         phone: '',
         address: '',
+        municipio: '',
+        localidad: '',
+        distrito: '',
+        zona: '',
+        seccion: '',
         ine: '',
         photo: '',
         inePhoto: ''
@@ -62,6 +81,7 @@ const PeoplePage: React.FC = () => {
     const [viewingIne, setViewingIne] = useState<string | null>(null);
     const [mapCenter, setMapCenter] = useState<[number, number]>([19.8301, -90.5349]);
     const [userLoc, setUserLoc] = useState<[number, number] | null>(null);
+
     const webcamRef = useRef<Webcam>(null);
 
     const getCurrentLocation = () => {
@@ -104,9 +124,14 @@ const PeoplePage: React.FC = () => {
     const closeModal = () => {
         setShowModal(false);
         setEditingId(null);
-        setFormData({ name: '', phone: '', address: '', ine: '', photo: '', inePhoto: '', lat: undefined, lng: undefined });
+        setFormData({ 
+            name: '', phone: '', address: '', ine: '', photo: '', inePhoto: '', 
+            municipio: '', localidad: '', distrito: '', zona: '', seccion: '',
+            lat: undefined, lng: undefined 
+        });
         setUserLoc(null);
     };
+
 
     useEffect(() => {
         fetchPeople();
@@ -230,6 +255,8 @@ const PeoplePage: React.FC = () => {
 
         const tableData = people.map(p => [
             p.name.toUpperCase(), 
+            p.seccion || '-',
+            p.municipio || '-',
             p.ine, 
             p.phone || '-', 
             p.address || '-',
@@ -237,13 +264,14 @@ const PeoplePage: React.FC = () => {
         ]);
 
         autoTable(doc, { 
-            head: [['Nombre Completo', 'Folio INE', 'Teléfono', 'Domicilio / Referencia', 'Coordenadas GPS']], 
+            head: [['Nombre Completo', 'Secc.', 'Municipio', 'Folio INE', 'Teléfono', 'Domicilio / Referencia', 'Coordenadas GPS']], 
             body: tableData, 
             startY: 30,
             styles: { fontSize: 8 },
             headStyles: { fillColor: [139, 0, 0] },
             alternateRowStyles: { fillColor: [245, 245, 245] }
         });
+
         
         doc.save(`PADRON_CAMPECHE_${Date.now()}.pdf`);
     };
@@ -278,15 +306,23 @@ const PeoplePage: React.FC = () => {
                 const ine = row['INE'] || row['ine'] || row['Clave'] || '';
                 const phone = row['Telefono'] || row['telefono'] || row['Phone'] || '';
                 const address = row['Direccion'] || row['direccion'] || row['Address'] || '';
+                const municipio = row['Municipio'] || row['municipio'] || '';
+                const localidad = row['Localidad'] || row['localidad'] || '';
+                const seccion = row['Seccion'] || row['seccion'] || row['Sección'] || '';
+                
                 if (!name) continue;
                 const newPerson: Person = {
                     name, 
                     ine: ine.toString().toUpperCase(), 
                     phone: phone.toString(), 
                     address, 
+                    municipio,
+                    localidad,
+                    seccion: seccion.toString(),
                     synced: 0
                 };
                 await db.people.add(newPerson);
+
                 importedCount++;
             }
             Swal.fire('Éxito', `Se importaron ${importedCount} registros correctamente.`, 'success');
@@ -302,8 +338,9 @@ const PeoplePage: React.FC = () => {
 
     const handleDownloadTemplate = () => {
         const ws = XLSX.utils.json_to_sheet([
-            { Nombre: 'Juan Pérez', INE: 'ABC1234567890', Telefono: '9811234567', Direccion: 'Centro, Campeche' }
+            { Nombre: 'Juan Pérez', INE: 'ABC1234567890', Telefono: '9811234567', Direccion: 'Centro, Campeche', Municipio: 'Campeche', Localidad: 'Centro', Seccion: '123' }
         ]);
+
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Plantilla");
         XLSX.writeFile(wb, "plantilla_padron.xlsx");
@@ -361,7 +398,11 @@ const PeoplePage: React.FC = () => {
 
             setShowModal(false);
             setEditingId(null);
-            setFormData({ name: '', phone: '', address: '', ine: '', photo: '', inePhoto: '' });
+            setFormData({ 
+                name: '', phone: '', address: '', ine: '', photo: '', inePhoto: '',
+                municipio: '', localidad: '', distrito: '', zona: '', seccion: ''
+            });
+
             
             // Wait 500ms before re-fetching to let server commit transaction
             setTimeout(() => fetchPeople(), 500);
@@ -453,10 +494,15 @@ const PeoplePage: React.FC = () => {
         }
     };
 
-    const filteredPeople = people.filter(p =>
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.ine.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredPeople = people.filter(p => {
+        const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.ine.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesMunicipio = filterMunicipio === '' || p.municipio === filterMunicipio;
+        const matchesSeccion = filterSeccion === '' || p.seccion?.includes(filterSeccion);
+        
+        return matchesSearch && matchesMunicipio && matchesSeccion;
+    });
+
 
     return (
         <div className="max-w-7xl mx-auto space-y-6 pb-20">
@@ -485,7 +531,15 @@ const PeoplePage: React.FC = () => {
                         <i className="fas fa-download mr-2 text-gray-400"></i> Plantilla
                     </button>
                     <button 
-                        onClick={() => { setEditingId(null); setFormData({ name: '', phone: '', address: '', ine: '', photo: '', inePhoto: '' }); setShowModal(true); }}
+                        onClick={() => { 
+                            setEditingId(null); 
+                            setFormData({ 
+                                name: '', phone: '', address: '', ine: '', photo: '', inePhoto: '', 
+                                municipio: '', localidad: '', distrito: '', zona: '', seccion: '' 
+                            }); 
+                            setShowModal(true); 
+                        }}
+
                         className="btn-primary py-2 text-xs h-10 shadow-glow-red flex-1 lg:flex-none"
                     >
                         <i className="fas fa-plus mr-2"></i> Agregar Registro
@@ -541,11 +595,29 @@ const PeoplePage: React.FC = () => {
                         <input
                             type="text"
                             placeholder="Buscar en el padrón por nombre o INE..."
-                            className="input-modern pl-10 h-11 text-sm"
+                            className="input-modern pl-10 h-11 text-sm bg-slate-50 border-none"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                        <select 
+                            value={filterMunicipio} 
+                            onChange={e => setFilterMunicipio(e.target.value)}
+                            className="input-modern h-11 text-xs px-4 bg-slate-50 border-none w-full sm:w-40"
+                        >
+                            <option value="">Todos los Municipios</option>
+                            {MUNICIPALIOS.map(m => <option key={m} value={m}>{m}</option>)}
+                        </select>
+                        <input
+                            type="text"
+                            placeholder="Secc."
+                            className="input-modern h-11 text-xs px-4 bg-slate-50 border-none w-20 sm:w-24 text-center"
+                            value={filterSeccion}
+                            onChange={(e) => setFilterSeccion(e.target.value)}
+                        />
+                    </div>
+
                 </div>
 
                 {showMap ? (
@@ -576,11 +648,13 @@ const PeoplePage: React.FC = () => {
                         <table className="min-w-full divide-y divide-gray-50 table-fixed lg:table-auto">
                             <thead>
                                 <tr className="bg-slate-50/50">
-                                    <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest w-1/3">Ciudadano</th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">INE / Clave</th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest hidden sm:table-cell">Teléfono</th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Sinc</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest w-[30%]">Ciudadano</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest w-[12%]">Sección</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest w-[15%]">Zona / Distrito</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest w-[15%]">INE / Clave</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest w-[10%]">Sinc</th>
                                     <th className="px-6 py-4 text-right text-[10px] font-bold text-gray-400 uppercase tracking-widest">Acciones</th>
+
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
@@ -603,14 +677,24 @@ const PeoplePage: React.FC = () => {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className="font-mono text-xs font-bold text-brand-primary bg-red-50 px-2 py-1 rounded-lg">{p.ine}</span>
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs font-bold text-brand-primary">{p.seccion || 'S/S'}</span>
+                                                    <span className="text-[9px] text-gray-400 font-bold uppercase truncate">{p.municipio || p.localidad || '-'}</span>
+                                                </div>
                                             </td>
-                                            <td className="px-6 py-4 hidden sm:table-cell">
-                                                <p className="text-xs font-semibold text-slate-600">{p.phone || '—'}</p>
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs font-semibold text-slate-700">D{p.distrito || '-'}</span>
+                                                    <span className="text-[10px] text-slate-400">Zona {p.zona || '-'}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="font-mono text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded-lg">{p.ine}</span>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className={`w-2 h-2 rounded-full ${p.synced ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)] animate-pulse'}`} title={p.synced ? 'Sincronizado' : 'Pendiente'}></div>
                                             </td>
+
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex justify-end gap-1.5 translate-x-2 group-hover:translate-x-0 transition-transform">
                                                     <button onClick={() => setViewingIne(p.inePhoto || '')} className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-400 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all" title="Ver INE">
@@ -700,16 +784,44 @@ const PeoplePage: React.FC = () => {
                                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Nombre Completo</label>
                                             <input required type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="input-modern" placeholder="Ej. Juan Pérez" />
                                         </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Municipio</label>
+                                                <select value={formData.municipio} onChange={e => setFormData({ ...formData, municipio: e.target.value })} className="input-modern">
+                                                    <option value="">Seleccione...</option>
+                                                    {MUNICIPALIOS.map(m => <option key={m} value={m}>{m}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Localidad / Colonia</label>
+                                                <input type="text" value={formData.localidad} onChange={e => setFormData({ ...formData, localidad: e.target.value })} className="input-modern" placeholder="Centro..." />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-3">
+                                            <div>
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Distrito</label>
+                                                <input type="text" value={formData.distrito} onChange={e => setFormData({ ...formData, distrito: e.target.value })} className="input-modern" placeholder="01" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Zona</label>
+                                                <input type="text" value={formData.zona} onChange={e => setFormData({ ...formData, zona: e.target.value })} className="input-modern" placeholder="Norte" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Sección</label>
+                                                <input required type="text" value={formData.seccion} onChange={e => setFormData({ ...formData, seccion: e.target.value })} className="input-modern font-bold text-brand-primary" placeholder="0001" />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Folio INE</label>
-                                                <input required type="text" value={formData.ine} onChange={e => setFormData({ ...formData, ine: e.target.value.toUpperCase() })} className="input-modern font-mono text-brand-primary" placeholder="IDMEX..." />
+                                                <input required type="text" value={formData.ine} onChange={e => setFormData({ ...formData, ine: e.target.value.toUpperCase() })} className="input-modern font-mono" placeholder="IDMEX..." />
                                             </div>
                                             <div>
                                                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Teléfono</label>
                                                 <input type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="input-modern" placeholder="981..." />
                                             </div>
                                         </div>
+
                                     </div>
                                     
                                     <div className="space-y-4">
