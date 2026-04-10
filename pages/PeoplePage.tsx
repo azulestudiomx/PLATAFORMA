@@ -509,8 +509,9 @@ const PeoplePage: React.FC = () => {
 
 
             // Footer branding
-            doc.setFontSize(4); doc.setTextColor(200);
-            doc.text('DESARROLLADO POR AZUL ESTUDIOS MX', 42.8, 51, { align: 'center' });
+            doc.setFontSize(6); doc.setTextColor(180);
+            doc.text('Plataforma Campeche', 42.8, 51, { align: 'center' });
+
 
             doc.save(`Credencial_${person.name.replace(/\s+/g, '_')}.pdf`);
         } catch (error) {
