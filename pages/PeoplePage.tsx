@@ -422,10 +422,10 @@ const PeoplePage: React.FC = () => {
         }
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = async (person: Person) => {
         const result = await Swal.fire({
             title: '¿Confirmar eliminación?',
-            text: "Esta acción removerá a la persona del padrón nacional.",
+            text: `Esta acción removerá a ${person.name} del padrón y de la base de datos local.`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#8B0000',
@@ -435,14 +435,37 @@ const PeoplePage: React.FC = () => {
 
         if (result.isConfirmed) {
             try {
-                await peopleApi.delete(id);
-                fetchPeople();
-                Swal.fire('Eliminado', 'El registro ha sido removido.', 'success');
+                // 1. Delete from Server if it was synced
+                if (person._id) {
+                    try {
+                        await peopleApi.delete(person._id);
+                    } catch (apiErr) {
+                        console.warn('Could not delete from server, proceeding with local deletion.', apiErr);
+                    }
+                }
+
+                // 2. Delete from Local DB (Dexie)
+                if (person.id) {
+                    await db.people.delete(person.id);
+                }
+
+                // 3. Update UI
+                setPeople(prev => prev.filter(p => p.id !== person.id && p._id !== person._id));
+                
+                Swal.fire({
+                    title: 'Eliminado',
+                    text: 'El registro ha sido removido.',
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
             } catch (error) {
-                Swal.fire('Error', 'Hubo un fallo al intentar eliminar.', 'error');
+                console.error('Delete error:', error);
+                Swal.fire('Error', 'Hubo un fallo al intentar eliminar de la base de datos.', 'error');
             }
         }
     };
+
 
     const generateCredential = async (person: Person) => {
         try {
@@ -706,9 +729,10 @@ const PeoplePage: React.FC = () => {
                                                     <button onClick={() => handleEdit(p)} className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all">
                                                         <i className="fas fa-edit text-xs"></i>
                                                     </button>
-                                                    <button onClick={() => p.id && handleDelete(String(p.id))} className="w-8 h-8 rounded-lg bg-red-50 text-red-400 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all">
+                                                    <button onClick={() => handleDelete(p)} className="w-8 h-8 rounded-lg bg-red-50 text-red-400 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all">
                                                         <i className="fas fa-trash-alt text-xs"></i>
                                                     </button>
+
                                                 </div>
                                             </td>
                                         </tr>
