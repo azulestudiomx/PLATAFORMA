@@ -493,19 +493,20 @@ const PeoplePage: React.FC = () => {
             doc.text(person.name.toUpperCase(), 30, 20);
 
             doc.setFontSize(6); doc.setTextColor(120); doc.setFont('helvetica', 'normal');
-            doc.text('FOLIO INE:', 30, 25);
+            doc.text('SECC / DISTRITO:', 30, 25);
             doc.setTextColor(139, 0, 0); doc.setFont('helvetica', 'bold');
-            doc.text(person.ine || 'PENDIENTE', 30, 28);
+            doc.text(`${person.seccion || '0000'} - D${person.distrito || '00'}`, 30, 28);
 
             doc.setFontSize(6); doc.setTextColor(120); doc.setFont('helvetica', 'normal');
             doc.text('TELEFONO:', 30, 33);
             doc.setTextColor(0, 0, 0); doc.setFont('helvetica', 'bold');
             doc.text(person.phone || 'NO PROPORCIONADO', 30, 36);
 
-            // QR Code
-            const qrData = `INE:${person.ine}|NAME:${person.name}|PLATAFORMA`;
+            // QR Code - Updated to remove INE for privacy
+            const qrData = `SEC:${person.seccion}|NAME:${person.name}|PLATAFORMA`;
             const qrUrl = await QRCode.toDataURL(qrData);
             doc.addImage(qrUrl, 'PNG', 62, 18, 20, 20);
+
 
             // Footer branding
             doc.setFontSize(4); doc.setTextColor(200);
