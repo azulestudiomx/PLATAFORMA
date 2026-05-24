@@ -46,9 +46,10 @@ interface Resumen {
 }
 
 const MUNICIPIO_NOMBRES: Record<number, string> = {
-    1: 'Calkiní', 2: 'Campeche', 3: 'Carmen', 4: 'Champotón',
-    5: 'Hecelchakán', 6: 'Hopelchén', 7: 'Palizada', 8: 'Tenabo',
-    9: 'Escárcega', 10: 'Calakmul', 11: 'Candelaria', 12: 'Seybaplaya', 13: 'Dzitbalché',
+    1: 'Campeche',    2: 'Calkiní',     3: 'Carmen',      4: 'Champotón',
+    5: 'Hecelchakán', 6: 'Hopelchén',   7: 'Palizada',    8: 'Tenabo',
+    9: 'Escárcega',   10: 'Candelaria', 11: 'Calakmul',   12: 'Dzitbalché',
+    13: 'Seybaplaya',
 };
 const TIPO_LABELS: Record<number, string> = { 2: '🏙️ Urbana', 3: '🏘️ Mixta', 4: '🌾 Rural' };
 

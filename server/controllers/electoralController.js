@@ -13,21 +13,21 @@ const prisma = require('../services/db');
 // ─────────────────────────────────────────────────────────────────────────────
 const DATA_ROOT = path.join(__dirname, '..', '..');
 
-// Nombres de los 13 municipios de Campeche por ID (IEEC/INE)
+// Nombres de los 13 municipios de Campeche por ID (IEEC — orden REAL verificado por centroides)
 const MUNICIPIO_NOMBRES = {
-    1:  'Calkiní',
-    2:  'Campeche',
-    3:  'Carmen',
-    4:  'Champotón',
-    5:  'Hecelchakán',
-    6:  'Hopelchén',
-    7:  'Palizada',
-    8:  'Tenabo',
-    9:  'Escárcega',
-    10: 'Calakmul',
-    11: 'Candelaria',
-    12: 'Seybaplaya',
-    13: 'Dzitbalché',
+    1:  'Campeche',    // 19.81°N -90.48°W — capital del estado ✓
+    2:  'Calkiní',     // 20.39°N -90.12°W — municipio norte ✓
+    3:  'Carmen',      // 18.64°N -91.71°W — costa suroeste ✓
+    4:  'Champotón',   // 19.22°N -90.64°W — sur de la capital ✓
+    5:  'Hecelchakán', // 20.17°N -90.15°W — noreste ✓
+    6:  'Hopelchén',   // 19.65°N -89.72°W — este ✓
+    7:  'Palizada',    // 18.25°N -91.99°W — extremo suroeste ✓
+    8:  'Tenabo',      // 19.99°N -90.27°W — norte-centro ✓
+    9:  'Escárcega',   // 18.58°N -90.69°W — sur-centro ✓
+    10: 'Candelaria',  // 18.10°N -90.86°W — sureste ✓
+    11: 'Calakmul',    // 18.43°N -89.46°W — extremo este ✓
+    12: 'Dzitbalché',  // 20.30°N -90.05°W — norte ✓
+    13: 'Seybaplaya',  // 19.61°N -90.68°W — costa sur capital ✓
 };
 
 const TIPO_NOMBRES = { 2: 'Urbana', 3: 'Mixta', 4: 'Rural' };
