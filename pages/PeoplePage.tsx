@@ -20,6 +20,31 @@ const MapResizer = () => {
     return null;
 };
 
+// Approximate coords from section number (Campeche bounding box)
+const getApproxCoords = (seccion?: string): [number, number] | null => {
+    if (!seccion) return null;
+    const s = parseInt(seccion, 10);
+    if (isNaN(s)) return null;
+    const seed = s * 9301 + 49297;
+    const lat = 19.72 + ((seed % 1000) / 1000) * 0.30;
+    // Coastline offset: more east at higher latitudes
+    const lngCoast = -90.60 + (lat - 19.72) * 0.55;
+    const lng = lngCoast + ((seed % 700) / 700) * 0.35;
+    return [lat, lng];
+};
+
+// Custom icons
+const redIcon = new L.Icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+});
+const blueIcon = new L.Icon({
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+});
+
 // Fix Leaflet marker icons in React
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -677,25 +702,46 @@ const PeoplePage: React.FC = () => {
 
                 {showMap ? (
                     <div className="h-[600px] w-full relative z-0">
+                        {/* Map legend */}
+                        <div className="absolute top-3 right-3 z-[999] bg-white/90 backdrop-blur-sm rounded-xl shadow-lg px-3 py-2 text-[10px] space-y-1">
+                            <div className="flex items-center gap-2">
+                                <span className="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
+                                <span className="font-bold text-slate-600">GPS real</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="w-3 h-3 rounded-full bg-blue-500 inline-block"></span>
+                                <span className="font-bold text-slate-600">Aprox. por sección</span>
+                            </div>
+                            <div className="border-t pt-1 text-slate-400">
+                                {filteredPeople.filter(p => p.lat && p.lng || getApproxCoords(p.seccion)).length} / {filteredPeople.length} visibles
+                            </div>
+                        </div>
                         <MapContainer center={[19.8301, -90.5349]} zoom={8} style={{ height: "100%", width: "100%" }}>
                             <MapResizer />
                             <TileLayer 
                                 url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
                             />
-                            {people.map((person, idx) => (
-                                (person.lat && person.lng) && (
-                                    <Marker key={idx} position={[person.lat, person.lng]}>
+                            {filteredPeople.map((person, idx) => {
+                                const hasGPS = !!(person.lat && person.lng);
+                                const pos: [number, number] | null = hasGPS
+                                    ? [person.lat!, person.lng!]
+                                    : getApproxCoords(person.seccion);
+                                if (!pos) return null;
+                                return (
+                                    <Marker key={idx} position={pos} icon={hasGPS ? redIcon : blueIcon}>
                                         <Popup>
-                                            <div className="p-1 text-center">
+                                            <div className="p-1 text-center min-w-[140px]">
                                                 {person.photo && <img src={person.photo} className="w-16 h-16 rounded-xl mx-auto mb-2 object-cover" />}
                                                 <h3 className="font-bold text-sm text-brand-primary">{person.name}</h3>
-                                                <p className="text-[10px] uppercase font-bold text-gray-400">{person.ine}</p>
+                                                {person.seccion && <p className="text-[10px] font-bold text-gray-500">Secc. {person.seccion}</p>}
+                                                {person.phone && <p className="text-[10px] text-gray-400">{person.phone}</p>}
+                                                {!hasGPS && <p className="text-[9px] text-blue-400 italic mt-1">Ubicación aproximada</p>}
                                             </div>
                                         </Popup>
                                     </Marker>
-                                )
-                            ))}
+                                );
+                            })}
                         </MapContainer>
                     </div>
                 ) : (
