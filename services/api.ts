@@ -121,3 +121,22 @@ export const configApi = {
   update: (config: object) =>
     apiFetch('/api/config', { method: 'POST', body: JSON.stringify(config) }),
 };
+
+// ---------------------------------------------------------------------------
+// Electoral Intelligence API
+// ---------------------------------------------------------------------------
+export const electoralApi = {
+  getResumen: () => apiFetch('/api/electoral/resumen'),
+
+  getSecciones: () => apiFetch('/api/electoral/secciones'),
+
+  getDemografia: (seccion: string | number) =>
+    apiFetch(`/api/electoral/demografia/${seccion}`),
+
+  calcularMeta: (config: { participacion_estimada?: number; porcentaje_necesario?: number; distritos?: string[] }) =>
+    apiFetch('/api/electoral/meta', { method: 'POST', body: JSON.stringify(config) }),
+
+  aiConsult: (pregunta: string, puesto: string) =>
+    apiFetch('/api/electoral/ai-consult', { method: 'POST', body: JSON.stringify({ pregunta, puesto }) }),
+};
+

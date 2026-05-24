@@ -21,6 +21,7 @@ app.get('/api/setup', require('./controllers/authController').setupAdmin);
 app.use('/api/auth', authRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api', require('./routes/systemRoutes'));
+app.use('/api/electoral', require('./routes/electoralRoutes'));
 
 app.get('/', (req, res) => {
   res.send('🟢 API Plataforma Ciudadana Campeche V2 (SQLite/Prisma) - ONLINE');

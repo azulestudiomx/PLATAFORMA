@@ -10,6 +10,7 @@ import Login from './pages/Login';
 import UserManagement from './pages/UserManagement';
 import SettingsPage from './pages/SettingsPage';
 import PeoplePage from './pages/PeoplePage';
+import ElectoralPage from './pages/ElectoralPage';
 import { ConfigProvider } from './contexts/ConfigContext';
 import { UserRole } from './types';
 import { useAuth } from './hooks/useAuth';
@@ -91,6 +92,12 @@ const AppInner: React.FC = () => {
                 {(user?.role === UserRole.ADMIN || user?.role === UserRole.CAPTURIST)
                   ? <PeoplePage />
                   : <Navigate to="/" replace />}
+              </ProtectedRoute>
+            } />
+
+            <Route path="/electoral" element={
+              <ProtectedRoute authenticated={isAuthenticated}>
+                {isAdmin ? <ElectoralPage /> : <Navigate to="/" replace />}
               </ProtectedRoute>
             } />
 

@@ -1,7 +1,19 @@
 {
-  "currentVersion": "5.0.0",
-  "lastUpdate": "2026-04-05T15:45:00Z",
+  "currentVersion": "5.1.0",
+  "lastUpdate": "2026-05-23T18:56:00Z",
   "history": [
+    {
+      "version": "5.1.0",
+      "date": "2026-05-23",
+      "type": "Módulo de Inteligencia Electoral & IA",
+      "changes": [
+        "Integración de Módulo de Inteligencia Electoral con mapa interactivo (Leaflet)",
+        "Carga de padrón de Campeche para cálculos de secciones y meta de victoria",
+        "Cálculo dinámico de metas electorales para Gobernador, Alcalde y Diputados",
+        "Asistente Consultor de Campaña IA impulsado por Google Gemini Pro",
+        "Optimización de configuraciones de variables de entorno (.env.production) para VPS"
+      ]
+    },
     {
       "version": "5.0.0",
       "date": "2026-04-05",

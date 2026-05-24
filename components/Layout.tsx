@@ -21,6 +21,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
   const navItems = [
     { path: '/',             label: 'Dashboard',    icon: 'fa-chart-pie',     roles: [UserRole.ADMIN] },
+    { path: '/electoral',    label: 'Intel. Electoral', icon: 'fa-brain',     roles: [UserRole.ADMIN] },
     { path: '/capture',      label: 'Capturar',     icon: 'fa-camera',        roles: [UserRole.ADMIN, UserRole.CAPTURIST] },
     { path: '/people',       label: 'Padrón',       icon: 'fa-address-book',  roles: [UserRole.ADMIN, UserRole.CAPTURIST] },
     { path: '/reports',      label: 'Expedientes',  icon: 'fa-folder-open',   roles: [UserRole.ADMIN, UserRole.CAPTURIST] },

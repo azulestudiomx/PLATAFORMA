@@ -152,7 +152,7 @@ const PeoplePage: React.FC = () => {
                 
                 // Add server records if they don't exist locally (by INE or _id)
                 serverData.forEach((s: any) => {
-                    const localIdx = combined.findIndex(l => l.ine === s.ine || l._id === s.id);
+                    const localIdx = combined.findIndex(l => (l.ine && s.ine && l.ine === s.ine) || (l._id && s.id && l._id === s.id));
                     if (localIdx === -1) {
                         combined.push({ 
                           ...s, 
@@ -215,7 +215,7 @@ const PeoplePage: React.FC = () => {
                     if (apiErr.message.includes('ya está registrada') || apiErr.message.includes('400')) {
                         console.warn('INE Duplicate found during sync. Bridging record...');
                         const serverAll = await peopleApi.list();
-                        const match = serverAll.find((s: any) => s.ine === person.ine);
+                        const match = person.ine ? serverAll.find((s: any) => s.ine === person.ine) : null;
                         if (match) {
                             await db.people.update(person.id!, { synced: 1, _id: match.id });
                             syncedCount++;
@@ -521,7 +521,7 @@ const PeoplePage: React.FC = () => {
 
     const filteredPeople = people.filter(p => {
         const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.ine.toLowerCase().includes(searchTerm.toLowerCase());
+            (p.ine || '').toLowerCase().includes(searchTerm.toLowerCase());
         const matchesMunicipio = filterMunicipio === '' || p.municipio === filterMunicipio;
         const matchesSeccion = filterSeccion === '' || p.seccion?.includes(filterSeccion);
         
