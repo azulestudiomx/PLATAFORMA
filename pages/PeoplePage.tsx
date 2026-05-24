@@ -10,6 +10,7 @@ import Swal from 'sweetalert2';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import campecheGeo from '../src/campeche_secciones_wgs84.json';
 
 // Fix for map rendering issues
 const MapResizer = () => {
@@ -20,14 +21,70 @@ const MapResizer = () => {
     return null;
 };
 
-// Approximate coords from section number (Campeche bounding box)
-const getApproxCoords = (seccion?: string): [number, number] | null => {
+// Helper to calculate polygon centroids
+const getCentroid = (feature: any): [number, number] | null => {
+    if (!feature || !feature.geometry) return null;
+    const { type, coordinates } = feature.geometry;
+    let latSum = 0;
+    let lngSum = 0;
+    let count = 0;
+
+    const processPolygon = (polygonCoords: any) => {
+        polygonCoords.forEach((ring: any) => {
+            ring.forEach((coord: any) => {
+                lngSum += coord[0];
+                latSum += coord[1];
+                count++;
+            });
+        });
+    };
+
+    if (type === 'Polygon') {
+        processPolygon(coordinates);
+    } else if (type === 'MultiPolygon') {
+        coordinates.forEach((poly: any) => processPolygon(poly));
+    }
+
+    if (count === 0) return null;
+    return [latSum / count, lngSum / count];
+};
+
+// Pre-calculate all centroids for fast lookups
+const sectionCentroidsMap = new Map<number, [number, number]>();
+if (campecheGeo && (campecheGeo as any).features) {
+    (campecheGeo as any).features.forEach((feat: any) => {
+        const seccion = Number(feat?.properties?.seccion);
+        if (!isNaN(seccion)) {
+            const centroid = getCentroid(feat);
+            if (centroid) {
+                sectionCentroidsMap.set(seccion, centroid);
+            }
+        }
+    });
+}
+
+// Geolocate using real section centroids with stable dispersion based on name
+const getApproxCoords = (seccion?: string, name?: string): [number, number] | null => {
     if (!seccion) return null;
     const s = parseInt(seccion, 10);
     if (isNaN(s)) return null;
+    
+    const realCentroid = sectionCentroidsMap.get(s);
+    if (realCentroid) {
+        // Add a stable, tiny jitter dispersion based on the citizen's name to avoid overlaps
+        let hash = 0;
+        const key = name || '';
+        for (let i = 0; i < key.length; i++) {
+            hash = key.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const latJitter = ((Math.abs(hash) % 100) / 100 - 0.5) * 0.003;
+        const lngJitter = ((Math.abs(hash >> 8) % 100) / 100 - 0.5) * 0.003;
+        return [realCentroid[0] + latJitter, realCentroid[1] + lngJitter];
+    }
+    
+    // Bounding-box based fallback if section not found in GeoJSON
     const seed = s * 9301 + 49297;
     const lat = 19.72 + ((seed % 1000) / 1000) * 0.30;
-    // Coastline offset: more east at higher latitudes
     const lngCoast = -90.60 + (lat - 19.72) * 0.55;
     const lng = lngCoast + ((seed % 700) / 700) * 0.35;
     return [lat, lng];
@@ -741,7 +798,7 @@ const PeoplePage: React.FC = () => {
                                 <span className="font-bold text-slate-600">Aprox. por sección</span>
                             </div>
                             <div className="border-t pt-1 text-slate-400">
-                                {filteredPeople.filter(p => p.lat && p.lng || getApproxCoords(p.seccion)).length} / {filteredPeople.length} visibles
+                                {filteredPeople.filter(p => p.lat && p.lng || getApproxCoords(p.seccion, p.name)).length} / {filteredPeople.length} visibles
                             </div>
                         </div>
                         <MapContainer center={[19.8301, -90.5349]} zoom={8} style={{ height: "100%", width: "100%" }}>
@@ -754,7 +811,7 @@ const PeoplePage: React.FC = () => {
                                 const hasGPS = !!(person.lat && person.lng);
                                 const pos: [number, number] | null = hasGPS
                                     ? [person.lat!, person.lng!]
-                                    : getApproxCoords(person.seccion);
+                                    : getApproxCoords(person.seccion, person.name);
                                 if (!pos) return null;
                                 return (
                                     <Marker key={idx} position={pos} icon={hasGPS ? redIcon : blueIcon}>

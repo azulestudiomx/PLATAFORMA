@@ -1,1 +1,4498 @@
-{"metadata": {"municipio": "Campeche", "secciones_total": 151}, "secciones": [{"municipio": "CAMPECHE", "seccion": 4, "casillas": 16, "total_votos": 5691, "lista_nominal": 11203, "participacion": 0.5079889315361956}, {"municipio": "CAMPECHE", "seccion": 7, "casillas": 2, "total_votos": 688, "lista_nominal": 947, "participacion": 0.7265047518479408}, {"municipio": "CAMPECHE", "seccion": 10, "casillas": 2, "total_votos": 666, "lista_nominal": 1062, "participacion": 0.6271186440677966}, {"municipio": "CAMPECHE", "seccion": 11, "casillas": 2, "total_votos": 641, "lista_nominal": 906, "participacion": 0.7075055187637969}, {"municipio": "CAMPECHE", "seccion": 13, "casillas": 2, "total_votos": 845, "lista_nominal": 1291, "participacion": 0.6545313710302091}, {"municipio": "CAMPECHE", "seccion": 14, "casillas": 2, "total_votos": 687, "lista_nominal": 1097, "participacion": 0.626253418413856}, {"municipio": "CAMPECHE", "seccion": 15, "casillas": 2, "total_votos": 752, "lista_nominal": 1169, "participacion": 0.6432848588537211}, {"municipio": "CAMPECHE", "seccion": 16, "casillas": 2, "total_votos": 731, "lista_nominal": 1200, "participacion": 0.6091666666666666}, {"municipio": "CAMPECHE", "seccion": 19, "casillas": 2, "total_votos": 667, "lista_nominal": 1121, "participacion": 0.5950044603033007}, {"municipio": "CAMPECHE", "seccion": 20, "casillas": 2, "total_votos": 724, "lista_nominal": 1146, "participacion": 0.631762652705061}, {"municipio": "CAMPECHE", "seccion": 21, "casillas": 3, "total_votos": 1055, "lista_nominal": 1698, "participacion": 0.6213191990577149}, {"municipio": "CAMPECHE", "seccion": 22, "casillas": 2, "total_votos": 635, "lista_nominal": 946, "participacion": 0.671247357293869}, {"municipio": "CAMPECHE", "seccion": 23, "casillas": 2, "total_votos": 612, "lista_nominal": 939, "participacion": 0.6517571884984026}, {"municipio": "CAMPECHE", "seccion": 32, "casillas": 2, "total_votos": 567, "lista_nominal": 768, "participacion": 0.73828125}, {"municipio": "CAMPECHE", "seccion": 33, "casillas": 2, "total_votos": 645, "lista_nominal": 979, "participacion": 0.658835546475996}, {"municipio": "CAMPECHE", "seccion": 34, "casillas": 2, "total_votos": 834, "lista_nominal": 1347, "participacion": 0.6191536748329621}, {"municipio": "CAMPECHE", "seccion": 35, "casillas": 2, "total_votos": 664, "lista_nominal": 1032, "participacion": 0.6434108527131783}, {"municipio": "CAMPECHE", "seccion": 36, "casillas": 2, "total_votos": 736, "lista_nominal": 1234, "participacion": 0.5964343598055105}, {"municipio": "CAMPECHE", "seccion": 37, "casillas": 2, "total_votos": 571, "lista_nominal": 974, "participacion": 0.5862422997946611}, {"municipio": "CAMPECHE", "seccion": 123, "casillas": 2, "total_votos": 525, "lista_nominal": 827, "participacion": 0.6348246674727932}, {"municipio": "CAMPECHE", "seccion": 124, "casillas": 7, "total_votos": 2932, "lista_nominal": 4781, "participacion": 0.6132608240953775}, {"municipio": "CAMPECHE", "seccion": 129, "casillas": 3, "total_votos": 1291, "lista_nominal": 1693, "participacion": 0.7625516834022446}, {"municipio": "CAMPECHE", "seccion": 130, "casillas": 1, "total_votos": 325, "lista_nominal": 524, "participacion": 0.6202290076335878}, {"municipio": "CAMPECHE", "seccion": 131, "casillas": 1, "total_votos": 226, "lista_nominal": 279, "participacion": 0.8100358422939068}, {"municipio": "CAMPECHE", "seccion": 132, "casillas": 1, "total_votos": 162, "lista_nominal": 215, "participacion": 0.7534883720930232}, {"municipio": "CAMPECHE", "seccion": 136, "casillas": 1, "total_votos": 175, "lista_nominal": 217, "participacion": 0.8064516129032258}, {"municipio": "CAMPECHE", "seccion": 139, "casillas": 5, "total_votos": 1724, "lista_nominal": 3120, "participacion": 0.5525641025641026}, {"municipio": "CAMPECHE", "seccion": 140, "casillas": 2, "total_votos": 628, "lista_nominal": 958, "participacion": 0.6555323590814196}, {"municipio": "CAMPECHE", "seccion": 141, "casillas": 2, "total_votos": 617, "lista_nominal": 942, "participacion": 0.6549893842887473}, {"municipio": "CAMPECHE", "seccion": 142, "casillas": 4, "total_votos": 1892, "lista_nominal": 2918, "participacion": 0.6483893077450309}, {"municipio": "CAMPECHE", "seccion": 144, "casillas": 1, "total_votos": 171, "lista_nominal": 248, "participacion": 0.6895161290322581}, {"municipio": "CAMPECHE", "seccion": 145, "casillas": 2, "total_votos": 508, "lista_nominal": 873, "participacion": 0.581901489117984}, {"municipio": "CAMPECHE", "seccion": 146, "casillas": 1, "total_votos": 397, "lista_nominal": 517, "participacion": 0.7678916827852998}, {"municipio": "CAMPECHE", "seccion": 548, "casillas": 2, "total_votos": 855, "lista_nominal": 1314, "participacion": 0.6506849315068494}, {"municipio": "CAMPECHE", "seccion": 549, "casillas": 4, "total_votos": 1611, "lista_nominal": 2582, "participacion": 0.6239349341595662}, {"municipio": "CAMPECHE", "seccion": 550, "casillas": 2, "total_votos": 799, "lista_nominal": 1187, "participacion": 0.6731255265374895}, {"municipio": "CAMPECHE", "seccion": 551, "casillas": 5, "total_votos": 2031, "lista_nominal": 3054, "participacion": 0.6650294695481336}, {"municipio": "CAMPECHE", "seccion": 552, "casillas": 4, "total_votos": 1420, "lista_nominal": 2266, "participacion": 0.6266548984995587}, {"municipio": "CAMPECHE", "seccion": 553, "casillas": 5, "total_votos": 1955, "lista_nominal": 3720, "participacion": 0.5255376344086021}, {"municipio": "CAMPECHE", "seccion": 39, "casillas": 3, "total_votos": 1361, "lista_nominal": 2186, "participacion": 0.6225983531564502}, {"municipio": "CAMPECHE", "seccion": 40, "casillas": 1, "total_votos": 471, "lista_nominal": 738, "participacion": 0.6382113821138211}, {"municipio": "CAMPECHE", "seccion": 41, "casillas": 2, "total_votos": 517, "lista_nominal": 788, "participacion": 0.6560913705583756}, {"municipio": "CAMPECHE", "seccion": 42, "casillas": 2, "total_votos": 799, "lista_nominal": 1113, "participacion": 0.7178796046720575}, {"municipio": "CAMPECHE", "seccion": 43, "casillas": 2, "total_votos": 738, "lista_nominal": 995, "participacion": 0.7417085427135678}, {"municipio": "CAMPECHE", "seccion": 44, "casillas": 2, "total_votos": 610, "lista_nominal": 857, "participacion": 0.7117852975495916}, {"municipio": "CAMPECHE", "seccion": 45, "casillas": 2, "total_votos": 572, "lista_nominal": 773, "participacion": 0.7399741267787839}, {"municipio": "CAMPECHE", "seccion": 60, "casillas": 2, "total_votos": 655, "lista_nominal": 944, "participacion": 0.6938559322033898}, {"municipio": "CAMPECHE", "seccion": 61, "casillas": 2, "total_votos": 605, "lista_nominal": 858, "participacion": 0.7051282051282052}, {"municipio": "CAMPECHE", "seccion": 62, "casillas": 2, "total_votos": 338, "lista_nominal": 1043, "participacion": 0.32406519654841803}, {"municipio": "CAMPECHE", "seccion": 63, "casillas": 2, "total_votos": 836, "lista_nominal": 1352, "participacion": 0.6183431952662722}, {"municipio": "CAMPECHE", "seccion": 64, "casillas": 2, "total_votos": 826, "lista_nominal": 1207, "participacion": 0.6843413421706711}, {"municipio": "CAMPECHE", "seccion": 65, "casillas": 3, "total_votos": 1048, "lista_nominal": 1755, "participacion": 0.5971509971509972}, {"municipio": "CAMPECHE", "seccion": 66, "casillas": 2, "total_votos": 758, "lista_nominal": 1126, "participacion": 0.6731793960923623}, {"municipio": "CAMPECHE", "seccion": 67, "casillas": 2, "total_votos": 694, "lista_nominal": 1001, "participacion": 0.6933066933066933}, {"municipio": "CAMPECHE", "seccion": 79, "casillas": 11, "total_votos": 4185, "lista_nominal": 7514, "participacion": 0.5569603406973649}, {"municipio": "CAMPECHE", "seccion": 80, "casillas": 2, "total_votos": 608, "lista_nominal": 823, "participacion": 0.7387606318347509}, {"municipio": "CAMPECHE", "seccion": 82, "casillas": 2, "total_votos": 826, "lista_nominal": 1221, "participacion": 0.6764946764946765}, {"municipio": "CAMPECHE", "seccion": 83, "casillas": 7, "total_votos": 3108, "lista_nominal": 5164, "participacion": 0.6018590240123934}, {"municipio": "CAMPECHE", "seccion": 125, "casillas": 3, "total_votos": 1014, "lista_nominal": 1758, "participacion": 0.5767918088737202}, {"municipio": "CAMPECHE", "seccion": 12, "casillas": 4, "total_votos": 1120, "lista_nominal": 1502, "participacion": 0.7456724367509987}, {"municipio": "CAMPECHE", "seccion": 24, "casillas": 2, "total_votos": 763, "lista_nominal": 1078, "participacion": 0.7077922077922078}, {"municipio": "CAMPECHE", "seccion": 25, "casillas": 1, "total_votos": 449, "lista_nominal": 603, "participacion": 0.7446102819237148}, {"municipio": "CAMPECHE", "seccion": 26, "casillas": 2, "total_votos": 800, "lista_nominal": 1086, "participacion": 0.7366482504604052}, {"municipio": "CAMPECHE", "seccion": 27, "casillas": 2, "total_votos": 767, "lista_nominal": 1021, "participacion": 0.7512242899118511}, {"municipio": "CAMPECHE", "seccion": 28, "casillas": 1, "total_votos": 387, "lista_nominal": 574, "participacion": 0.6742160278745645}, {"municipio": "CAMPECHE", "seccion": 29, "casillas": 2, "total_votos": 606, "lista_nominal": 818, "participacion": 0.7408312958435208}, {"municipio": "CAMPECHE", "seccion": 30, "casillas": 1, "total_votos": 576, "lista_nominal": 737, "participacion": 0.7815468113975577}, {"municipio": "CAMPECHE", "seccion": 31, "casillas": 1, "total_votos": 477, "lista_nominal": 684, "participacion": 0.6973684210526315}, {"municipio": "CAMPECHE", "seccion": 46, "casillas": 2, "total_votos": 733, "lista_nominal": 1002, "participacion": 0.7315369261477046}, {"municipio": "CAMPECHE", "seccion": 47, "casillas": 2, "total_votos": 721, "lista_nominal": 926, "participacion": 0.7786177105831533}, {"municipio": "CAMPECHE", "seccion": 48, "casillas": 2, "total_votos": 656, "lista_nominal": 945, "participacion": 0.6941798941798942}, {"municipio": "CAMPECHE", "seccion": 49, "casillas": 2, "total_votos": 774, "lista_nominal": 1092, "participacion": 0.7087912087912088}, {"municipio": "CAMPECHE", "seccion": 501, "casillas": 1, "total_votos": 0, "lista_nominal": 625, "participacion": 0.0}, {"municipio": "CAMPECHE", "seccion": 51, "casillas": 3, "total_votos": 734, "lista_nominal": 954, "participacion": 0.7693920335429769}, {"municipio": "CAMPECHE", "seccion": 52, "casillas": 1, "total_votos": 489, "lista_nominal": 672, "participacion": 0.7276785714285714}, {"municipio": "CAMPECHE", "seccion": 55, "casillas": 2, "total_votos": 895, "lista_nominal": 1251, "participacion": 0.715427657873701}, {"municipio": "CAMPECHE", "seccion": 56, "casillas": 2, "total_votos": 608, "lista_nominal": 908, "participacion": 0.6696035242290749}, {"municipio": "CAMPECHE", "seccion": 57, "casillas": 2, "total_votos": 768, "lista_nominal": 1083, "participacion": 0.7091412742382271}, {"municipio": "CAMPECHE", "seccion": 58, "casillas": 2, "total_votos": 792, "lista_nominal": 1136, "participacion": 0.6971830985915493}, {"municipio": "CAMPECHE", "seccion": 59, "casillas": 2, "total_votos": 797, "lista_nominal": 1100, "participacion": 0.7245454545454545}, {"municipio": "CAMPECHE", "seccion": 68, "casillas": 2, "total_votos": 862, "lista_nominal": 1285, "participacion": 0.670817120622568}, {"municipio": "CAMPECHE", "seccion": 69, "casillas": 2, "total_votos": 675, "lista_nominal": 998, "participacion": 0.6763527054108216}, {"municipio": "CAMPECHE", "seccion": 70, "casillas": 2, "total_votos": 836, "lista_nominal": 1164, "participacion": 0.718213058419244}, {"municipio": "CAMPECHE", "seccion": 71, "casillas": 2, "total_votos": 702, "lista_nominal": 968, "participacion": 0.7252066115702479}, {"municipio": "CAMPECHE", "seccion": 76, "casillas": 2, "total_votos": 691, "lista_nominal": 961, "participacion": 0.7190426638917794}, {"municipio": "CAMPECHE", "seccion": 77, "casillas": 2, "total_votos": 699, "lista_nominal": 932, "participacion": 0.75}, {"municipio": "CAMPECHE", "seccion": 78, "casillas": 2, "total_votos": 640, "lista_nominal": 921, "participacion": 0.6948968512486428}, {"municipio": "CAMPECHE", "seccion": 84, "casillas": 2, "total_votos": 623, "lista_nominal": 927, "participacion": 0.6720604099244876}, {"municipio": "CAMPECHE", "seccion": 85, "casillas": 2, "total_votos": 780, "lista_nominal": 1149, "participacion": 0.6788511749347258}, {"municipio": "CAMPECHE", "seccion": 86, "casillas": 2, "total_votos": 849, "lista_nominal": 1065, "participacion": 0.7971830985915493}, {"municipio": "CAMPECHE", "seccion": 921, "casillas": 3, "total_votos": 554, "lista_nominal": 1213, "participacion": 0.45671887881286066}, {"municipio": "CAMPECHE", "seccion": 93, "casillas": 2, "total_votos": 889, "lista_nominal": 1128, "participacion": 0.7881205673758865}, {"municipio": "CAMPECHE", "seccion": 94, "casillas": 2, "total_votos": 944, "lista_nominal": 1360, "participacion": 0.6941176470588235}, {"municipio": "CAMPECHE", "seccion": 95, "casillas": 3, "total_votos": 927, "lista_nominal": 1631, "participacion": 0.5683629675045984}, {"municipio": "CAMPECHE", "seccion": 96, "casillas": 2, "total_votos": 700, "lista_nominal": 1141, "participacion": 0.6134969325153374}, {"municipio": "CAMPECHE", "seccion": 53, "casillas": 2, "total_votos": 759, "lista_nominal": 985, "participacion": 0.7705583756345178}, {"municipio": "CAMPECHE", "seccion": 54, "casillas": 2, "total_votos": 591, "lista_nominal": 780, "participacion": 0.7576923076923077}, {"municipio": "CAMPECHE", "seccion": 72, "casillas": 2, "total_votos": 899, "lista_nominal": 1203, "participacion": 0.7472984206151289}, {"municipio": "CAMPECHE", "seccion": 73, "casillas": 2, "total_votos": 755, "lista_nominal": 1166, "participacion": 0.6475128644939966}, {"municipio": "CAMPECHE", "seccion": 74, "casillas": 2, "total_votos": 887, "lista_nominal": 1253, "participacion": 0.707901037509976}, {"municipio": "CAMPECHE", "seccion": 75, "casillas": 3, "total_votos": 1440, "lista_nominal": 2143, "participacion": 0.6719552029864676}, {"municipio": "CAMPECHE", "seccion": 87, "casillas": 2, "total_votos": 669, "lista_nominal": 897, "participacion": 0.745819397993311}, {"municipio": "CAMPECHE", "seccion": 88, "casillas": 1, "total_votos": 462, "lista_nominal": 619, "participacion": 0.7463651050080775}, {"municipio": "CAMPECHE", "seccion": 90, "casillas": 3, "total_votos": 1281, "lista_nominal": 1843, "participacion": 0.6950623982637005}, {"municipio": "CAMPECHE", "seccion": 911, "casillas": 3, "total_votos": 865, "lista_nominal": 1832, "participacion": 0.4721615720524017}, {"municipio": "CAMPECHE", "seccion": 99, "casillas": 2, "total_votos": 799, "lista_nominal": 1290, "participacion": 0.6193798449612403}, {"municipio": "CAMPECHE", "seccion": 100, "casillas": 4, "total_votos": 1456, "lista_nominal": 2409, "participacion": 0.6044001660440017}, {"municipio": "CAMPECHE", "seccion": 101, "casillas": 4, "total_votos": 1599, "lista_nominal": 2484, "participacion": 0.643719806763285}, {"municipio": "CAMPECHE", "seccion": 102, "casillas": 3, "total_votos": 1192, "lista_nominal": 1820, "participacion": 0.654945054945055}, {"municipio": "CAMPECHE", "seccion": 103, "casillas": 2, "total_votos": 768, "lista_nominal": 1237, "participacion": 0.6208569118835894}, {"municipio": "CAMPECHE", "seccion": 107, "casillas": 2, "total_votos": 840, "lista_nominal": 1350, "participacion": 0.6222222222222222}, {"municipio": "CAMPECHE", "seccion": 109, "casillas": 4, "total_votos": 1518, "lista_nominal": 2656, "participacion": 0.5715361445783133}, {"municipio": "CAMPECHE", "seccion": 111, "casillas": 3, "total_votos": 1256, "lista_nominal": 2086, "participacion": 0.6021093000958773}, {"municipio": "CAMPECHE", "seccion": 540, "casillas": 2, "total_votos": 737, "lista_nominal": 1266, "participacion": 0.5821484992101106}, {"municipio": "CAMPECHE", "seccion": 541, "casillas": 3, "total_votos": 1144, "lista_nominal": 2063, "participacion": 0.5545322346097916}, {"municipio": "CAMPECHE", "seccion": 89, "casillas": 2, "total_votos": 777, "lista_nominal": 1018, "participacion": 0.7632612966601179}, {"municipio": "CAMPECHE", "seccion": 97, "casillas": 2, "total_votos": 712, "lista_nominal": 1223, "participacion": 0.5821749795584628}, {"municipio": "CAMPECHE", "seccion": 98, "casillas": 2, "total_votos": 640, "lista_nominal": 828, "participacion": 0.7729468599033816}, {"municipio": "CAMPECHE", "seccion": 104, "casillas": 2, "total_votos": 564, "lista_nominal": 756, "participacion": 0.746031746031746}, {"municipio": "CAMPECHE", "seccion": 105, "casillas": 10, "total_votos": 3521, "lista_nominal": 7420, "participacion": 0.47452830188679246}, {"municipio": "CAMPECHE", "seccion": 106, "casillas": 2, "total_votos": 962, "lista_nominal": 1296, "participacion": 0.7422839506172839}, {"municipio": "CAMPECHE", "seccion": 110, "casillas": 2, "total_votos": 941, "lista_nominal": 1391, "participacion": 0.676491732566499}, {"municipio": "CAMPECHE", "seccion": 1121, "casillas": 8, "total_votos": 2459, "lista_nominal": 5037, "participacion": 0.4881874131427437}, {"municipio": "CAMPECHE", "seccion": 113, "casillas": 2, "total_votos": 639, "lista_nominal": 870, "participacion": 0.7344827586206897}, {"municipio": "CAMPECHE", "seccion": 114, "casillas": 2, "total_votos": 832, "lista_nominal": 1224, "participacion": 0.6797385620915033}, {"municipio": "CAMPECHE", "seccion": 115, "casillas": 2, "total_votos": 599, "lista_nominal": 935, "participacion": 0.6406417112299465}, {"municipio": "CAMPECHE", "seccion": 116, "casillas": 2, "total_votos": 802, "lista_nominal": 1157, "participacion": 0.693171996542783}, {"municipio": "CAMPECHE", "seccion": 117, "casillas": 3, "total_votos": 1086, "lista_nominal": 1725, "participacion": 0.6295652173913043}, {"municipio": "CAMPECHE", "seccion": 126, "casillas": 3, "total_votos": 1268, "lista_nominal": 2233, "participacion": 0.567845947156292}, {"municipio": "CAMPECHE", "seccion": 127, "casillas": 2, "total_votos": 730, "lista_nominal": 1251, "participacion": 0.583533173461231}, {"municipio": "CAMPECHE", "seccion": 128, "casillas": 1, "total_votos": 186, "lista_nominal": 242, "participacion": 0.768595041322314}, {"municipio": "CAMPECHE", "seccion": 133, "casillas": 1, "total_votos": 441, "lista_nominal": 564, "participacion": 0.7819148936170213}, {"municipio": "CAMPECHE", "seccion": 134, "casillas": 2, "total_votos": 338, "lista_nominal": 465, "participacion": 0.7268817204301076}, {"municipio": "CAMPECHE", "seccion": 135, "casillas": 2, "total_votos": 772, "lista_nominal": 968, "participacion": 0.7975206611570248}, {"municipio": "CAMPECHE", "seccion": 137, "casillas": 1, "total_votos": 213, "lista_nominal": 289, "participacion": 0.7370242214532872}, {"municipio": "CAMPECHE", "seccion": 138, "casillas": 1, "total_votos": 383, "lista_nominal": 576, "participacion": 0.6649305555555556}, {"municipio": "CAMPECHE", "seccion": 143, "casillas": 1, "total_votos": 296, "lista_nominal": 409, "participacion": 0.7237163814180929}, {"municipio": "CAMPECHE", "seccion": 1, "casillas": 1, "total_votos": 418, "lista_nominal": 552, "participacion": 0.7572463768115942}, {"municipio": "CAMPECHE", "seccion": 2, "casillas": 1, "total_votos": 452, "lista_nominal": 633, "participacion": 0.7140600315955766}, {"municipio": "CAMPECHE", "seccion": 5, "casillas": 2, "total_votos": 739, "lista_nominal": 1014, "participacion": 0.7287968441814595}, {"municipio": "CAMPECHE", "seccion": 6, "casillas": 2, "total_votos": 746, "lista_nominal": 1055, "participacion": 0.7071090047393365}, {"municipio": "CAMPECHE", "seccion": 8, "casillas": 1, "total_votos": 519, "lista_nominal": 746, "participacion": 0.6957104557640751}, {"municipio": "CAMPECHE", "seccion": 9, "casillas": 7, "total_votos": 3213, "lista_nominal": 4882, "participacion": 0.6581319131503482}, {"municipio": "CAMPECHE", "seccion": 17, "casillas": 9, "total_votos": 3581, "lista_nominal": 6108, "participacion": 0.5862802881466929}, {"municipio": "CAMPECHE", "seccion": 18, "casillas": 1, "total_votos": 422, "lista_nominal": 622, "participacion": 0.6784565916398714}, {"municipio": "CAMPECHE", "seccion": 38, "casillas": 1, "total_votos": 497, "lista_nominal": 740, "participacion": 0.6716216216216216}, {"municipio": "CAMPECHE", "seccion": 118, "casillas": 2, "total_votos": 700, "lista_nominal": 986, "participacion": 0.7099391480730223}, {"municipio": "CAMPECHE", "seccion": 119, "casillas": 1, "total_votos": 334, "lista_nominal": 450, "participacion": 0.7422222222222222}, {"municipio": "CAMPECHE", "seccion": 120, "casillas": 2, "total_votos": 677, "lista_nominal": 923, "participacion": 0.733477789815818}, {"municipio": "CAMPECHE", "seccion": 121, "casillas": 2, "total_votos": 689, "lista_nominal": 1013, "participacion": 0.6801579466929911}, {"municipio": "CAMPECHE", "seccion": 122, "casillas": 3, "total_votos": 1020, "lista_nominal": 1339, "participacion": 0.7617625093353249}]}
+{
+  "metadata": {
+    "municipio": "Campeche",
+    "secciones_total": 561,
+    "estado": "Campeche",
+    "enriquecida": true
+  },
+  "secciones": [
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 1,
+      "casillas": 1,
+      "total_votos": 418,
+      "lista_nominal": 552,
+      "participacion": 0.7572463768115942
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 2,
+      "casillas": 1,
+      "total_votos": 452,
+      "lista_nominal": 633,
+      "participacion": 0.7140600315955766
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 3,
+      "casillas": 2,
+      "total_votos": 739,
+      "lista_nominal": 1283,
+      "participacion": 0.576001
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 4,
+      "casillas": 16,
+      "total_votos": 5691,
+      "lista_nominal": 11203,
+      "participacion": 0.5079889315361956
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 5,
+      "casillas": 2,
+      "total_votos": 739,
+      "lista_nominal": 1014,
+      "participacion": 0.7287968441814595
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 6,
+      "casillas": 2,
+      "total_votos": 746,
+      "lista_nominal": 1055,
+      "participacion": 0.7071090047393365
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 7,
+      "casillas": 2,
+      "total_votos": 688,
+      "lista_nominal": 947,
+      "participacion": 0.7265047518479408
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 8,
+      "casillas": 1,
+      "total_votos": 519,
+      "lista_nominal": 746,
+      "participacion": 0.6957104557640751
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 9,
+      "casillas": 7,
+      "total_votos": 3213,
+      "lista_nominal": 4882,
+      "participacion": 0.6581319131503482
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 10,
+      "casillas": 2,
+      "total_votos": 666,
+      "lista_nominal": 1062,
+      "participacion": 0.6271186440677966
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 11,
+      "casillas": 2,
+      "total_votos": 641,
+      "lista_nominal": 906,
+      "participacion": 0.7075055187637969
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 12,
+      "casillas": 4,
+      "total_votos": 1120,
+      "lista_nominal": 1502,
+      "participacion": 0.7456724367509987
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 13,
+      "casillas": 2,
+      "total_votos": 845,
+      "lista_nominal": 1291,
+      "participacion": 0.6545313710302091
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 14,
+      "casillas": 2,
+      "total_votos": 687,
+      "lista_nominal": 1097,
+      "participacion": 0.626253418413856
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 15,
+      "casillas": 2,
+      "total_votos": 752,
+      "lista_nominal": 1169,
+      "participacion": 0.6432848588537211
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 16,
+      "casillas": 2,
+      "total_votos": 731,
+      "lista_nominal": 1200,
+      "participacion": 0.6091666666666666
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 17,
+      "casillas": 9,
+      "total_votos": 3581,
+      "lista_nominal": 6108,
+      "participacion": 0.5862802881466929
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 18,
+      "casillas": 1,
+      "total_votos": 422,
+      "lista_nominal": 622,
+      "participacion": 0.6784565916398714
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 19,
+      "casillas": 2,
+      "total_votos": 667,
+      "lista_nominal": 1121,
+      "participacion": 0.5950044603033007
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 20,
+      "casillas": 2,
+      "total_votos": 724,
+      "lista_nominal": 1146,
+      "participacion": 0.631762652705061
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 21,
+      "casillas": 3,
+      "total_votos": 1055,
+      "lista_nominal": 1698,
+      "participacion": 0.6213191990577149
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 22,
+      "casillas": 2,
+      "total_votos": 635,
+      "lista_nominal": 946,
+      "participacion": 0.671247357293869
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 23,
+      "casillas": 2,
+      "total_votos": 612,
+      "lista_nominal": 939,
+      "participacion": 0.6517571884984026
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 24,
+      "casillas": 2,
+      "total_votos": 763,
+      "lista_nominal": 1078,
+      "participacion": 0.7077922077922078
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 25,
+      "casillas": 1,
+      "total_votos": 449,
+      "lista_nominal": 603,
+      "participacion": 0.7446102819237148
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 26,
+      "casillas": 2,
+      "total_votos": 800,
+      "lista_nominal": 1086,
+      "participacion": 0.7366482504604052
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 27,
+      "casillas": 2,
+      "total_votos": 767,
+      "lista_nominal": 1021,
+      "participacion": 0.7512242899118511
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 28,
+      "casillas": 1,
+      "total_votos": 387,
+      "lista_nominal": 574,
+      "participacion": 0.6742160278745645
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 29,
+      "casillas": 2,
+      "total_votos": 606,
+      "lista_nominal": 818,
+      "participacion": 0.7408312958435208
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 30,
+      "casillas": 1,
+      "total_votos": 576,
+      "lista_nominal": 737,
+      "participacion": 0.7815468113975577
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 31,
+      "casillas": 1,
+      "total_votos": 477,
+      "lista_nominal": 684,
+      "participacion": 0.6973684210526315
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 32,
+      "casillas": 2,
+      "total_votos": 567,
+      "lista_nominal": 768,
+      "participacion": 0.73828125
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 33,
+      "casillas": 2,
+      "total_votos": 645,
+      "lista_nominal": 979,
+      "participacion": 0.658835546475996
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 34,
+      "casillas": 2,
+      "total_votos": 834,
+      "lista_nominal": 1347,
+      "participacion": 0.6191536748329621
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 35,
+      "casillas": 2,
+      "total_votos": 664,
+      "lista_nominal": 1032,
+      "participacion": 0.6434108527131783
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 36,
+      "casillas": 2,
+      "total_votos": 736,
+      "lista_nominal": 1234,
+      "participacion": 0.5964343598055105
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 37,
+      "casillas": 2,
+      "total_votos": 571,
+      "lista_nominal": 974,
+      "participacion": 0.5862422997946611
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 38,
+      "casillas": 1,
+      "total_votos": 497,
+      "lista_nominal": 740,
+      "participacion": 0.6716216216216216
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 39,
+      "casillas": 3,
+      "total_votos": 1361,
+      "lista_nominal": 2186,
+      "participacion": 0.6225983531564502
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 40,
+      "casillas": 1,
+      "total_votos": 471,
+      "lista_nominal": 738,
+      "participacion": 0.6382113821138211
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 41,
+      "casillas": 2,
+      "total_votos": 517,
+      "lista_nominal": 788,
+      "participacion": 0.6560913705583756
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 42,
+      "casillas": 2,
+      "total_votos": 799,
+      "lista_nominal": 1113,
+      "participacion": 0.7178796046720575
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 43,
+      "casillas": 2,
+      "total_votos": 738,
+      "lista_nominal": 995,
+      "participacion": 0.7417085427135678
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 44,
+      "casillas": 2,
+      "total_votos": 610,
+      "lista_nominal": 857,
+      "participacion": 0.7117852975495916
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 45,
+      "casillas": 2,
+      "total_votos": 572,
+      "lista_nominal": 773,
+      "participacion": 0.7399741267787839
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 46,
+      "casillas": 2,
+      "total_votos": 733,
+      "lista_nominal": 1002,
+      "participacion": 0.7315369261477046
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 47,
+      "casillas": 2,
+      "total_votos": 721,
+      "lista_nominal": 926,
+      "participacion": 0.7786177105831533
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 48,
+      "casillas": 2,
+      "total_votos": 656,
+      "lista_nominal": 945,
+      "participacion": 0.6941798941798942
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 49,
+      "casillas": 2,
+      "total_votos": 774,
+      "lista_nominal": 1092,
+      "participacion": 0.7087912087912088
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 50,
+      "casillas": 2,
+      "total_votos": 639,
+      "lista_nominal": 1065,
+      "participacion": 0.599785
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 51,
+      "casillas": 3,
+      "total_votos": 734,
+      "lista_nominal": 954,
+      "participacion": 0.7693920335429769
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 52,
+      "casillas": 1,
+      "total_votos": 489,
+      "lista_nominal": 672,
+      "participacion": 0.7276785714285714
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 53,
+      "casillas": 2,
+      "total_votos": 759,
+      "lista_nominal": 985,
+      "participacion": 0.7705583756345178
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 54,
+      "casillas": 2,
+      "total_votos": 591,
+      "lista_nominal": 780,
+      "participacion": 0.7576923076923077
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 55,
+      "casillas": 2,
+      "total_votos": 895,
+      "lista_nominal": 1251,
+      "participacion": 0.715427657873701
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 56,
+      "casillas": 2,
+      "total_votos": 608,
+      "lista_nominal": 908,
+      "participacion": 0.6696035242290749
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 57,
+      "casillas": 2,
+      "total_votos": 768,
+      "lista_nominal": 1083,
+      "participacion": 0.7091412742382271
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 58,
+      "casillas": 2,
+      "total_votos": 792,
+      "lista_nominal": 1136,
+      "participacion": 0.6971830985915493
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 59,
+      "casillas": 2,
+      "total_votos": 797,
+      "lista_nominal": 1100,
+      "participacion": 0.7245454545454545
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 60,
+      "casillas": 2,
+      "total_votos": 655,
+      "lista_nominal": 944,
+      "participacion": 0.6938559322033898
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 61,
+      "casillas": 2,
+      "total_votos": 605,
+      "lista_nominal": 858,
+      "participacion": 0.7051282051282052
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 62,
+      "casillas": 2,
+      "total_votos": 338,
+      "lista_nominal": 1043,
+      "participacion": 0.32406519654841803
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 63,
+      "casillas": 2,
+      "total_votos": 836,
+      "lista_nominal": 1352,
+      "participacion": 0.6183431952662722
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 64,
+      "casillas": 2,
+      "total_votos": 826,
+      "lista_nominal": 1207,
+      "participacion": 0.6843413421706711
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 65,
+      "casillas": 3,
+      "total_votos": 1048,
+      "lista_nominal": 1755,
+      "participacion": 0.5971509971509972
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 66,
+      "casillas": 2,
+      "total_votos": 758,
+      "lista_nominal": 1126,
+      "participacion": 0.6731793960923623
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 67,
+      "casillas": 2,
+      "total_votos": 694,
+      "lista_nominal": 1001,
+      "participacion": 0.6933066933066933
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 68,
+      "casillas": 2,
+      "total_votos": 862,
+      "lista_nominal": 1285,
+      "participacion": 0.670817120622568
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 69,
+      "casillas": 2,
+      "total_votos": 675,
+      "lista_nominal": 998,
+      "participacion": 0.6763527054108216
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 70,
+      "casillas": 2,
+      "total_votos": 836,
+      "lista_nominal": 1164,
+      "participacion": 0.718213058419244
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 71,
+      "casillas": 2,
+      "total_votos": 702,
+      "lista_nominal": 968,
+      "participacion": 0.7252066115702479
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 72,
+      "casillas": 2,
+      "total_votos": 899,
+      "lista_nominal": 1203,
+      "participacion": 0.7472984206151289
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 73,
+      "casillas": 2,
+      "total_votos": 755,
+      "lista_nominal": 1166,
+      "participacion": 0.6475128644939966
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 74,
+      "casillas": 2,
+      "total_votos": 887,
+      "lista_nominal": 1253,
+      "participacion": 0.707901037509976
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 75,
+      "casillas": 3,
+      "total_votos": 1440,
+      "lista_nominal": 2143,
+      "participacion": 0.6719552029864676
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 76,
+      "casillas": 2,
+      "total_votos": 691,
+      "lista_nominal": 961,
+      "participacion": 0.7190426638917794
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 77,
+      "casillas": 2,
+      "total_votos": 699,
+      "lista_nominal": 932,
+      "participacion": 0.75
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 78,
+      "casillas": 2,
+      "total_votos": 640,
+      "lista_nominal": 921,
+      "participacion": 0.6948968512486428
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 79,
+      "casillas": 11,
+      "total_votos": 4185,
+      "lista_nominal": 7514,
+      "participacion": 0.5569603406973649
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 80,
+      "casillas": 2,
+      "total_votos": 608,
+      "lista_nominal": 823,
+      "participacion": 0.7387606318347509
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 82,
+      "casillas": 2,
+      "total_votos": 826,
+      "lista_nominal": 1221,
+      "participacion": 0.6764946764946765
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 83,
+      "casillas": 7,
+      "total_votos": 3108,
+      "lista_nominal": 5164,
+      "participacion": 0.6018590240123934
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 84,
+      "casillas": 2,
+      "total_votos": 623,
+      "lista_nominal": 927,
+      "participacion": 0.6720604099244876
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 85,
+      "casillas": 2,
+      "total_votos": 780,
+      "lista_nominal": 1149,
+      "participacion": 0.6788511749347258
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 86,
+      "casillas": 2,
+      "total_votos": 849,
+      "lista_nominal": 1065,
+      "participacion": 0.7971830985915493
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 87,
+      "casillas": 2,
+      "total_votos": 669,
+      "lista_nominal": 897,
+      "participacion": 0.745819397993311
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 88,
+      "casillas": 1,
+      "total_votos": 462,
+      "lista_nominal": 619,
+      "participacion": 0.7463651050080775
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 89,
+      "casillas": 2,
+      "total_votos": 777,
+      "lista_nominal": 1018,
+      "participacion": 0.7632612966601179
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 90,
+      "casillas": 3,
+      "total_votos": 1281,
+      "lista_nominal": 1843,
+      "participacion": 0.6950623982637005
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 91,
+      "casillas": 2,
+      "total_votos": 837,
+      "lista_nominal": 1435,
+      "participacion": 0.583433
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 92,
+      "casillas": 2,
+      "total_votos": 665,
+      "lista_nominal": 1153,
+      "participacion": 0.576576
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 93,
+      "casillas": 2,
+      "total_votos": 889,
+      "lista_nominal": 1128,
+      "participacion": 0.7881205673758865
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 94,
+      "casillas": 2,
+      "total_votos": 944,
+      "lista_nominal": 1360,
+      "participacion": 0.6941176470588235
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 95,
+      "casillas": 3,
+      "total_votos": 927,
+      "lista_nominal": 1631,
+      "participacion": 0.5683629675045984
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 96,
+      "casillas": 2,
+      "total_votos": 700,
+      "lista_nominal": 1141,
+      "participacion": 0.6134969325153374
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 97,
+      "casillas": 2,
+      "total_votos": 712,
+      "lista_nominal": 1223,
+      "participacion": 0.5821749795584628
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 98,
+      "casillas": 2,
+      "total_votos": 640,
+      "lista_nominal": 828,
+      "participacion": 0.7729468599033816
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 99,
+      "casillas": 2,
+      "total_votos": 799,
+      "lista_nominal": 1290,
+      "participacion": 0.6193798449612403
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 100,
+      "casillas": 4,
+      "total_votos": 1456,
+      "lista_nominal": 2409,
+      "participacion": 0.6044001660440017
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 101,
+      "casillas": 4,
+      "total_votos": 1599,
+      "lista_nominal": 2484,
+      "participacion": 0.643719806763285
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 102,
+      "casillas": 3,
+      "total_votos": 1192,
+      "lista_nominal": 1820,
+      "participacion": 0.654945054945055
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 103,
+      "casillas": 2,
+      "total_votos": 768,
+      "lista_nominal": 1237,
+      "participacion": 0.6208569118835894
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 104,
+      "casillas": 2,
+      "total_votos": 564,
+      "lista_nominal": 756,
+      "participacion": 0.746031746031746
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 105,
+      "casillas": 10,
+      "total_votos": 3521,
+      "lista_nominal": 7420,
+      "participacion": 0.47452830188679246
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 106,
+      "casillas": 2,
+      "total_votos": 962,
+      "lista_nominal": 1296,
+      "participacion": 0.7422839506172839
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 107,
+      "casillas": 2,
+      "total_votos": 840,
+      "lista_nominal": 1350,
+      "participacion": 0.6222222222222222
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 109,
+      "casillas": 4,
+      "total_votos": 1518,
+      "lista_nominal": 2656,
+      "participacion": 0.5715361445783133
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 110,
+      "casillas": 2,
+      "total_votos": 941,
+      "lista_nominal": 1391,
+      "participacion": 0.676491732566499
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 111,
+      "casillas": 3,
+      "total_votos": 1256,
+      "lista_nominal": 2086,
+      "participacion": 0.6021093000958773
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 112,
+      "casillas": 1,
+      "total_votos": 424,
+      "lista_nominal": 710,
+      "participacion": 0.596861
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 113,
+      "casillas": 2,
+      "total_votos": 639,
+      "lista_nominal": 870,
+      "participacion": 0.7344827586206897
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 114,
+      "casillas": 2,
+      "total_votos": 832,
+      "lista_nominal": 1224,
+      "participacion": 0.6797385620915033
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 115,
+      "casillas": 2,
+      "total_votos": 599,
+      "lista_nominal": 935,
+      "participacion": 0.6406417112299465
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 116,
+      "casillas": 2,
+      "total_votos": 802,
+      "lista_nominal": 1157,
+      "participacion": 0.693171996542783
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 117,
+      "casillas": 3,
+      "total_votos": 1086,
+      "lista_nominal": 1725,
+      "participacion": 0.6295652173913043
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 118,
+      "casillas": 2,
+      "total_votos": 700,
+      "lista_nominal": 986,
+      "participacion": 0.7099391480730223
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 119,
+      "casillas": 1,
+      "total_votos": 334,
+      "lista_nominal": 450,
+      "participacion": 0.7422222222222222
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 120,
+      "casillas": 2,
+      "total_votos": 677,
+      "lista_nominal": 923,
+      "participacion": 0.733477789815818
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 121,
+      "casillas": 2,
+      "total_votos": 689,
+      "lista_nominal": 1013,
+      "participacion": 0.6801579466929911
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 122,
+      "casillas": 3,
+      "total_votos": 1020,
+      "lista_nominal": 1339,
+      "participacion": 0.7617625093353249
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 123,
+      "casillas": 2,
+      "total_votos": 525,
+      "lista_nominal": 827,
+      "participacion": 0.6348246674727932
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 124,
+      "casillas": 7,
+      "total_votos": 2932,
+      "lista_nominal": 4781,
+      "participacion": 0.6132608240953775
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 125,
+      "casillas": 3,
+      "total_votos": 1014,
+      "lista_nominal": 1758,
+      "participacion": 0.5767918088737202
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 126,
+      "casillas": 3,
+      "total_votos": 1268,
+      "lista_nominal": 2233,
+      "participacion": 0.567845947156292
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 127,
+      "casillas": 2,
+      "total_votos": 730,
+      "lista_nominal": 1251,
+      "participacion": 0.583533173461231
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 128,
+      "casillas": 1,
+      "total_votos": 186,
+      "lista_nominal": 242,
+      "participacion": 0.768595041322314
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 129,
+      "casillas": 3,
+      "total_votos": 1291,
+      "lista_nominal": 1693,
+      "participacion": 0.7625516834022446
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 130,
+      "casillas": 1,
+      "total_votos": 325,
+      "lista_nominal": 524,
+      "participacion": 0.6202290076335878
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 131,
+      "casillas": 1,
+      "total_votos": 226,
+      "lista_nominal": 279,
+      "participacion": 0.8100358422939068
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 132,
+      "casillas": 1,
+      "total_votos": 162,
+      "lista_nominal": 215,
+      "participacion": 0.7534883720930232
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 133,
+      "casillas": 1,
+      "total_votos": 441,
+      "lista_nominal": 564,
+      "participacion": 0.7819148936170213
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 134,
+      "casillas": 2,
+      "total_votos": 338,
+      "lista_nominal": 465,
+      "participacion": 0.7268817204301076
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 135,
+      "casillas": 2,
+      "total_votos": 772,
+      "lista_nominal": 968,
+      "participacion": 0.7975206611570248
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 136,
+      "casillas": 1,
+      "total_votos": 175,
+      "lista_nominal": 217,
+      "participacion": 0.8064516129032258
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 137,
+      "casillas": 1,
+      "total_votos": 213,
+      "lista_nominal": 289,
+      "participacion": 0.7370242214532872
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 138,
+      "casillas": 1,
+      "total_votos": 383,
+      "lista_nominal": 576,
+      "participacion": 0.6649305555555556
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 139,
+      "casillas": 5,
+      "total_votos": 1724,
+      "lista_nominal": 3120,
+      "participacion": 0.5525641025641026
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 140,
+      "casillas": 2,
+      "total_votos": 628,
+      "lista_nominal": 958,
+      "participacion": 0.6555323590814196
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 141,
+      "casillas": 2,
+      "total_votos": 617,
+      "lista_nominal": 942,
+      "participacion": 0.6549893842887473
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 142,
+      "casillas": 4,
+      "total_votos": 1892,
+      "lista_nominal": 2918,
+      "participacion": 0.6483893077450309
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 143,
+      "casillas": 1,
+      "total_votos": 296,
+      "lista_nominal": 409,
+      "participacion": 0.7237163814180929
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 144,
+      "casillas": 1,
+      "total_votos": 171,
+      "lista_nominal": 248,
+      "participacion": 0.6895161290322581
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 145,
+      "casillas": 2,
+      "total_votos": 508,
+      "lista_nominal": 873,
+      "participacion": 0.581901489117984
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 146,
+      "casillas": 1,
+      "total_votos": 397,
+      "lista_nominal": 517,
+      "participacion": 0.7678916827852998
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 147,
+      "casillas": 2,
+      "total_votos": 507,
+      "lista_nominal": 788,
+      "participacion": 0.643712
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 148,
+      "casillas": 2,
+      "total_votos": 653,
+      "lista_nominal": 1104,
+      "participacion": 0.591658
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 149,
+      "casillas": 2,
+      "total_votos": 904,
+      "lista_nominal": 1474,
+      "participacion": 0.613391
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 150,
+      "casillas": 2,
+      "total_votos": 558,
+      "lista_nominal": 955,
+      "participacion": 0.584606
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 151,
+      "casillas": 2,
+      "total_votos": 823,
+      "lista_nominal": 1289,
+      "participacion": 0.638393
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 152,
+      "casillas": 2,
+      "total_votos": 671,
+      "lista_nominal": 1022,
+      "participacion": 0.656777
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 153,
+      "casillas": 2,
+      "total_votos": 675,
+      "lista_nominal": 1022,
+      "participacion": 0.660568
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 154,
+      "casillas": 2,
+      "total_votos": 842,
+      "lista_nominal": 1221,
+      "participacion": 0.689774
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 155,
+      "casillas": 2,
+      "total_votos": 720,
+      "lista_nominal": 1127,
+      "participacion": 0.639245
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 156,
+      "casillas": 2,
+      "total_votos": 904,
+      "lista_nominal": 1397,
+      "participacion": 0.647222
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 157,
+      "casillas": 1,
+      "total_votos": 455,
+      "lista_nominal": 708,
+      "participacion": 0.642282
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 158,
+      "casillas": 1,
+      "total_votos": 382,
+      "lista_nominal": 661,
+      "participacion": 0.578499
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 159,
+      "casillas": 2,
+      "total_votos": 630,
+      "lista_nominal": 1036,
+      "participacion": 0.607727
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 160,
+      "casillas": 1,
+      "total_votos": 449,
+      "lista_nominal": 740,
+      "participacion": 0.606357
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 161,
+      "casillas": 2,
+      "total_votos": 790,
+      "lista_nominal": 1281,
+      "participacion": 0.61678
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 162,
+      "casillas": 2,
+      "total_votos": 671,
+      "lista_nominal": 1122,
+      "participacion": 0.598141
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 163,
+      "casillas": 2,
+      "total_votos": 727,
+      "lista_nominal": 1060,
+      "participacion": 0.685399
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 164,
+      "casillas": 2,
+      "total_votos": 832,
+      "lista_nominal": 1288,
+      "participacion": 0.646096
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 165,
+      "casillas": 1,
+      "total_votos": 331,
+      "lista_nominal": 501,
+      "participacion": 0.660495
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 166,
+      "casillas": 2,
+      "total_votos": 617,
+      "lista_nominal": 998,
+      "participacion": 0.618535
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 167,
+      "casillas": 2,
+      "total_votos": 712,
+      "lista_nominal": 1095,
+      "participacion": 0.6498
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 168,
+      "casillas": 2,
+      "total_votos": 808,
+      "lista_nominal": 1234,
+      "participacion": 0.655154
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 169,
+      "casillas": 1,
+      "total_votos": 468,
+      "lista_nominal": 702,
+      "participacion": 0.66612
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 170,
+      "casillas": 1,
+      "total_votos": 299,
+      "lista_nominal": 518,
+      "participacion": 0.576852
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 171,
+      "casillas": 1,
+      "total_votos": 329,
+      "lista_nominal": 544,
+      "participacion": 0.605129
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 172,
+      "casillas": 1,
+      "total_votos": 352,
+      "lista_nominal": 513,
+      "participacion": 0.686149
+    },
+    {
+      "municipio": "DZITBALCHÉ",
+      "seccion": 173,
+      "casillas": 2,
+      "total_votos": 870,
+      "lista_nominal": 1425,
+      "participacion": 0.610761
+    },
+    {
+      "municipio": "DZITBALCHÉ",
+      "seccion": 174,
+      "casillas": 2,
+      "total_votos": 597,
+      "lista_nominal": 962,
+      "participacion": 0.620476
+    },
+    {
+      "municipio": "DZITBALCHÉ",
+      "seccion": 175,
+      "casillas": 2,
+      "total_votos": 909,
+      "lista_nominal": 1448,
+      "participacion": 0.628062
+    },
+    {
+      "municipio": "DZITBALCHÉ",
+      "seccion": 176,
+      "casillas": 2,
+      "total_votos": 485,
+      "lista_nominal": 805,
+      "participacion": 0.602595
+    },
+    {
+      "municipio": "DZITBALCHÉ",
+      "seccion": 177,
+      "casillas": 2,
+      "total_votos": 747,
+      "lista_nominal": 1236,
+      "participacion": 0.604529
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 178,
+      "casillas": 1,
+      "total_votos": 425,
+      "lista_nominal": 625,
+      "participacion": 0.680739
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 179,
+      "casillas": 1,
+      "total_votos": 341,
+      "lista_nominal": 569,
+      "participacion": 0.599318
+    },
+    {
+      "municipio": "DZITBALCHÉ",
+      "seccion": 180,
+      "casillas": 2,
+      "total_votos": 697,
+      "lista_nominal": 1099,
+      "participacion": 0.634143
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 181,
+      "casillas": 1,
+      "total_votos": 312,
+      "lista_nominal": 482,
+      "participacion": 0.648294
+    },
+    {
+      "municipio": "CALKINÍ",
+      "seccion": 182,
+      "casillas": 1,
+      "total_votos": 428,
+      "lista_nominal": 687,
+      "participacion": 0.623659
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 185,
+      "casillas": 2,
+      "total_votos": 890,
+      "lista_nominal": 1298,
+      "participacion": 0.685672
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 186,
+      "casillas": 2,
+      "total_votos": 575,
+      "lista_nominal": 980,
+      "participacion": 0.586851
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 187,
+      "casillas": 2,
+      "total_votos": 684,
+      "lista_nominal": 994,
+      "participacion": 0.688293
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 188,
+      "casillas": 2,
+      "total_votos": 616,
+      "lista_nominal": 964,
+      "participacion": 0.639387
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 189,
+      "casillas": 2,
+      "total_votos": 686,
+      "lista_nominal": 1063,
+      "participacion": 0.64558
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 190,
+      "casillas": 2,
+      "total_votos": 795,
+      "lista_nominal": 1330,
+      "participacion": 0.597432
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 191,
+      "casillas": 2,
+      "total_votos": 774,
+      "lista_nominal": 1280,
+      "participacion": 0.604678
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 192,
+      "casillas": 2,
+      "total_votos": 813,
+      "lista_nominal": 1193,
+      "participacion": 0.68164
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 193,
+      "casillas": 2,
+      "total_votos": 822,
+      "lista_nominal": 1407,
+      "participacion": 0.584076
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 194,
+      "casillas": 2,
+      "total_votos": 700,
+      "lista_nominal": 1154,
+      "participacion": 0.606202
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 195,
+      "casillas": 2,
+      "total_votos": 722,
+      "lista_nominal": 1089,
+      "participacion": 0.663224
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 196,
+      "casillas": 2,
+      "total_votos": 600,
+      "lista_nominal": 902,
+      "participacion": 0.665534
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 197,
+      "casillas": 2,
+      "total_votos": 775,
+      "lista_nominal": 1282,
+      "participacion": 0.604435
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 199,
+      "casillas": 2,
+      "total_votos": 859,
+      "lista_nominal": 1344,
+      "participacion": 0.639202
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 200,
+      "casillas": 2,
+      "total_votos": 921,
+      "lista_nominal": 1442,
+      "participacion": 0.638471
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 201,
+      "casillas": 2,
+      "total_votos": 900,
+      "lista_nominal": 1400,
+      "participacion": 0.642901
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 202,
+      "casillas": 2,
+      "total_votos": 581,
+      "lista_nominal": 988,
+      "participacion": 0.588293
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 203,
+      "casillas": 2,
+      "total_votos": 738,
+      "lista_nominal": 1084,
+      "participacion": 0.680878
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 204,
+      "casillas": 2,
+      "total_votos": 931,
+      "lista_nominal": 1377,
+      "participacion": 0.676284
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 205,
+      "casillas": 2,
+      "total_votos": 861,
+      "lista_nominal": 1439,
+      "participacion": 0.598209
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 206,
+      "casillas": 2,
+      "total_votos": 614,
+      "lista_nominal": 1049,
+      "participacion": 0.585335
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 207,
+      "casillas": 2,
+      "total_votos": 929,
+      "lista_nominal": 1368,
+      "participacion": 0.679096
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 208,
+      "casillas": 2,
+      "total_votos": 740,
+      "lista_nominal": 1143,
+      "participacion": 0.647479
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 209,
+      "casillas": 2,
+      "total_votos": 679,
+      "lista_nominal": 992,
+      "participacion": 0.684586
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 210,
+      "casillas": 2,
+      "total_votos": 979,
+      "lista_nominal": 1418,
+      "participacion": 0.690145
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 211,
+      "casillas": 2,
+      "total_votos": 941,
+      "lista_nominal": 1386,
+      "participacion": 0.67877
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 212,
+      "casillas": 2,
+      "total_votos": 605,
+      "lista_nominal": 914,
+      "participacion": 0.661388
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 213,
+      "casillas": 2,
+      "total_votos": 752,
+      "lista_nominal": 1099,
+      "participacion": 0.684698
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 214,
+      "casillas": 2,
+      "total_votos": 935,
+      "lista_nominal": 1381,
+      "participacion": 0.676688
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 215,
+      "casillas": 2,
+      "total_votos": 839,
+      "lista_nominal": 1386,
+      "participacion": 0.605017
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 216,
+      "casillas": 2,
+      "total_votos": 804,
+      "lista_nominal": 1372,
+      "participacion": 0.585971
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 217,
+      "casillas": 2,
+      "total_votos": 962,
+      "lista_nominal": 1423,
+      "participacion": 0.676031
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 218,
+      "casillas": 2,
+      "total_votos": 693,
+      "lista_nominal": 1033,
+      "participacion": 0.67099
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 219,
+      "casillas": 2,
+      "total_votos": 664,
+      "lista_nominal": 1156,
+      "participacion": 0.57416
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 220,
+      "casillas": 2,
+      "total_votos": 717,
+      "lista_nominal": 1176,
+      "participacion": 0.609623
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 221,
+      "casillas": 2,
+      "total_votos": 827,
+      "lista_nominal": 1377,
+      "participacion": 0.600311
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 222,
+      "casillas": 2,
+      "total_votos": 545,
+      "lista_nominal": 914,
+      "participacion": 0.596176
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 223,
+      "casillas": 2,
+      "total_votos": 742,
+      "lista_nominal": 1096,
+      "participacion": 0.676722
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 224,
+      "casillas": 2,
+      "total_votos": 898,
+      "lista_nominal": 1480,
+      "participacion": 0.606495
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 225,
+      "casillas": 2,
+      "total_votos": 797,
+      "lista_nominal": 1284,
+      "participacion": 0.620961
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 226,
+      "casillas": 2,
+      "total_votos": 948,
+      "lista_nominal": 1488,
+      "participacion": 0.637346
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 227,
+      "casillas": 2,
+      "total_votos": 859,
+      "lista_nominal": 1463,
+      "participacion": 0.586841
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 228,
+      "casillas": 2,
+      "total_votos": 881,
+      "lista_nominal": 1482,
+      "participacion": 0.594428
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 230,
+      "casillas": 2,
+      "total_votos": 642,
+      "lista_nominal": 945,
+      "participacion": 0.678973
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 231,
+      "casillas": 2,
+      "total_votos": 603,
+      "lista_nominal": 965,
+      "participacion": 0.625148
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 232,
+      "casillas": 2,
+      "total_votos": 816,
+      "lista_nominal": 1337,
+      "participacion": 0.610641
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 233,
+      "casillas": 2,
+      "total_votos": 801,
+      "lista_nominal": 1263,
+      "participacion": 0.634371
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 234,
+      "casillas": 2,
+      "total_votos": 726,
+      "lista_nominal": 1131,
+      "participacion": 0.642191
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 235,
+      "casillas": 2,
+      "total_votos": 692,
+      "lista_nominal": 1052,
+      "participacion": 0.658054
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 236,
+      "casillas": 2,
+      "total_votos": 616,
+      "lista_nominal": 901,
+      "participacion": 0.684069
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 237,
+      "casillas": 2,
+      "total_votos": 806,
+      "lista_nominal": 1223,
+      "participacion": 0.659332
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 239,
+      "casillas": 2,
+      "total_votos": 795,
+      "lista_nominal": 1298,
+      "participacion": 0.612624
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 240,
+      "casillas": 2,
+      "total_votos": 734,
+      "lista_nominal": 1088,
+      "participacion": 0.674762
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 241,
+      "casillas": 2,
+      "total_votos": 811,
+      "lista_nominal": 1331,
+      "participacion": 0.609039
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 242,
+      "casillas": 2,
+      "total_votos": 675,
+      "lista_nominal": 1085,
+      "participacion": 0.622007
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 243,
+      "casillas": 2,
+      "total_votos": 694,
+      "lista_nominal": 1141,
+      "participacion": 0.608479
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 245,
+      "casillas": 2,
+      "total_votos": 608,
+      "lista_nominal": 976,
+      "participacion": 0.623454
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 246,
+      "casillas": 2,
+      "total_votos": 958,
+      "lista_nominal": 1464,
+      "participacion": 0.654278
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 247,
+      "casillas": 2,
+      "total_votos": 879,
+      "lista_nominal": 1345,
+      "participacion": 0.653475
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 248,
+      "casillas": 2,
+      "total_votos": 706,
+      "lista_nominal": 1059,
+      "participacion": 0.667088
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 249,
+      "casillas": 2,
+      "total_votos": 932,
+      "lista_nominal": 1441,
+      "participacion": 0.646862
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 250,
+      "casillas": 2,
+      "total_votos": 524,
+      "lista_nominal": 820,
+      "participacion": 0.638752
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 251,
+      "casillas": 2,
+      "total_votos": 547,
+      "lista_nominal": 900,
+      "participacion": 0.60743
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 252,
+      "casillas": 2,
+      "total_votos": 743,
+      "lista_nominal": 1157,
+      "participacion": 0.642598
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 253,
+      "casillas": 2,
+      "total_votos": 812,
+      "lista_nominal": 1292,
+      "participacion": 0.628799
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 254,
+      "casillas": 1,
+      "total_votos": 348,
+      "lista_nominal": 582,
+      "participacion": 0.598644
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 255,
+      "casillas": 1,
+      "total_votos": 403,
+      "lista_nominal": 591,
+      "participacion": 0.681142
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 256,
+      "casillas": 2,
+      "total_votos": 608,
+      "lista_nominal": 922,
+      "participacion": 0.659209
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 257,
+      "casillas": 2,
+      "total_votos": 831,
+      "lista_nominal": 1213,
+      "participacion": 0.685165
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 258,
+      "casillas": 1,
+      "total_votos": 446,
+      "lista_nominal": 738,
+      "participacion": 0.604856
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 259,
+      "casillas": 1,
+      "total_votos": 325,
+      "lista_nominal": 559,
+      "participacion": 0.581397
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 260,
+      "casillas": 1,
+      "total_votos": 408,
+      "lista_nominal": 688,
+      "participacion": 0.593363
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 261,
+      "casillas": 1,
+      "total_votos": 302,
+      "lista_nominal": 475,
+      "participacion": 0.634854
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 262,
+      "casillas": 1,
+      "total_votos": 392,
+      "lista_nominal": 639,
+      "participacion": 0.613223
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 263,
+      "casillas": 1,
+      "total_votos": 461,
+      "lista_nominal": 695,
+      "participacion": 0.663137
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 264,
+      "casillas": 1,
+      "total_votos": 391,
+      "lista_nominal": 651,
+      "participacion": 0.599957
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 265,
+      "casillas": 2,
+      "total_votos": 502,
+      "lista_nominal": 797,
+      "participacion": 0.630016
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 266,
+      "casillas": 2,
+      "total_votos": 820,
+      "lista_nominal": 1409,
+      "participacion": 0.581739
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 267,
+      "casillas": 2,
+      "total_votos": 561,
+      "lista_nominal": 865,
+      "participacion": 0.648572
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 268,
+      "casillas": 2,
+      "total_votos": 510,
+      "lista_nominal": 777,
+      "participacion": 0.656563
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 269,
+      "casillas": 1,
+      "total_votos": 360,
+      "lista_nominal": 598,
+      "participacion": 0.602278
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 270,
+      "casillas": 1,
+      "total_votos": 371,
+      "lista_nominal": 646,
+      "participacion": 0.573665
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 271,
+      "casillas": 1,
+      "total_votos": 449,
+      "lista_nominal": 675,
+      "participacion": 0.665406
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 272,
+      "casillas": 1,
+      "total_votos": 300,
+      "lista_nominal": 481,
+      "participacion": 0.624018
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 274,
+      "casillas": 1,
+      "total_votos": 345,
+      "lista_nominal": 502,
+      "participacion": 0.687956
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 275,
+      "casillas": 1,
+      "total_votos": 464,
+      "lista_nominal": 717,
+      "participacion": 0.646518
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 276,
+      "casillas": 1,
+      "total_votos": 421,
+      "lista_nominal": 665,
+      "participacion": 0.633573
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 277,
+      "casillas": 1,
+      "total_votos": 446,
+      "lista_nominal": 699,
+      "participacion": 0.638745
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 279,
+      "casillas": 2,
+      "total_votos": 701,
+      "lista_nominal": 1210,
+      "participacion": 0.579026
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 280,
+      "casillas": 2,
+      "total_votos": 708,
+      "lista_nominal": 1049,
+      "participacion": 0.6748
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 281,
+      "casillas": 2,
+      "total_votos": 590,
+      "lista_nominal": 882,
+      "participacion": 0.66917
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 282,
+      "casillas": 2,
+      "total_votos": 681,
+      "lista_nominal": 1048,
+      "participacion": 0.649519
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 283,
+      "casillas": 2,
+      "total_votos": 864,
+      "lista_nominal": 1359,
+      "participacion": 0.635556
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 284,
+      "casillas": 1,
+      "total_votos": 387,
+      "lista_nominal": 638,
+      "participacion": 0.605952
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 285,
+      "casillas": 1,
+      "total_votos": 287,
+      "lista_nominal": 473,
+      "participacion": 0.607287
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 286,
+      "casillas": 1,
+      "total_votos": 325,
+      "lista_nominal": 531,
+      "participacion": 0.611365
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 287,
+      "casillas": 1,
+      "total_votos": 476,
+      "lista_nominal": 719,
+      "participacion": 0.662239
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 288,
+      "casillas": 1,
+      "total_votos": 358,
+      "lista_nominal": 592,
+      "participacion": 0.604103
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 289,
+      "casillas": 1,
+      "total_votos": 361,
+      "lista_nominal": 612,
+      "participacion": 0.589605
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 290,
+      "casillas": 1,
+      "total_votos": 341,
+      "lista_nominal": 519,
+      "participacion": 0.656274
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 291,
+      "casillas": 1,
+      "total_votos": 384,
+      "lista_nominal": 661,
+      "participacion": 0.580707
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 292,
+      "casillas": 1,
+      "total_votos": 365,
+      "lista_nominal": 572,
+      "participacion": 0.638113
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 293,
+      "casillas": 1,
+      "total_votos": 343,
+      "lista_nominal": 574,
+      "participacion": 0.59782
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 294,
+      "casillas": 1,
+      "total_votos": 393,
+      "lista_nominal": 576,
+      "participacion": 0.681581
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 295,
+      "casillas": 1,
+      "total_votos": 293,
+      "lista_nominal": 509,
+      "participacion": 0.575931
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 296,
+      "casillas": 1,
+      "total_votos": 450,
+      "lista_nominal": 650,
+      "participacion": 0.691547
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 297,
+      "casillas": 1,
+      "total_votos": 431,
+      "lista_nominal": 628,
+      "participacion": 0.687005
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 298,
+      "casillas": 1,
+      "total_votos": 410,
+      "lista_nominal": 625,
+      "participacion": 0.656463
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 299,
+      "casillas": 1,
+      "total_votos": 470,
+      "lista_nominal": 707,
+      "participacion": 0.664871
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 300,
+      "casillas": 1,
+      "total_votos": 324,
+      "lista_nominal": 564,
+      "participacion": 0.573708
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 301,
+      "casillas": 1,
+      "total_votos": 368,
+      "lista_nominal": 555,
+      "participacion": 0.663417
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 302,
+      "casillas": 1,
+      "total_votos": 485,
+      "lista_nominal": 706,
+      "participacion": 0.687412
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 303,
+      "casillas": 2,
+      "total_votos": 575,
+      "lista_nominal": 867,
+      "participacion": 0.662702
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 304,
+      "casillas": 2,
+      "total_votos": 792,
+      "lista_nominal": 1227,
+      "participacion": 0.64539
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 305,
+      "casillas": 2,
+      "total_votos": 619,
+      "lista_nominal": 1032,
+      "participacion": 0.599331
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 306,
+      "casillas": 2,
+      "total_votos": 504,
+      "lista_nominal": 874,
+      "participacion": 0.576483
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 307,
+      "casillas": 2,
+      "total_votos": 721,
+      "lista_nominal": 1101,
+      "participacion": 0.654497
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 308,
+      "casillas": 2,
+      "total_votos": 677,
+      "lista_nominal": 1142,
+      "participacion": 0.592805
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 309,
+      "casillas": 2,
+      "total_votos": 694,
+      "lista_nominal": 1180,
+      "participacion": 0.588315
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 310,
+      "casillas": 2,
+      "total_votos": 734,
+      "lista_nominal": 1273,
+      "participacion": 0.576236
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 311,
+      "casillas": 2,
+      "total_votos": 728,
+      "lista_nominal": 1136,
+      "participacion": 0.640727
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 312,
+      "casillas": 2,
+      "total_votos": 596,
+      "lista_nominal": 916,
+      "participacion": 0.65013
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 313,
+      "casillas": 2,
+      "total_votos": 616,
+      "lista_nominal": 981,
+      "participacion": 0.628404
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 314,
+      "casillas": 2,
+      "total_votos": 575,
+      "lista_nominal": 930,
+      "participacion": 0.618492
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 315,
+      "casillas": 2,
+      "total_votos": 628,
+      "lista_nominal": 1026,
+      "participacion": 0.612221
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 316,
+      "casillas": 2,
+      "total_votos": 839,
+      "lista_nominal": 1356,
+      "participacion": 0.618495
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 317,
+      "casillas": 2,
+      "total_votos": 909,
+      "lista_nominal": 1351,
+      "participacion": 0.672831
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 318,
+      "casillas": 2,
+      "total_votos": 613,
+      "lista_nominal": 1051,
+      "participacion": 0.582829
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 319,
+      "casillas": 1,
+      "total_votos": 451,
+      "lista_nominal": 707,
+      "participacion": 0.63773
+    },
+    {
+      "municipio": "SEYBAPLAYA",
+      "seccion": 320,
+      "casillas": 2,
+      "total_votos": 676,
+      "lista_nominal": 1099,
+      "participacion": 0.614995
+    },
+    {
+      "municipio": "SEYBAPLAYA",
+      "seccion": 321,
+      "casillas": 2,
+      "total_votos": 860,
+      "lista_nominal": 1290,
+      "participacion": 0.666748
+    },
+    {
+      "municipio": "SEYBAPLAYA",
+      "seccion": 322,
+      "casillas": 2,
+      "total_votos": 857,
+      "lista_nominal": 1291,
+      "participacion": 0.663508
+    },
+    {
+      "municipio": "SEYBAPLAYA",
+      "seccion": 323,
+      "casillas": 1,
+      "total_votos": 419,
+      "lista_nominal": 708,
+      "participacion": 0.591286
+    },
+    {
+      "municipio": "SEYBAPLAYA",
+      "seccion": 324,
+      "casillas": 2,
+      "total_votos": 637,
+      "lista_nominal": 975,
+      "participacion": 0.653335
+    },
+    {
+      "municipio": "SEYBAPLAYA",
+      "seccion": 325,
+      "casillas": 2,
+      "total_votos": 742,
+      "lista_nominal": 1238,
+      "participacion": 0.599156
+    },
+    {
+      "municipio": "SEYBAPLAYA",
+      "seccion": 326,
+      "casillas": 1,
+      "total_votos": 438,
+      "lista_nominal": 659,
+      "participacion": 0.665028
+    },
+    {
+      "municipio": "SEYBAPLAYA",
+      "seccion": 327,
+      "casillas": 2,
+      "total_votos": 495,
+      "lista_nominal": 767,
+      "participacion": 0.64587
+    },
+    {
+      "municipio": "SEYBAPLAYA",
+      "seccion": 328,
+      "casillas": 2,
+      "total_votos": 707,
+      "lista_nominal": 1027,
+      "participacion": 0.688766
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 329,
+      "casillas": 1,
+      "total_votos": 278,
+      "lista_nominal": 482,
+      "participacion": 0.576081
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 330,
+      "casillas": 2,
+      "total_votos": 711,
+      "lista_nominal": 1087,
+      "participacion": 0.654282
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 332,
+      "casillas": 1,
+      "total_votos": 457,
+      "lista_nominal": 737,
+      "participacion": 0.620599
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 333,
+      "casillas": 1,
+      "total_votos": 387,
+      "lista_nominal": 664,
+      "participacion": 0.58212
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 334,
+      "casillas": 1,
+      "total_votos": 426,
+      "lista_nominal": 657,
+      "participacion": 0.648269
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 335,
+      "casillas": 1,
+      "total_votos": 420,
+      "lista_nominal": 684,
+      "participacion": 0.614664
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 336,
+      "casillas": 1,
+      "total_votos": 357,
+      "lista_nominal": 578,
+      "participacion": 0.617469
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 337,
+      "casillas": 1,
+      "total_votos": 320,
+      "lista_nominal": 480,
+      "participacion": 0.665698
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 338,
+      "casillas": 1,
+      "total_votos": 369,
+      "lista_nominal": 601,
+      "participacion": 0.613948
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 339,
+      "casillas": 1,
+      "total_votos": 473,
+      "lista_nominal": 704,
+      "participacion": 0.67168
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 340,
+      "casillas": 1,
+      "total_votos": 331,
+      "lista_nominal": 481,
+      "participacion": 0.688295
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 341,
+      "casillas": 1,
+      "total_votos": 430,
+      "lista_nominal": 640,
+      "participacion": 0.672445
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 342,
+      "casillas": 2,
+      "total_votos": 614,
+      "lista_nominal": 982,
+      "participacion": 0.625258
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 343,
+      "casillas": 2,
+      "total_votos": 684,
+      "lista_nominal": 993,
+      "participacion": 0.688857
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 344,
+      "casillas": 1,
+      "total_votos": 386,
+      "lista_nominal": 611,
+      "participacion": 0.63102
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 345,
+      "casillas": 2,
+      "total_votos": 767,
+      "lista_nominal": 1161,
+      "participacion": 0.660723
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 346,
+      "casillas": 2,
+      "total_votos": 491,
+      "lista_nominal": 851,
+      "participacion": 0.576444
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 347,
+      "casillas": 1,
+      "total_votos": 356,
+      "lista_nominal": 531,
+      "participacion": 0.669984
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 348,
+      "casillas": 1,
+      "total_votos": 358,
+      "lista_nominal": 530,
+      "participacion": 0.675206
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 349,
+      "casillas": 1,
+      "total_votos": 408,
+      "lista_nominal": 699,
+      "participacion": 0.5834
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 350,
+      "casillas": 1,
+      "total_votos": 430,
+      "lista_nominal": 714,
+      "participacion": 0.602264
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 351,
+      "casillas": 1,
+      "total_votos": 343,
+      "lista_nominal": 513,
+      "participacion": 0.66874
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 352,
+      "casillas": 1,
+      "total_votos": 375,
+      "lista_nominal": 552,
+      "participacion": 0.678638
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 353,
+      "casillas": 1,
+      "total_votos": 400,
+      "lista_nominal": 660,
+      "participacion": 0.606152
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 354,
+      "casillas": 1,
+      "total_votos": 311,
+      "lista_nominal": 453,
+      "participacion": 0.686768
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 355,
+      "casillas": 1,
+      "total_votos": 313,
+      "lista_nominal": 475,
+      "participacion": 0.659409
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 356,
+      "casillas": 1,
+      "total_votos": 381,
+      "lista_nominal": 589,
+      "participacion": 0.64624
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 357,
+      "casillas": 1,
+      "total_votos": 399,
+      "lista_nominal": 597,
+      "participacion": 0.668152
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 358,
+      "casillas": 1,
+      "total_votos": 286,
+      "lista_nominal": 477,
+      "participacion": 0.599592
+    },
+    {
+      "municipio": "CALAKMUL",
+      "seccion": 359,
+      "casillas": 1,
+      "total_votos": 290,
+      "lista_nominal": 469,
+      "participacion": 0.618794
+    },
+    {
+      "municipio": "CALAKMUL",
+      "seccion": 360,
+      "casillas": 1,
+      "total_votos": 476,
+      "lista_nominal": 748,
+      "participacion": 0.636494
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 361,
+      "casillas": 1,
+      "total_votos": 412,
+      "lista_nominal": 673,
+      "participacion": 0.612695
+    },
+    {
+      "municipio": "CALAKMUL",
+      "seccion": 362,
+      "casillas": 1,
+      "total_votos": 299,
+      "lista_nominal": 453,
+      "participacion": 0.659487
+    },
+    {
+      "municipio": "HECELCHAKÁN",
+      "seccion": 363,
+      "casillas": 2,
+      "total_votos": 620,
+      "lista_nominal": 972,
+      "participacion": 0.637436
+    },
+    {
+      "municipio": "HECELCHAKÁN",
+      "seccion": 364,
+      "casillas": 2,
+      "total_votos": 689,
+      "lista_nominal": 1060,
+      "participacion": 0.649915
+    },
+    {
+      "municipio": "HECELCHAKÁN",
+      "seccion": 365,
+      "casillas": 2,
+      "total_votos": 1002,
+      "lista_nominal": 1482,
+      "participacion": 0.676294
+    },
+    {
+      "municipio": "HECELCHAKÁN",
+      "seccion": 366,
+      "casillas": 2,
+      "total_votos": 604,
+      "lista_nominal": 966,
+      "participacion": 0.625172
+    },
+    {
+      "municipio": "HECELCHAKÁN",
+      "seccion": 367,
+      "casillas": 2,
+      "total_votos": 606,
+      "lista_nominal": 881,
+      "participacion": 0.687458
+    },
+    {
+      "municipio": "HECELCHAKÁN",
+      "seccion": 368,
+      "casillas": 2,
+      "total_votos": 862,
+      "lista_nominal": 1425,
+      "participacion": 0.604607
+    },
+    {
+      "municipio": "HECELCHAKÁN",
+      "seccion": 369,
+      "casillas": 1,
+      "total_votos": 357,
+      "lista_nominal": 600,
+      "participacion": 0.594438
+    },
+    {
+      "municipio": "HECELCHAKÁN",
+      "seccion": 370,
+      "casillas": 1,
+      "total_votos": 490,
+      "lista_nominal": 723,
+      "participacion": 0.677462
+    },
+    {
+      "municipio": "HECELCHAKÁN",
+      "seccion": 371,
+      "casillas": 1,
+      "total_votos": 350,
+      "lista_nominal": 539,
+      "participacion": 0.649674
+    },
+    {
+      "municipio": "HECELCHAKÁN",
+      "seccion": 372,
+      "casillas": 1,
+      "total_votos": 374,
+      "lista_nominal": 632,
+      "participacion": 0.591341
+    },
+    {
+      "municipio": "HECELCHAKÁN",
+      "seccion": 373,
+      "casillas": 1,
+      "total_votos": 432,
+      "lista_nominal": 678,
+      "participacion": 0.637725
+    },
+    {
+      "municipio": "HECELCHAKÁN",
+      "seccion": 374,
+      "casillas": 1,
+      "total_votos": 435,
+      "lista_nominal": 683,
+      "participacion": 0.636642
+    },
+    {
+      "municipio": "HECELCHAKÁN",
+      "seccion": 375,
+      "casillas": 2,
+      "total_votos": 551,
+      "lista_nominal": 900,
+      "participacion": 0.611899
+    },
+    {
+      "municipio": "HECELCHAKÁN",
+      "seccion": 376,
+      "casillas": 1,
+      "total_votos": 484,
+      "lista_nominal": 707,
+      "participacion": 0.684492
+    },
+    {
+      "municipio": "HECELCHAKÁN",
+      "seccion": 377,
+      "casillas": 2,
+      "total_votos": 960,
+      "lista_nominal": 1427,
+      "participacion": 0.6728
+    },
+    {
+      "municipio": "HECELCHAKÁN",
+      "seccion": 378,
+      "casillas": 2,
+      "total_votos": 979,
+      "lista_nominal": 1426,
+      "participacion": 0.686634
+    },
+    {
+      "municipio": "HECELCHAKÁN",
+      "seccion": 379,
+      "casillas": 1,
+      "total_votos": 463,
+      "lista_nominal": 734,
+      "participacion": 0.631319
+    },
+    {
+      "municipio": "HECELCHAKÁN",
+      "seccion": 380,
+      "casillas": 1,
+      "total_votos": 312,
+      "lista_nominal": 470,
+      "participacion": 0.664272
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 381,
+      "casillas": 2,
+      "total_votos": 592,
+      "lista_nominal": 1006,
+      "participacion": 0.588407
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 382,
+      "casillas": 2,
+      "total_votos": 569,
+      "lista_nominal": 890,
+      "participacion": 0.638976
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 383,
+      "casillas": 2,
+      "total_votos": 718,
+      "lista_nominal": 1059,
+      "participacion": 0.677692
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 384,
+      "casillas": 2,
+      "total_votos": 629,
+      "lista_nominal": 1084,
+      "participacion": 0.579951
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 385,
+      "casillas": 1,
+      "total_votos": 438,
+      "lista_nominal": 670,
+      "participacion": 0.654204
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 386,
+      "casillas": 1,
+      "total_votos": 326,
+      "lista_nominal": 515,
+      "participacion": 0.633643
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 387,
+      "casillas": 1,
+      "total_votos": 397,
+      "lista_nominal": 692,
+      "participacion": 0.57378
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 388,
+      "casillas": 2,
+      "total_votos": 690,
+      "lista_nominal": 1153,
+      "participacion": 0.598416
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 389,
+      "casillas": 2,
+      "total_votos": 604,
+      "lista_nominal": 915,
+      "participacion": 0.660592
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 390,
+      "casillas": 1,
+      "total_votos": 311,
+      "lista_nominal": 510,
+      "participacion": 0.610406
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 391,
+      "casillas": 1,
+      "total_votos": 487,
+      "lista_nominal": 748,
+      "participacion": 0.650985
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 392,
+      "casillas": 1,
+      "total_votos": 369,
+      "lista_nominal": 581,
+      "participacion": 0.635109
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 393,
+      "casillas": 1,
+      "total_votos": 292,
+      "lista_nominal": 486,
+      "participacion": 0.599964
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 394,
+      "casillas": 1,
+      "total_votos": 355,
+      "lista_nominal": 551,
+      "participacion": 0.643597
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 395,
+      "casillas": 1,
+      "total_votos": 311,
+      "lista_nominal": 519,
+      "participacion": 0.599426
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 396,
+      "casillas": 1,
+      "total_votos": 454,
+      "lista_nominal": 704,
+      "participacion": 0.645447
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 397,
+      "casillas": 1,
+      "total_votos": 284,
+      "lista_nominal": 473,
+      "participacion": 0.600935
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 398,
+      "casillas": 1,
+      "total_votos": 276,
+      "lista_nominal": 477,
+      "participacion": 0.578654
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 399,
+      "casillas": 1,
+      "total_votos": 306,
+      "lista_nominal": 471,
+      "participacion": 0.648732
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 400,
+      "casillas": 2,
+      "total_votos": 539,
+      "lista_nominal": 791,
+      "participacion": 0.68165
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 401,
+      "casillas": 2,
+      "total_votos": 823,
+      "lista_nominal": 1415,
+      "participacion": 0.581503
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 402,
+      "casillas": 1,
+      "total_votos": 340,
+      "lista_nominal": 521,
+      "participacion": 0.653277
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 403,
+      "casillas": 2,
+      "total_votos": 462,
+      "lista_nominal": 785,
+      "participacion": 0.588877
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 404,
+      "casillas": 2,
+      "total_votos": 593,
+      "lista_nominal": 889,
+      "participacion": 0.667154
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 405,
+      "casillas": 1,
+      "total_votos": 412,
+      "lista_nominal": 692,
+      "participacion": 0.595849
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 406,
+      "casillas": 1,
+      "total_votos": 299,
+      "lista_nominal": 479,
+      "participacion": 0.624726
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 407,
+      "casillas": 1,
+      "total_votos": 363,
+      "lista_nominal": 577,
+      "participacion": 0.629043
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 408,
+      "casillas": 1,
+      "total_votos": 437,
+      "lista_nominal": 668,
+      "participacion": 0.653804
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 409,
+      "casillas": 1,
+      "total_votos": 436,
+      "lista_nominal": 745,
+      "participacion": 0.58481
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 410,
+      "casillas": 1,
+      "total_votos": 350,
+      "lista_nominal": 570,
+      "participacion": 0.613716
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 411,
+      "casillas": 1,
+      "total_votos": 427,
+      "lista_nominal": 708,
+      "participacion": 0.602839
+    },
+    {
+      "municipio": "HOPELCHÉN",
+      "seccion": 412,
+      "casillas": 1,
+      "total_votos": 468,
+      "lista_nominal": 730,
+      "participacion": 0.641525
+    },
+    {
+      "municipio": "CALAKMUL",
+      "seccion": 413,
+      "casillas": 1,
+      "total_votos": 349,
+      "lista_nominal": 576,
+      "participacion": 0.606425
+    },
+    {
+      "municipio": "CALAKMUL",
+      "seccion": 414,
+      "casillas": 1,
+      "total_votos": 358,
+      "lista_nominal": 524,
+      "participacion": 0.683792
+    },
+    {
+      "municipio": "CALAKMUL",
+      "seccion": 415,
+      "casillas": 1,
+      "total_votos": 394,
+      "lista_nominal": 582,
+      "participacion": 0.676362
+    },
+    {
+      "municipio": "CALAKMUL",
+      "seccion": 416,
+      "casillas": 1,
+      "total_votos": 318,
+      "lista_nominal": 507,
+      "participacion": 0.626834
+    },
+    {
+      "municipio": "CALAKMUL",
+      "seccion": 417,
+      "casillas": 2,
+      "total_votos": 533,
+      "lista_nominal": 920,
+      "participacion": 0.579071
+    },
+    {
+      "municipio": "CALAKMUL",
+      "seccion": 418,
+      "casillas": 1,
+      "total_votos": 504,
+      "lista_nominal": 749,
+      "participacion": 0.673323
+    },
+    {
+      "municipio": "CALAKMUL",
+      "seccion": 419,
+      "casillas": 1,
+      "total_votos": 506,
+      "lista_nominal": 740,
+      "participacion": 0.684164
+    },
+    {
+      "municipio": "CALAKMUL",
+      "seccion": 420,
+      "casillas": 1,
+      "total_votos": 417,
+      "lista_nominal": 704,
+      "participacion": 0.592957
+    },
+    {
+      "municipio": "CALAKMUL",
+      "seccion": 421,
+      "casillas": 1,
+      "total_votos": 356,
+      "lista_nominal": 595,
+      "participacion": 0.59865
+    },
+    {
+      "municipio": "CALAKMUL",
+      "seccion": 422,
+      "casillas": 1,
+      "total_votos": 331,
+      "lista_nominal": 570,
+      "participacion": 0.580036
+    },
+    {
+      "municipio": "CALAKMUL",
+      "seccion": 423,
+      "casillas": 1,
+      "total_votos": 389,
+      "lista_nominal": 563,
+      "participacion": 0.691237
+    },
+    {
+      "municipio": "CALAKMUL",
+      "seccion": 424,
+      "casillas": 1,
+      "total_votos": 366,
+      "lista_nominal": 586,
+      "participacion": 0.623761
+    },
+    {
+      "municipio": "CALAKMUL",
+      "seccion": 425,
+      "casillas": 1,
+      "total_votos": 510,
+      "lista_nominal": 737,
+      "participacion": 0.692451
+    },
+    {
+      "municipio": "CALAKMUL",
+      "seccion": 426,
+      "casillas": 1,
+      "total_votos": 302,
+      "lista_nominal": 496,
+      "participacion": 0.608605
+    },
+    {
+      "municipio": "CALAKMUL",
+      "seccion": 427,
+      "casillas": 1,
+      "total_votos": 475,
+      "lista_nominal": 740,
+      "participacion": 0.642502
+    },
+    {
+      "municipio": "PALIZADA",
+      "seccion": 428,
+      "casillas": 2,
+      "total_votos": 800,
+      "lista_nominal": 1321,
+      "participacion": 0.60551
+    },
+    {
+      "municipio": "PALIZADA",
+      "seccion": 429,
+      "casillas": 2,
+      "total_votos": 607,
+      "lista_nominal": 914,
+      "participacion": 0.664463
+    },
+    {
+      "municipio": "PALIZADA",
+      "seccion": 430,
+      "casillas": 1,
+      "total_votos": 302,
+      "lista_nominal": 505,
+      "participacion": 0.598966
+    },
+    {
+      "municipio": "PALIZADA",
+      "seccion": 431,
+      "casillas": 1,
+      "total_votos": 393,
+      "lista_nominal": 595,
+      "participacion": 0.65995
+    },
+    {
+      "municipio": "PALIZADA",
+      "seccion": 432,
+      "casillas": 1,
+      "total_votos": 472,
+      "lista_nominal": 742,
+      "participacion": 0.635956
+    },
+    {
+      "municipio": "PALIZADA",
+      "seccion": 433,
+      "casillas": 1,
+      "total_votos": 312,
+      "lista_nominal": 534,
+      "participacion": 0.585063
+    },
+    {
+      "municipio": "PALIZADA",
+      "seccion": 434,
+      "casillas": 1,
+      "total_votos": 289,
+      "lista_nominal": 503,
+      "participacion": 0.574698
+    },
+    {
+      "municipio": "PALIZADA",
+      "seccion": 435,
+      "casillas": 1,
+      "total_votos": 370,
+      "lista_nominal": 610,
+      "participacion": 0.605917
+    },
+    {
+      "municipio": "PALIZADA",
+      "seccion": 436,
+      "casillas": 1,
+      "total_votos": 449,
+      "lista_nominal": 710,
+      "participacion": 0.631905
+    },
+    {
+      "municipio": "PALIZADA",
+      "seccion": 439,
+      "casillas": 1,
+      "total_votos": 456,
+      "lista_nominal": 711,
+      "participacion": 0.641888
+    },
+    {
+      "municipio": "TENABO",
+      "seccion": 440,
+      "casillas": 2,
+      "total_votos": 607,
+      "lista_nominal": 916,
+      "participacion": 0.662757
+    },
+    {
+      "municipio": "TENABO",
+      "seccion": 441,
+      "casillas": 2,
+      "total_votos": 601,
+      "lista_nominal": 934,
+      "participacion": 0.643101
+    },
+    {
+      "municipio": "TENABO",
+      "seccion": 442,
+      "casillas": 2,
+      "total_votos": 811,
+      "lista_nominal": 1201,
+      "participacion": 0.675326
+    },
+    {
+      "municipio": "TENABO",
+      "seccion": 443,
+      "casillas": 1,
+      "total_votos": 436,
+      "lista_nominal": 732,
+      "participacion": 0.595299
+    },
+    {
+      "municipio": "TENABO",
+      "seccion": 444,
+      "casillas": 1,
+      "total_votos": 411,
+      "lista_nominal": 628,
+      "participacion": 0.654026
+    },
+    {
+      "municipio": "TENABO",
+      "seccion": 445,
+      "casillas": 1,
+      "total_votos": 305,
+      "lista_nominal": 520,
+      "participacion": 0.587386
+    },
+    {
+      "municipio": "TENABO",
+      "seccion": 446,
+      "casillas": 1,
+      "total_votos": 407,
+      "lista_nominal": 628,
+      "participacion": 0.647326
+    },
+    {
+      "municipio": "TENABO",
+      "seccion": 447,
+      "casillas": 1,
+      "total_votos": 370,
+      "lista_nominal": 575,
+      "participacion": 0.643041
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 448,
+      "casillas": 2,
+      "total_votos": 555,
+      "lista_nominal": 887,
+      "participacion": 0.625856
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 449,
+      "casillas": 2,
+      "total_votos": 585,
+      "lista_nominal": 1010,
+      "participacion": 0.579165
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 450,
+      "casillas": 2,
+      "total_votos": 923,
+      "lista_nominal": 1464,
+      "participacion": 0.630328
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 451,
+      "casillas": 2,
+      "total_votos": 792,
+      "lista_nominal": 1193,
+      "participacion": 0.66398
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 452,
+      "casillas": 2,
+      "total_votos": 802,
+      "lista_nominal": 1315,
+      "participacion": 0.609745
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 453,
+      "casillas": 2,
+      "total_votos": 786,
+      "lista_nominal": 1248,
+      "participacion": 0.629791
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 454,
+      "casillas": 2,
+      "total_votos": 617,
+      "lista_nominal": 1050,
+      "participacion": 0.587479
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 455,
+      "casillas": 1,
+      "total_votos": 473,
+      "lista_nominal": 729,
+      "participacion": 0.648533
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 456,
+      "casillas": 2,
+      "total_votos": 551,
+      "lista_nominal": 932,
+      "participacion": 0.590904
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 457,
+      "casillas": 2,
+      "total_votos": 754,
+      "lista_nominal": 1237,
+      "participacion": 0.60946
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 458,
+      "casillas": 2,
+      "total_votos": 878,
+      "lista_nominal": 1496,
+      "participacion": 0.587214
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 459,
+      "casillas": 2,
+      "total_votos": 877,
+      "lista_nominal": 1358,
+      "participacion": 0.645758
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 460,
+      "casillas": 2,
+      "total_votos": 825,
+      "lista_nominal": 1374,
+      "participacion": 0.600082
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 461,
+      "casillas": 2,
+      "total_votos": 761,
+      "lista_nominal": 1213,
+      "participacion": 0.627062
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 462,
+      "casillas": 2,
+      "total_votos": 788,
+      "lista_nominal": 1165,
+      "participacion": 0.67622
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 463,
+      "casillas": 2,
+      "total_votos": 911,
+      "lista_nominal": 1494,
+      "participacion": 0.609646
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 464,
+      "casillas": 2,
+      "total_votos": 610,
+      "lista_nominal": 1016,
+      "participacion": 0.600298
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 465,
+      "casillas": 1,
+      "total_votos": 474,
+      "lista_nominal": 742,
+      "participacion": 0.639403
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 466,
+      "casillas": 1,
+      "total_votos": 388,
+      "lista_nominal": 659,
+      "participacion": 0.588154
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 467,
+      "casillas": 1,
+      "total_votos": 411,
+      "lista_nominal": 636,
+      "participacion": 0.646156
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 468,
+      "casillas": 1,
+      "total_votos": 461,
+      "lista_nominal": 672,
+      "participacion": 0.686711
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 469,
+      "casillas": 1,
+      "total_votos": 292,
+      "lista_nominal": 502,
+      "participacion": 0.582008
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 470,
+      "casillas": 1,
+      "total_votos": 282,
+      "lista_nominal": 450,
+      "participacion": 0.62706
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 471,
+      "casillas": 1,
+      "total_votos": 382,
+      "lista_nominal": 628,
+      "participacion": 0.607951
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 472,
+      "casillas": 1,
+      "total_votos": 306,
+      "lista_nominal": 512,
+      "participacion": 0.598323
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 473,
+      "casillas": 1,
+      "total_votos": 395,
+      "lista_nominal": 674,
+      "participacion": 0.586744
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 474,
+      "casillas": 1,
+      "total_votos": 455,
+      "lista_nominal": 705,
+      "participacion": 0.645049
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 475,
+      "casillas": 2,
+      "total_votos": 672,
+      "lista_nominal": 972,
+      "participacion": 0.691061
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 476,
+      "casillas": 2,
+      "total_votos": 767,
+      "lista_nominal": 1296,
+      "participacion": 0.591847
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 477,
+      "casillas": 2,
+      "total_votos": 644,
+      "lista_nominal": 1079,
+      "participacion": 0.596923
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 478,
+      "casillas": 1,
+      "total_votos": 341,
+      "lista_nominal": 519,
+      "participacion": 0.657835
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 479,
+      "casillas": 1,
+      "total_votos": 414,
+      "lista_nominal": 660,
+      "participacion": 0.627484
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 480,
+      "casillas": 1,
+      "total_votos": 445,
+      "lista_nominal": 686,
+      "participacion": 0.648007
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 481,
+      "casillas": 1,
+      "total_votos": 368,
+      "lista_nominal": 577,
+      "participacion": 0.638347
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 482,
+      "casillas": 1,
+      "total_votos": 449,
+      "lista_nominal": 656,
+      "participacion": 0.683869
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 483,
+      "casillas": 1,
+      "total_votos": 444,
+      "lista_nominal": 648,
+      "participacion": 0.68504
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 484,
+      "casillas": 1,
+      "total_votos": 439,
+      "lista_nominal": 644,
+      "participacion": 0.682009
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 485,
+      "casillas": 1,
+      "total_votos": 405,
+      "lista_nominal": 697,
+      "participacion": 0.581569
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 486,
+      "casillas": 1,
+      "total_votos": 304,
+      "lista_nominal": 499,
+      "participacion": 0.609913
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 487,
+      "casillas": 1,
+      "total_votos": 432,
+      "lista_nominal": 674,
+      "participacion": 0.641305
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 488,
+      "casillas": 1,
+      "total_votos": 315,
+      "lista_nominal": 536,
+      "participacion": 0.587922
+    },
+    {
+      "municipio": "ESCÁRCEGA",
+      "seccion": 489,
+      "casillas": 2,
+      "total_votos": 863,
+      "lista_nominal": 1313,
+      "participacion": 0.656968
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 490,
+      "casillas": 1,
+      "total_votos": 463,
+      "lista_nominal": 732,
+      "participacion": 0.633057
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 491,
+      "casillas": 2,
+      "total_votos": 578,
+      "lista_nominal": 888,
+      "participacion": 0.651181
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 492,
+      "casillas": 2,
+      "total_votos": 634,
+      "lista_nominal": 1066,
+      "participacion": 0.594779
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 493,
+      "casillas": 2,
+      "total_votos": 697,
+      "lista_nominal": 1196,
+      "participacion": 0.582653
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 494,
+      "casillas": 2,
+      "total_votos": 577,
+      "lista_nominal": 923,
+      "participacion": 0.624843
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 495,
+      "casillas": 2,
+      "total_votos": 659,
+      "lista_nominal": 1093,
+      "participacion": 0.603044
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 496,
+      "casillas": 2,
+      "total_votos": 657,
+      "lista_nominal": 954,
+      "participacion": 0.688429
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 497,
+      "casillas": 2,
+      "total_votos": 899,
+      "lista_nominal": 1401,
+      "participacion": 0.642024
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 498,
+      "casillas": 2,
+      "total_votos": 1019,
+      "lista_nominal": 1470,
+      "participacion": 0.692949
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 499,
+      "casillas": 2,
+      "total_votos": 789,
+      "lista_nominal": 1303,
+      "participacion": 0.605341
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 500,
+      "casillas": 2,
+      "total_votos": 613,
+      "lista_nominal": 924,
+      "participacion": 0.663752
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 501,
+      "casillas": 1,
+      "total_votos": 0,
+      "lista_nominal": 625,
+      "participacion": 0.0
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 502,
+      "casillas": 2,
+      "total_votos": 812,
+      "lista_nominal": 1251,
+      "participacion": 0.649174
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 503,
+      "casillas": 2,
+      "total_votos": 698,
+      "lista_nominal": 1195,
+      "participacion": 0.583949
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 504,
+      "casillas": 2,
+      "total_votos": 679,
+      "lista_nominal": 1108,
+      "participacion": 0.612997
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 505,
+      "casillas": 2,
+      "total_votos": 880,
+      "lista_nominal": 1302,
+      "participacion": 0.675928
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 506,
+      "casillas": 2,
+      "total_votos": 720,
+      "lista_nominal": 1097,
+      "participacion": 0.656241
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 507,
+      "casillas": 2,
+      "total_votos": 736,
+      "lista_nominal": 1072,
+      "participacion": 0.686423
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 508,
+      "casillas": 2,
+      "total_votos": 887,
+      "lista_nominal": 1388,
+      "participacion": 0.639012
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 509,
+      "casillas": 2,
+      "total_votos": 716,
+      "lista_nominal": 1172,
+      "participacion": 0.610742
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 510,
+      "casillas": 2,
+      "total_votos": 754,
+      "lista_nominal": 1093,
+      "participacion": 0.689422
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 511,
+      "casillas": 2,
+      "total_votos": 725,
+      "lista_nominal": 1142,
+      "participacion": 0.634752
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 512,
+      "casillas": 2,
+      "total_votos": 973,
+      "lista_nominal": 1492,
+      "participacion": 0.651919
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 513,
+      "casillas": 2,
+      "total_votos": 763,
+      "lista_nominal": 1225,
+      "participacion": 0.62259
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 514,
+      "casillas": 2,
+      "total_votos": 624,
+      "lista_nominal": 1012,
+      "participacion": 0.616414
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 515,
+      "casillas": 2,
+      "total_votos": 877,
+      "lista_nominal": 1353,
+      "participacion": 0.648049
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 516,
+      "casillas": 2,
+      "total_votos": 839,
+      "lista_nominal": 1410,
+      "participacion": 0.594821
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 517,
+      "casillas": 2,
+      "total_votos": 855,
+      "lista_nominal": 1314,
+      "participacion": 0.650508
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 518,
+      "casillas": 2,
+      "total_votos": 760,
+      "lista_nominal": 1218,
+      "participacion": 0.62406
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 519,
+      "casillas": 2,
+      "total_votos": 596,
+      "lista_nominal": 1015,
+      "participacion": 0.587347
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 520,
+      "casillas": 2,
+      "total_votos": 865,
+      "lista_nominal": 1393,
+      "participacion": 0.621085
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 521,
+      "casillas": 2,
+      "total_votos": 810,
+      "lista_nominal": 1355,
+      "participacion": 0.597427
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 522,
+      "casillas": 2,
+      "total_votos": 841,
+      "lista_nominal": 1229,
+      "participacion": 0.684321
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 523,
+      "casillas": 2,
+      "total_votos": 763,
+      "lista_nominal": 1162,
+      "participacion": 0.65679
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 524,
+      "casillas": 2,
+      "total_votos": 670,
+      "lista_nominal": 972,
+      "participacion": 0.689778
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 525,
+      "casillas": 2,
+      "total_votos": 761,
+      "lista_nominal": 1265,
+      "participacion": 0.601716
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 526,
+      "casillas": 2,
+      "total_votos": 636,
+      "lista_nominal": 995,
+      "participacion": 0.639101
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 527,
+      "casillas": 2,
+      "total_votos": 719,
+      "lista_nominal": 1231,
+      "participacion": 0.584185
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 528,
+      "casillas": 1,
+      "total_votos": 510,
+      "lista_nominal": 747,
+      "participacion": 0.682552
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 529,
+      "casillas": 1,
+      "total_votos": 345,
+      "lista_nominal": 588,
+      "participacion": 0.587096
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 530,
+      "casillas": 1,
+      "total_votos": 442,
+      "lista_nominal": 699,
+      "participacion": 0.632805
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 531,
+      "casillas": 1,
+      "total_votos": 421,
+      "lista_nominal": 664,
+      "participacion": 0.634065
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 532,
+      "casillas": 1,
+      "total_votos": 358,
+      "lista_nominal": 532,
+      "participacion": 0.673167
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 533,
+      "casillas": 1,
+      "total_votos": 448,
+      "lista_nominal": 744,
+      "participacion": 0.602248
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 534,
+      "casillas": 1,
+      "total_votos": 381,
+      "lista_nominal": 615,
+      "participacion": 0.61903
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 535,
+      "casillas": 1,
+      "total_votos": 460,
+      "lista_nominal": 726,
+      "participacion": 0.633989
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 536,
+      "casillas": 1,
+      "total_votos": 482,
+      "lista_nominal": 713,
+      "participacion": 0.676683
+    },
+    {
+      "municipio": "CANDELARIA",
+      "seccion": 537,
+      "casillas": 1,
+      "total_votos": 355,
+      "lista_nominal": 532,
+      "participacion": 0.667801
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 538,
+      "casillas": 1,
+      "total_votos": 325,
+      "lista_nominal": 534,
+      "participacion": 0.608827
+    },
+    {
+      "municipio": "CHAMPOTÓN",
+      "seccion": 539,
+      "casillas": 2,
+      "total_votos": 647,
+      "lista_nominal": 934,
+      "participacion": 0.692868
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 540,
+      "casillas": 2,
+      "total_votos": 737,
+      "lista_nominal": 1266,
+      "participacion": 0.5821484992101106
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 541,
+      "casillas": 3,
+      "total_votos": 1144,
+      "lista_nominal": 2063,
+      "participacion": 0.5545322346097916
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 542,
+      "casillas": 2,
+      "total_votos": 787,
+      "lista_nominal": 1148,
+      "participacion": 0.68511
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 543,
+      "casillas": 2,
+      "total_votos": 808,
+      "lista_nominal": 1204,
+      "participacion": 0.671466
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 544,
+      "casillas": 2,
+      "total_votos": 705,
+      "lista_nominal": 1193,
+      "participacion": 0.590831
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 545,
+      "casillas": 2,
+      "total_votos": 751,
+      "lista_nominal": 1223,
+      "participacion": 0.614415
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 546,
+      "casillas": 2,
+      "total_votos": 786,
+      "lista_nominal": 1231,
+      "participacion": 0.638212
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 547,
+      "casillas": 2,
+      "total_votos": 717,
+      "lista_nominal": 1173,
+      "participacion": 0.611613
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 548,
+      "casillas": 2,
+      "total_votos": 855,
+      "lista_nominal": 1314,
+      "participacion": 0.6506849315068494
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 549,
+      "casillas": 4,
+      "total_votos": 1611,
+      "lista_nominal": 2582,
+      "participacion": 0.6239349341595662
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 550,
+      "casillas": 2,
+      "total_votos": 799,
+      "lista_nominal": 1187,
+      "participacion": 0.6731255265374895
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 551,
+      "casillas": 5,
+      "total_votos": 2031,
+      "lista_nominal": 3054,
+      "participacion": 0.6650294695481336
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 552,
+      "casillas": 4,
+      "total_votos": 1420,
+      "lista_nominal": 2266,
+      "participacion": 0.6266548984995587
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 553,
+      "casillas": 5,
+      "total_votos": 1955,
+      "lista_nominal": 3720,
+      "participacion": 0.5255376344086021
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 554,
+      "casillas": 2,
+      "total_votos": 665,
+      "lista_nominal": 1013,
+      "participacion": 0.6567
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 555,
+      "casillas": 2,
+      "total_votos": 747,
+      "lista_nominal": 1243,
+      "participacion": 0.601027
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 556,
+      "casillas": 2,
+      "total_votos": 789,
+      "lista_nominal": 1365,
+      "participacion": 0.578238
+    },
+    {
+      "municipio": "CARMEN",
+      "seccion": 557,
+      "casillas": 2,
+      "total_votos": 885,
+      "lista_nominal": 1346,
+      "participacion": 0.657627
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 558,
+      "casillas": 2,
+      "total_votos": 864,
+      "lista_nominal": 1434,
+      "participacion": 0.602546
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 559,
+      "casillas": 2,
+      "total_votos": 673,
+      "lista_nominal": 1022,
+      "participacion": 0.658943
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 560,
+      "casillas": 2,
+      "total_votos": 647,
+      "lista_nominal": 1043,
+      "participacion": 0.620494
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 561,
+      "casillas": 2,
+      "total_votos": 592,
+      "lista_nominal": 943,
+      "participacion": 0.627994
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 562,
+      "casillas": 2,
+      "total_votos": 1038,
+      "lista_nominal": 1499,
+      "participacion": 0.692532
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 563,
+      "casillas": 2,
+      "total_votos": 564,
+      "lista_nominal": 943,
+      "participacion": 0.598579
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 564,
+      "casillas": 2,
+      "total_votos": 725,
+      "lista_nominal": 1059,
+      "participacion": 0.684991
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 565,
+      "casillas": 2,
+      "total_votos": 969,
+      "lista_nominal": 1428,
+      "participacion": 0.678512
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 566,
+      "casillas": 2,
+      "total_votos": 794,
+      "lista_nominal": 1303,
+      "participacion": 0.609
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 567,
+      "casillas": 2,
+      "total_votos": 664,
+      "lista_nominal": 1121,
+      "participacion": 0.59193
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 568,
+      "casillas": 2,
+      "total_votos": 920,
+      "lista_nominal": 1400,
+      "participacion": 0.657425
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 569,
+      "casillas": 2,
+      "total_votos": 876,
+      "lista_nominal": 1267,
+      "participacion": 0.691468
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 570,
+      "casillas": 2,
+      "total_votos": 742,
+      "lista_nominal": 1292,
+      "participacion": 0.573939
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 571,
+      "casillas": 2,
+      "total_votos": 846,
+      "lista_nominal": 1390,
+      "participacion": 0.608925
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 911,
+      "casillas": 3,
+      "total_votos": 865,
+      "lista_nominal": 1832,
+      "participacion": 0.4721615720524017
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 921,
+      "casillas": 3,
+      "total_votos": 554,
+      "lista_nominal": 1213,
+      "participacion": 0.45671887881286066
+    },
+    {
+      "municipio": "CAMPECHE",
+      "seccion": 1121,
+      "casillas": 8,
+      "total_votos": 2459,
+      "lista_nominal": 5037,
+      "participacion": 0.4881874131427437
+    }
+  ]
+}
