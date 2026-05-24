@@ -722,7 +722,7 @@ const PeoplePage: React.FC = () => {
 
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex justify-end gap-1.5 translate-x-2 group-hover:translate-x-0 transition-transform">
-                                                    <button onClick={() => setViewingIne(p.inePhoto || '')} className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-400 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all" title="Ver INE">
+                                                    <button onClick={() => setViewingIne(p.inePhoto || 'NO_PHOTO')} className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-400 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all" title="Ver INE">
                                                         <i className="fas fa-id-badge text-xs"></i>
                                                     </button>
                                                     <button onClick={() => generateCredential(p)} className="w-8 h-8 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center hover:bg-violet-600 hover:text-white transition-all">
@@ -903,7 +903,7 @@ const PeoplePage: React.FC = () => {
                             </button>
                         </div>
                         <div className="p-6 bg-slate-50 flex items-center justify-center min-h-[300px]">
-                            {viewingIne.startsWith('data:image') ? (
+                            {(viewingIne.startsWith('data:image') || viewingIne.startsWith('http')) ? (
                                 <img src={viewingIne} alt="INE Frontal" className="max-w-full max-h-[60vh] rounded-xl shadow-lg border-4 border-white" />
                             ) : (
                                 <div className="text-center py-12">
@@ -914,7 +914,7 @@ const PeoplePage: React.FC = () => {
                         </div>
                         <div className="p-4 bg-white border-t flex gap-3">
                             <button onClick={() => setViewingIne(null)} className="btn-ghost flex-1">Cerrar</button>
-                            {viewingIne.startsWith('data:image') && (
+                            {(viewingIne.startsWith('data:image') || viewingIne.startsWith('http')) && (
                                 <a 
                                     href={viewingIne} 
                                     download={`INE_${filteredPeople.find(p => p.inePhoto === viewingIne)?.name || 'Ciudadano'}.jpg`}
