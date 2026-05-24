@@ -471,47 +471,77 @@ const PeoplePage: React.FC = () => {
         try {
             const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [85.6, 53.98] });
             
-            // Premium background & Header
-            doc.setFillColor(252, 252, 252); doc.rect(0, 0, 85.6, 53.98, 'F');
-            doc.setFillColor(139, 0, 0); doc.rect(0, 0, 85.6, 12, 'F');
-            
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(8); doc.setFont('helvetica', 'bold');
-            doc.text('PLATAFORMA CIUDADANA CAMPECHE', 42.8, 7, { align: 'center' });
+            // Card dimensions
+            const W = 85.6, H = 53.98;
+            const headerH = 12;
+            const qrSize = 18;
+            const qrX = W - qrSize - 3; // QR flush right with 3mm margin
+            const qrY = headerH + 3;     // Just below the header
 
-            // Photo with rounded-like rect
+            // Background
+            doc.setFillColor(252, 252, 252); doc.rect(0, 0, W, H, 'F');
+
+            // Red header
+            doc.setFillColor(139, 0, 0); doc.rect(0, 0, W, headerH, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(7.5); doc.setFont('helvetica', 'bold');
+            doc.text('PLATAFORMA CIUDADANA CAMPECHE', W / 2, 7.5, { align: 'center' });
+
+            // QR Code in top-right (inside card body, right side)
+            const qrData = `SEC:${person.seccion}|TEL:${person.phone}|PLATAFORMA-CAMPECHE`;
+            const qrUrl = await QRCode.toDataURL(qrData, { margin: 1 });
+            doc.addImage(qrUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+
+            // Photo on the left
+            const photoX = 3, photoY = headerH + 3, photoW = 22, photoH = 22;
             if (person.photo) {
-                doc.addImage(person.photo, 'JPEG', 4, 15, 22, 22);
+                doc.addImage(person.photo, 'JPEG', photoX, photoY, photoW, photoH);
             } else {
-                doc.setDrawColor(230); doc.rect(4, 15, 22, 22);
-                doc.setFontSize(6); doc.setTextColor(180); doc.text('SIN FOTO', 15, 26, { align: 'center' });
+                doc.setDrawColor(210); doc.setFillColor(245,245,245);
+                doc.rect(photoX, photoY, photoW, photoH, 'FD');
+                doc.setFontSize(5); doc.setTextColor(180);
+                doc.text('SIN FOTO', photoX + photoW / 2, photoY + photoH / 2 + 1, { align: 'center' });
             }
 
-            // Text Info
-            doc.setTextColor(30, 30, 30);
-            doc.setFontSize(9); doc.setFont('helvetica', 'bold');
-            doc.text(person.name.toUpperCase(), 30, 20);
+            // Text area: between photo and QR
+            const textX = photoX + photoW + 3;
+            const textMaxW = qrX - textX - 2; // max width before hitting QR
 
-            doc.setFontSize(6); doc.setTextColor(120); doc.setFont('helvetica', 'normal');
-            doc.text('SECC / DISTRITO:', 30, 25);
-            doc.setTextColor(139, 0, 0); doc.setFont('helvetica', 'bold');
-            doc.text(`${person.seccion || '0000'} - D${person.distrito || '00'}`, 30, 28);
+            // Name — split if too long
+            doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
+            const nameLines = doc.splitTextToSize(person.name.toUpperCase(), textMaxW);
+            let curY = headerH + 9;
+            doc.text(nameLines.slice(0, 2), textX, curY); // max 2 lines
+            curY += nameLines.slice(0, 2).length * 4;
 
-            doc.setFontSize(6); doc.setTextColor(120); doc.setFont('helvetica', 'normal');
-            doc.text('TELEFONO:', 30, 33);
-            doc.setTextColor(0, 0, 0); doc.setFont('helvetica', 'bold');
-            doc.text(person.phone || 'NO PROPORCIONADO', 30, 36);
+            // Section / District
+            doc.setFontSize(5.5); doc.setTextColor(130); doc.setFont('helvetica', 'normal');
+            doc.text('SECC / DISTRITO:', textX, curY + 1);
+            curY += 4;
+            doc.setFontSize(7); doc.setTextColor(139, 0, 0); doc.setFont('helvetica', 'bold');
+            doc.text(`${person.seccion || '----'}  ·  D${person.distrito || '--'}`, textX, curY);
+            curY += 5;
 
-            // QR Code - Updated to remove INE for privacy
-            const qrData = `SEC:${person.seccion}|NAME:${person.name}|PLATAFORMA`;
-            const qrUrl = await QRCode.toDataURL(qrData);
-            doc.addImage(qrUrl, 'PNG', 62, 18, 20, 20);
+            // Phone
+            doc.setFontSize(5.5); doc.setTextColor(130); doc.setFont('helvetica', 'normal');
+            doc.text('TELÉFONO:', textX, curY);
+            curY += 3.5;
+            doc.setFontSize(7); doc.setTextColor(20, 20, 20); doc.setFont('helvetica', 'bold');
+            doc.text(person.phone || 'NO PROPORCIONADO', textX, curY);
 
+            // Municipality if available
+            if (person.municipio) {
+                curY += 4;
+                doc.setFontSize(5.5); doc.setTextColor(130); doc.setFont('helvetica', 'normal');
+                doc.text('MUNICIPIO:', textX, curY);
+                curY += 3.5;
+                doc.setFontSize(6.5); doc.setTextColor(20, 20, 20); doc.setFont('helvetica', 'bold');
+                doc.text(person.municipio.toUpperCase(), textX, curY);
+            }
 
-            // Footer branding
-            doc.setFontSize(6); doc.setTextColor(180);
-            doc.text('Plataforma Campeche', 42.8, 51, { align: 'center' });
-
+            // Footer
+            doc.setFontSize(5); doc.setTextColor(180); doc.setFont('helvetica', 'normal');
+            doc.text('Plataforma Ciudadana Campeche 2027', W / 2, H - 2, { align: 'center' });
 
             doc.save(`Credencial_${person.name.replace(/\s+/g, '_')}.pdf`);
         } catch (error) {
