@@ -445,22 +445,29 @@ const ElectoralPage: React.FC = () => {
                                 <BarChart
                                     data={secciones.slice(0, 10).map(s => ({ name: `Secc. ${s.seccion}`, dormidos: s.votos_dormidos, registrados: s.ciudadanos_registrados }))}
                                     layout="vertical"
-                                    margin={{ top: 0, right: 20, left: 60, bottom: 0 }}
+                                    margin={{ top: 10, right: 20, left: 60, bottom: 10 }}
                                 >
                                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                                    <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                                    {/* Eje X para Votos Dormidos (Abajo, escala en miles) */}
+                                    <XAxis xAxisId="dormidos" type="number" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                                    {/* Eje X para En Padrón (Arriba, escala pequeña para no opacar los datos de registrados) */}
+                                    <XAxis xAxisId="registrados" type="number" orientation="top" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#6366f1' }} />
+                                    
                                     <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b', fontWeight: 'bold' }} width={60} />
                                     <Tooltip
                                         contentStyle={{ borderRadius: '15px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}
                                         formatter={(val: any, name: string) => [val.toLocaleString(), name === 'dormidos' ? 'Votos dormidos' : 'Ciudadanos en padrón']}
                                     />
                                     <Legend formatter={(v) => v === 'dormidos' ? 'Votos dormidos' : 'En padrón'} />
-                                    <Bar dataKey="dormidos" radius={[0, 8, 8, 0]} barSize={16}>
+                                    
+                                    {/* Bar principal de Votos Dormidos (Thick, color semáforo dinámico, fill base rojo para que la leyenda coincida) */}
+                                    <Bar xAxisId="dormidos" dataKey="dormidos" fill="#ef4444" radius={[0, 8, 8, 0]} barSize={16}>
                                         {secciones.slice(0, 10).map((s, i) => (
                                             <Cell key={i} fill={SEMAFORO_COLOR[s.semaforo]} fillOpacity={0.85} />
                                         ))}
                                     </Bar>
-                                    <Bar dataKey="registrados" fill="#6366f1" radius={[0, 8, 8, 0]} barSize={8} />
+                                    {/* Bar secundario de En Padrón (Thinner, superpuesta en el centro de la barra principal para un diseño premium) */}
+                                    <Bar xAxisId="registrados" dataKey="registrados" fill="#6366f1" radius={[0, 8, 8, 0]} barSize={8} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
