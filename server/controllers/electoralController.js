@@ -295,10 +295,51 @@ const aiConsult = async (req, res) => {
         }
 
         const secciones = getSecciones();
-        const top10 = [...secciones]
+
+        // Detección dinámica del municipio en la pregunta del usuario
+        const preguntaNormalizada = pregunta.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const MUNI_SEARCH = {
+            'campeche': 'CAMPECHE',
+            'calkini': 'CALKINÍ',
+            'carmen': 'CARMEN',
+            'champoton': 'CHAMPOTÓN',
+            'hecelchakan': 'HECELCHAKÁN',
+            'hopelchen': 'HOPELCHÉN',
+            'palizada': 'PALIZADA',
+            'tenabo': 'TENABO',
+            'escarcega': 'ESCÁRCEGA',
+            'candelaria': 'CANDELARIA',
+            'calakmul': 'CALAKMUL',
+            'dzitbalche': 'DZITBALCHÉ',
+            'seybaplaya': 'SEYBAPLAYA'
+        };
+
+        let muniDetectado = null;
+        let muniDbName = null;
+        for (const [key, value] of Object.entries(MUNI_SEARCH)) {
+            if (preguntaNormalizada.includes(key)) {
+                muniDetectado = key.charAt(0).toUpperCase() + key.slice(1);
+                muniDbName = value;
+                break;
+            }
+        }
+
+        let seccionesFiltradas = secciones;
+        let topContextoLabel = "estatales";
+
+        if (muniDbName) {
+            // Filtrar secciones del municipio detectado para dar contexto local preciso
+            const normMuniDbName = muniDbName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+            seccionesFiltradas = secciones.filter(s => 
+                s.municipio && s.municipio.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase() === normMuniDbName
+            );
+            topContextoLabel = `del municipio de ${muniDetectado}`;
+        }
+
+        const top15 = [...seccionesFiltradas]
             .map(s => ({ ...s, dormidos: s.lista_nominal - s.total_votos }))
             .sort((a, b) => b.dormidos - a.dormidos)
-            .slice(0, 10);
+            .slice(0, 15);
 
         const totalPadron = await prisma.person.count();
         const stats = calcularMeta(secciones, { participacion_estimada: 0.633, porcentaje_necesario: 0.50 });
@@ -345,8 +386,8 @@ VOTACIÓN REAL Y SECCIONES GANADAS EN 2024 (Mapa de Calor):
 5. Otros partidos locales: ${totalOtrosVotes.toLocaleString()} votos (${((totalOtrosVotes / totalVotosCalculados) * 100).toFixed(1)}%) - Ganó ${ganadorCounts.OTROS} secciones.
 - Secciones sin datos/comicios: ${ganadorCounts.SIN_DATOS}
 
-TOP 10 SECCIONES CON MAYOR CANTIDAD DE VOTOS DORMIDOS (Mayor oportunidad de movilización):
-${top10.map((s, i) => `${i+1}. Sección ${s.seccion} (${s.municipio}): ${s.dormidos.toLocaleString()} votos dormidos (Participación: ${(s.participacion*100).toFixed(1)}%, Ganador 2024: ${s.ganador_label || 'Sin datos'} con ${s.ganador_votos?.toLocaleString()} votos).`).join('\n')}
+TOP 15 SECCIONES CON MAYOR CANTIDAD DE VOTOS DORMIDOS ${topContextoLabel.toUpperCase()} (Mayor oportunidad de movilización):
+${top15.map((s, i) => `${i+1}. Sección ${s.seccion} (${s.municipio}): ${s.dormidos.toLocaleString()} votos dormidos (Participación: ${(s.participacion*100).toFixed(1)}%, Lista Nominal: ${s.lista_nominal.toLocaleString()}, Ganador 2024: ${s.ganador_label || 'Sin datos'} con ${s.ganador_votos?.toLocaleString()} votos. Votos desglosados -> MORENA-PT-PVEM: ${s.votos_coalicion_morena?.toLocaleString()} v., MC: ${s.votos_mc?.toLocaleString()} v., PRI-PRD: ${s.votos_coalicion_pri_prd?.toLocaleString()} v., PAN: ${s.votos_pan?.toLocaleString()} v.).`).join('\n')}
 
 PREGUNTA DEL ESTRATEGA DE CAMPAÑA:
 ${pregunta}
