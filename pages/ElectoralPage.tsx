@@ -84,7 +84,17 @@ const ElectoralPage: React.FC = () => {
     // Semaforo filters
     const [semaforoFilter, setSemaforoFilter] = useState<'todos' | 'rojo' | 'amarillo' | 'verde'>('todos');
     const [secSearch, setSecSearch]   = useState('');
+    const [municipioFilter, setMunicipioFilter] = useState<string>('');
     const [selectedSeccion, setSelectedSeccion] = useState<Seccion | null>(null);
+
+    // Paginación
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 15;
+
+    const municipiosDisponibles = React.useMemo(() => {
+        const set = new Set(secciones.map(s => s.municipio).filter(Boolean));
+        return Array.from(set).sort();
+    }, [secciones]);
 
     // ─── Fetch data ───────────────────────────────────────────────────────────
     const fetchData = useCallback(async () => {
@@ -130,11 +140,34 @@ const ElectoralPage: React.FC = () => {
     }, [puesto, partEst, resumen]);
 
     // ─── Secciones filtradas ──────────────────────────────────────────────────
-    const seccionesFiltradas = secciones.filter(s => {
-        const matchSemaforo = semaforoFilter === 'todos' || s.semaforo === semaforoFilter;
-        const matchSearch = secSearch === '' || String(s.seccion).includes(secSearch);
-        return matchSemaforo && matchSearch;
-    });
+    const seccionesFiltradas = React.useMemo(() => {
+        return secciones.filter(s => {
+            const matchSemaforo = semaforoFilter === 'todos' || s.semaforo === semaforoFilter;
+            
+            // Búsqueda: coincide con sección (número) o municipio (texto)
+            const query = secSearch.toLowerCase().trim();
+            const matchSearch = query === '' || 
+                String(s.seccion).includes(query) || 
+                (s.municipio && s.municipio.toLowerCase().includes(query));
+                
+            // Filtro por Municipio
+            const matchMunicipio = municipioFilter === '' || s.municipio === municipioFilter;
+            
+            return matchSemaforo && matchSearch && matchMunicipio;
+        });
+    }, [secciones, semaforoFilter, secSearch, municipioFilter]);
+
+    // Resetear a página 1 cuando cambia algún filtro
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [semaforoFilter, secSearch, municipioFilter]);
+
+    const totalPages = Math.ceil(seccionesFiltradas.length / itemsPerPage) || 1;
+    
+    const seccionesPaginadas = React.useMemo(() => {
+        const start = (currentPage - 1) * itemsPerPage;
+        return seccionesFiltradas.slice(start, start + itemsPerPage);
+    }, [seccionesFiltradas, currentPage]);
 
     // ─── Calculadora ──────────────────────────────────────────────────────────
     const listaNominal  = resumen?.lista_nominal_total || 217472;
@@ -430,55 +463,84 @@ const ElectoralPage: React.FC = () => {
             {/* ══════════════════════════════════════════════════════════════ */}
             {activeTab === 'semaforo' && (
                 <div className="space-y-4">
-                    {/* Stats por semáforo */}
-                    <div className="grid grid-cols-3 gap-4">
-                        {(['rojo', 'amarillo', 'verde'] as const).map(color => {
-                            const count = secciones.filter(s => s.semaforo === color).length;
-                            const dormidos = secciones.filter(s => s.semaforo === color).reduce((a, s) => a + s.votos_dormidos, 0);
-                            const labels = { rojo: 'Críticas', amarillo: 'En Riesgo', verde: 'Consolidadas' };
-                            return (
-                                <button
-                                    key={color}
-                                    onClick={() => setSemaforoFilter(semaforoFilter === color ? 'todos' : color)}
-                                    className={`bg-white p-4 rounded-2xl shadow-card border-2 transition-all text-left ${semaforoFilter === color ? 'border-current' : 'border-transparent hover:border-gray-100'}`}
-                                    style={{ borderColor: semaforoFilter === color ? SEMAFORO_COLOR[color] : undefined }}
+                    {/* Sub-pestañas de semáforo con contadores */}
+                    <div className="flex flex-wrap gap-2 bg-white p-2 rounded-2xl shadow-card border border-gray-50">
+                        {[
+                            { id: 'todos', label: 'Todas las Secciones', count: secciones.length, color: '#475569', bg: '#f1f5f9' },
+                            { id: 'rojo', label: 'Críticas', count: secciones.filter(s => s.semaforo === 'rojo').length, color: '#ef4444', bg: '#fee2e2' },
+                            { id: 'amarillo', label: 'En Riesgo', count: secciones.filter(s => s.semaforo === 'amarillo').length, color: '#f59e0b', bg: '#fef3c7' },
+                            { id: 'verde', label: 'Consolidadas', count: secciones.filter(s => s.semaforo === 'verde').length, color: '#22c55e', bg: '#dcfce7' },
+                        ].map(subTab => (
+                            <button
+                                key={subTab.id}
+                                onClick={() => setSemaforoFilter(subTab.id as any)}
+                                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                                    semaforoFilter === subTab.id
+                                        ? 'bg-slate-900 text-white shadow-md'
+                                        : 'text-gray-500 hover:bg-slate-50'
+                                }`}
+                            >
+                                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: subTab.color }}></span>
+                                <span>{subTab.label}</span>
+                                <span 
+                                    className="px-2 py-0.5 rounded-full font-mono text-[10px]"
+                                    style={{ 
+                                        backgroundColor: semaforoFilter === subTab.id ? 'rgba(255,255,255,0.2)' : subTab.bg,
+                                        color: semaforoFilter === subTab.id ? '#ffffff' : subTab.color
+                                    }}
                                 >
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: SEMAFORO_COLOR[color] }}></div>
-                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{labels[color]}</span>
-                                    </div>
-                                    <p className="text-2xl font-brand font-bold text-slate-800">{count}</p>
-                                    <p className="text-xs text-gray-400">{dormidos.toLocaleString()} votos dormidos</p>
-                                </button>
-                            );
-                        })}
+                                    {subTab.count}
+                                </span>
+                            </button>
+                        ))}
                     </div>
 
                     {/* Tabla */}
                     <div className="bg-white rounded-3xl shadow-card border border-gray-50 overflow-hidden">
-                        <div className="p-4 border-b border-gray-50 flex gap-3 items-center">
-                            <div className="relative flex-1">
-                                <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs"></i>
+                        <div className="p-4 border-b border-gray-50 flex flex-col md:flex-row gap-3 items-center">
+                            {/* Buscador */}
+                            <div className="relative flex-1 w-full">
+                                <i className="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
                                 <input
                                     type="text"
-                                    placeholder="Buscar sección..."
+                                    placeholder="Buscar por sección o municipio..."
                                     value={secSearch}
                                     onChange={e => setSecSearch(e.target.value)}
-                                    className="input-modern pl-9 h-10 text-sm bg-slate-50 border-none w-full"
+                                    className="input-modern pl-9.5 h-11 text-sm bg-slate-50 border-none w-full rounded-xl focus:bg-white focus:ring-2 focus:ring-slate-200 transition-all"
                                 />
+                                {secSearch && (
+                                    <button 
+                                        onClick={() => setSecSearch('')}
+                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs w-5 h-5 rounded-full bg-slate-200/50 flex items-center justify-center transition-colors"
+                                    >
+                                        <i className="fas fa-times"></i>
+                                    </button>
+                                )}
                             </div>
-                            <button
-                                onClick={() => setSemaforoFilter('todos')}
-                                className={`px-4 h-10 rounded-xl text-xs font-bold transition-all ${semaforoFilter === 'todos' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-gray-500 hover:bg-slate-200'}`}
-                            >
-                                Todas ({secciones.length})
-                            </button>
+
+                            {/* Filtro por Municipio */}
+                            <div className="relative w-full md:w-64">
+                                <i className="fas fa-map-marker-alt absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                                <select
+                                    value={municipioFilter}
+                                    onChange={e => setMunicipioFilter(e.target.value)}
+                                    className="input-modern pl-9.5 pr-8 h-11 text-sm bg-slate-50 border-none w-full rounded-xl focus:bg-white focus:ring-2 focus:ring-slate-200 transition-all appearance-none cursor-pointer font-medium text-slate-700"
+                                >
+                                    <option value="">Todos los Municipios</option>
+                                    {municipiosDisponibles.map(m => (
+                                        <option key={m} value={m}>{m}</option>
+                                    ))}
+                                </select>
+                                <i className="fas fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                            </div>
                         </div>
+
                         <div className="overflow-x-auto">
                             <table className="min-w-full">
                                 <thead>
                                     <tr className="bg-slate-50/50">
                                         <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Sección</th>
+                                        <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Municipio</th>
                                         <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-400 uppercase tracking-widest">Lista Nominal</th>
                                         <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-400 uppercase tracking-widest">Votos 2024</th>
                                         <th className="px-4 py-3 text-right text-[10px] font-bold text-gray-400 uppercase tracking-widest">Participación</th>
@@ -489,7 +551,7 @@ const ElectoralPage: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
-                                    {seccionesFiltradas.map((s, i) => (
+                                    {seccionesPaginadas.map((s, i) => (
                                         <tr
                                             key={s.seccion}
                                             className="hover:bg-slate-50/50 transition-colors cursor-pointer"
@@ -498,6 +560,7 @@ const ElectoralPage: React.FC = () => {
                                             <td className="px-4 py-3">
                                                 <span className="font-mono font-bold text-sm text-slate-700">{s.seccion}</span>
                                             </td>
+                                            <td className="px-4 py-3 text-left text-sm text-slate-600 font-medium">{s.municipio || '—'}</td>
                                             <td className="px-4 py-3 text-right text-sm text-slate-600">{s.lista_nominal.toLocaleString()}</td>
                                             <td className="px-4 py-3 text-right text-sm text-slate-600">{s.total_votos.toLocaleString()}</td>
                                             <td className="px-4 py-3 text-right">
@@ -527,8 +590,79 @@ const ElectoralPage: React.FC = () => {
                                 </tbody>
                             </table>
                         </div>
-                        <div className="p-3 border-t border-gray-50 text-center text-xs text-gray-400">
-                            Mostrando {seccionesFiltradas.length} de {secciones.length} secciones
+
+                        {/* Paginación */}
+                        <div className="p-4 border-t border-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/30">
+                            {/* Estado de registros */}
+                            <div className="text-xs text-slate-500 font-medium">
+                                Mostrando <span className="font-bold text-slate-800">{Math.min(seccionesFiltradas.length, (currentPage - 1) * itemsPerPage + 1)}</span> a <span className="font-bold text-slate-800">{Math.min(seccionesFiltradas.length, currentPage * itemsPerPage)}</span> de <span className="font-bold text-slate-800">{seccionesFiltradas.length}</span> secciones
+                                {municipioFilter && <span> en <span className="text-indigo-600 font-bold">{municipioFilter}</span></span>}
+                            </div>
+
+                            {/* Botones de página */}
+                            {totalPages > 1 && (
+                                <div className="flex items-center gap-1.5">
+                                    {/* Botón Anterior */}
+                                    <button
+                                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                        disabled={currentPage === 1}
+                                        className="h-8 px-3 rounded-lg border border-gray-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1"
+                                    >
+                                        <i className="fas fa-chevron-left text-[10px]"></i>
+                                        <span className="hidden sm:inline">Anterior</span>
+                                    </button>
+
+                                    {/* Páginas numéricas */}
+                                    {(() => {
+                                        const pages: (number | string)[] = [];
+                                        
+                                        if (totalPages <= 5) {
+                                            for (let i = 1; i <= totalPages; i++) pages.push(i);
+                                        } else {
+                                            pages.push(1);
+                                            if (currentPage > 3) pages.push('...');
+                                            
+                                            const start = Math.max(2, currentPage - 1);
+                                            const end = Math.min(totalPages - 1, currentPage + 1);
+                                            for (let i = start; i <= end; i++) {
+                                                if (!pages.includes(i)) pages.push(i);
+                                            }
+                                            
+                                            if (currentPage < totalPages - 2) pages.push('...');
+                                            pages.push(totalPages);
+                                        }
+
+                                        return pages.map((p, idx) => {
+                                            if (typeof p === 'string') {
+                                                return <span key={idx} className="px-2 text-slate-400 font-bold text-xs">...</span>;
+                                            }
+                                            return (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => setCurrentPage(p)}
+                                                    className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
+                                                        currentPage === p
+                                                            ? 'bg-slate-900 text-white shadow-md'
+                                                            : 'border border-gray-200 bg-white text-slate-600 hover:bg-slate-50'
+                                                    }`}
+                                                >
+                                                    {p}
+                                                </button>
+                                            );
+                                        });
+                                    })()}
+
+                                    {/* Botón Siguiente */}
+                                    <button
+                                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                        disabled={currentPage === totalPages}
+                                        className="h-8 px-3 rounded-lg border border-gray-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1"
+                                    >
+                                        <span className="hidden sm:inline">Siguiente</span>
+                                        <i className="fas fa-chevron-right text-[10px]"></i>
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
