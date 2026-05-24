@@ -85,6 +85,10 @@ const PeoplePage: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterMunicipio, setFilterMunicipio] = useState('');
     const [filterSeccion, setFilterSeccion] = useState('');
+
+    // Paginación
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 15;
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState<Person>({
@@ -574,14 +578,29 @@ const PeoplePage: React.FC = () => {
         }
     };
 
-    const filteredPeople = people.filter(p => {
-        const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (p.ine || '').toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesMunicipio = filterMunicipio === '' || p.municipio === filterMunicipio;
-        const matchesSeccion = filterSeccion === '' || p.seccion?.includes(filterSeccion);
-        
-        return matchesSearch && matchesMunicipio && matchesSeccion;
-    });
+    // ─── Ciudadanos filtrados ────────────────────────────────────────────────
+    const filteredPeople = React.useMemo(() => {
+        return people.filter(p => {
+            const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (p.ine || '').toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesMunicipio = filterMunicipio === '' || p.municipio === filterMunicipio;
+            const matchesSeccion = filterSeccion === '' || p.seccion?.includes(filterSeccion);
+            
+            return matchesSearch && matchesMunicipio && matchesSeccion;
+        });
+    }, [people, searchTerm, filterMunicipio, filterSeccion]);
+
+    // Resetear a página 1 cuando cambia algún filtro
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, filterMunicipio, filterSeccion]);
+
+    const totalPages = Math.ceil(filteredPeople.length / itemsPerPage) || 1;
+
+    const paginatedPeople = React.useMemo(() => {
+        const start = (currentPage - 1) * itemsPerPage;
+        return filteredPeople.slice(start, start + itemsPerPage);
+    }, [filteredPeople, currentPage]);
 
 
     return (
@@ -675,10 +694,19 @@ const PeoplePage: React.FC = () => {
                         <input
                             type="text"
                             placeholder="Buscar en el padrón por nombre o INE..."
-                            className="input-modern pl-10 h-11 text-sm bg-slate-50 border-none"
+                            className="input-modern pl-10 pr-10 h-11 text-sm bg-slate-50 border-none w-full"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
+                        {searchTerm && (
+                            <button
+                                type="button"
+                                onClick={() => setSearchTerm('')}
+                                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs w-5 h-5 rounded-full bg-slate-200/50 flex items-center justify-center transition-colors animate-fade-in"
+                            >
+                                <i className="fas fa-times"></i>
+                            </button>
+                        )}
                     </div>
                     <div className="flex gap-2 w-full sm:w-auto">
                         <select 
@@ -745,7 +773,8 @@ const PeoplePage: React.FC = () => {
                         </MapContainer>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
+                    <>
+                        <div className="overflow-x-auto">
                         <table className="min-w-full divide-y divide-gray-50 table-fixed lg:table-auto">
                             <thead>
                                 <tr className="bg-slate-50/50">
@@ -760,12 +789,12 @@ const PeoplePage: React.FC = () => {
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {loading ? (
-                                    <tr><td colSpan={5} className="py-20 text-center"><i className="fas fa-circle-notch fa-spin text-2xl text-brand-primary"></i></td></tr>
+                                    <tr><td colSpan={6} className="py-20 text-center"><i className="fas fa-circle-notch fa-spin text-2xl text-brand-primary"></i></td></tr>
                                 ) : filteredPeople.length === 0 ? (
-                                    <tr><td colSpan={5} className="py-20 text-center text-gray-400 italic">No hay registros que coincidan con la búsqueda.</td></tr>
+                                    <tr><td colSpan={6} className="py-20 text-center text-gray-400 italic">No hay registros que coincidan con la búsqueda.</td></tr>
                                 ) : (
-                                    filteredPeople.map((p, i) => (
-                                        <tr key={p.id || p.id} className="hover:bg-slate-50/50 transition-colors group">
+                                    paginatedPeople.map((p, i) => (
+                                        <tr key={p.id || p._id || i} className="hover:bg-slate-50/50 transition-colors group">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-10 h-10 rounded-xl bg-gray-100 overflow-hidden shrink-0">
@@ -819,6 +848,84 @@ const PeoplePage: React.FC = () => {
                             </tbody>
                         </table>
                     </div>
+
+                    {/* Paginación */}
+                    <div className="p-4 border-t border-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/30">
+                        {/* Estado de registros */}
+                        <div className="text-xs text-slate-500 font-medium">
+                            Mostrando <span className="font-bold text-slate-800">{Math.min(filteredPeople.length, (currentPage - 1) * itemsPerPage + 1)}</span> a <span className="font-bold text-slate-800">{Math.min(filteredPeople.length, currentPage * itemsPerPage)}</span> de <span className="font-bold text-slate-800">{filteredPeople.length}</span> ciudadanos
+                            {filterMunicipio && <span> en <span className="text-indigo-600 font-bold">{filterMunicipio}</span></span>}
+                        </div>
+
+                        {/* Botones de página */}
+                        {totalPages > 1 && (
+                            <div className="flex items-center gap-1.5">
+                                {/* Botón Anterior */}
+                                <button
+                                    type="button"
+                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                    disabled={currentPage === 1}
+                                    className="h-8 px-3 rounded-lg border border-gray-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1"
+                                >
+                                    <i className="fas fa-chevron-left text-[10px]"></i>
+                                    <span className="hidden sm:inline">Anterior</span>
+                                </button>
+
+                                {/* Páginas numéricas */}
+                                {(() => {
+                                    const pages: (number | string)[] = [];
+                                    
+                                    if (totalPages <= 5) {
+                                        for (let i = 1; i <= totalPages; i++) pages.push(i);
+                                    } else {
+                                        pages.push(1);
+                                        if (currentPage > 3) pages.push('...');
+                                        
+                                        const start = Math.max(2, currentPage - 1);
+                                        const end = Math.min(totalPages - 1, currentPage + 1);
+                                        for (let i = start; i <= end; i++) {
+                                            if (!pages.includes(i)) pages.push(i);
+                                        }
+                                        
+                                        if (currentPage < totalPages - 2) pages.push('...');
+                                        pages.push(totalPages);
+                                    }
+
+                                    return pages.map((p, idx) => {
+                                        if (typeof p === 'string') {
+                                            return <span key={idx} className="px-2 text-slate-400 font-bold text-xs">...</span>;
+                                        }
+                                        return (
+                                            <button
+                                                type="button"
+                                                key={idx}
+                                                onClick={() => setCurrentPage(p)}
+                                                className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
+                                                    currentPage === p
+                                                        ? 'bg-slate-900 text-white shadow-md'
+                                                        : 'border border-gray-200 bg-white text-slate-600 hover:bg-slate-50'
+                                                }`}
+                                            >
+                                                {p}
+                                            </button>
+                                        );
+                                    });
+                                })()}
+
+                                {/* Botón Siguiente */}
+                                <button
+                                    type="button"
+                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="h-8 px-3 rounded-lg border border-gray-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1"
+                                >
+                                    <span className="hidden sm:inline">Siguiente</span>
+                                    <i className="fas fa-chevron-right text-[10px]"></i>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                    </>
                 )}
             </div>
 
