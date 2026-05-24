@@ -32,6 +32,32 @@ interface Seccion {
     municipio_nombre?: string | null;
     tipo?:             number | null;
     tipo_nombre?:      string | null;
+
+    // Resultados electorales reales por partido/coalición
+    votos_pan?: number;
+    votos_pri?: number;
+    votos_prd?: number;
+    votos_pt?: number;
+    votos_verde?: number;
+    votos_mc?: number;
+    votos_morena?: number;
+    votos_pes?: number;
+    votos_campeche_libre?: number;
+    votos_espacio_democratico?: number;
+    votos_movimiento_laborista?: number;
+    votos_pri_prd?: number;
+    votos_pt_verde_morena?: number;
+    votos_pt_verde?: number;
+    votos_pt_morena?: number;
+    votos_verde_morena?: number;
+    votos_coalicion_morena?: number;
+    votos_coalicion_pri_prd?: number;
+    votos_otros?: number;
+
+    ganador?: string;
+    ganador_votos?: number;
+    ganador_color?: string;
+    ganador_label?: string;
 }
 
 interface Resumen {
@@ -108,6 +134,7 @@ const ElectoralPage: React.FC = () => {
     const [mapaDistritoF, setMapaDistritoF] = useState<string>('');
     const [mapaDistritoL, setMapaDistritoL] = useState<string>('');
     const [mapaTipo, setMapaTipo]           = useState<string>('');
+    const [mapMode, setMapMode]             = useState<'semaforo' | 'ganador'>('semaforo');
 
     // Paginación
     const [currentPage, setCurrentPage] = useState(1);
@@ -236,18 +263,25 @@ const ElectoralPage: React.FC = () => {
             weight: 0.8,
             opacity: 0.4,
         };
-        const color = SEMAFORO_COLOR[data.semaforo];
-        // Opacidad basada en votos dormidos (más dormidos = más opaco)
+
+        const fillColor = mapMode === 'semaforo'
+            ? SEMAFORO_COLOR[data.semaforo]
+            : (data.ganador_color || '#94a3b8');
+
+        // Opacidad basada en votos dormidos (para semáforo) o fija (para ganador)
         const maxDormidos = 6000;
-        const fillOpacity = 0.25 + Math.min(0.55, (data.votos_dormidos / maxDormidos) * 0.55);
+        const fillOpacity = mapMode === 'semaforo'
+            ? 0.25 + Math.min(0.55, (data.votos_dormidos / maxDormidos) * 0.55)
+            : (data.ganador === 'SIN_DATOS' ? 0.07 : 0.65);
+
         return {
-            fillColor: color,
+            fillColor,
             fillOpacity,
             color: '#fff',
             weight: 1.0,
             opacity: 0.8,
         };
-    }, [seccionesMap]);
+    }, [seccionesMap, mapMode]);
 
     // Filtro del GeoJSON
     const geoFilterFn = React.useCallback((feature: any): boolean => {
@@ -260,7 +294,7 @@ const ElectoralPage: React.FC = () => {
     }, [mapaDistritoF, mapaDistritoL, mapaTipo]);
 
     // clave para forzar re-render de GeoJSON cuando cambian filtros o datos
-    const geoKey = `geo-${mapaDistritoF}-${mapaDistritoL}-${mapaTipo}-${secciones.length}`;
+    const geoKey = `geo-${mapaDistritoF}-${mapaDistritoL}-${mapaTipo}-${mapMode}-${secciones.length}`;
 
     // ─────────────────────────────────────────────────────────────────────────
     // RENDER
@@ -442,20 +476,54 @@ const ElectoralPage: React.FC = () => {
 
                     {/* Leyenda + filtros */}
                     <div className="bg-white rounded-2xl shadow-card border border-gray-50 p-4 flex flex-wrap gap-4 items-center">
-                        {/* Semáforo */}
+                        {/* Toggle de Modo de Mapa */}
+                        <div className="flex bg-slate-100 p-1 rounded-xl gap-1 shrink-0">
+                            <button
+                                onClick={() => setMapMode('semaforo')}
+                                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${mapMode === 'semaforo' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-800'}`}
+                            >
+                                <i className="fas fa-traffic-light mr-1"></i>Semáforo
+                            </button>
+                            <button
+                                onClick={() => setMapMode('ganador')}
+                                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${mapMode === 'ganador' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-800'}`}
+                            >
+                                <i className="fas fa-trophy mr-1"></i>Ganador 2024
+                            </button>
+                        </div>
+
+                        {/* Leyenda */}
                         <div className="flex flex-wrap items-center gap-3">
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest shrink-0">Semáforo:</p>
-                            {[
-                                { color: '#ef4444', label: '< 55% Crítica' },
-                                { color: '#f59e0b', label: '55–70% Media' },
-                                { color: '#22c55e', label: '> 70% Consolidada' },
-                                { color: '#94a3b8', label: 'Sin datos' },
-                            ].map((item, i) => (
-                                <div key={i} className="flex items-center gap-1.5">
-                                    <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: item.color }}></div>
-                                    <span className="text-xs font-medium text-gray-600">{item.label}</span>
-                                </div>
-                            ))}
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest shrink-0">
+                                {mapMode === 'semaforo' ? 'Participación:' : 'Ganador 2024:'}
+                            </p>
+                            {mapMode === 'semaforo' ? (
+                                [
+                                    { color: '#ef4444', label: '< 55% Crítica' },
+                                    { color: '#f59e0b', label: '55–70% Media' },
+                                    { color: '#22c55e', label: '> 70% Consolidada' },
+                                    { color: '#94a3b8', label: 'Sin datos' },
+                                ].map((item, i) => (
+                                    <div key={i} className="flex items-center gap-1.5 font-semibold text-xs text-gray-600">
+                                        <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: item.color }}></div>
+                                        <span>{item.label}</span>
+                                    </div>
+                                ))
+                            ) : (
+                                [
+                                    { color: '#800020', label: 'MORENA-PT-PVEM' },
+                                    { color: '#FF8C00', label: 'MC' },
+                                    { color: '#1E5A34', label: 'PRI-PRD' },
+                                    { color: '#1A535C', label: 'PAN' },
+                                    { color: '#708090', label: 'Otros' },
+                                    { color: '#94a3b8', label: 'Sin Datos' },
+                                ].map((item, i) => (
+                                    <div key={i} className="flex items-center gap-1.5 font-semibold text-xs text-gray-600">
+                                        <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: item.color }}></div>
+                                        <span>{item.label}</span>
+                                    </div>
+                                ))
+                            )}
                         </div>
 
                         {/* Filtros de distrito y tipo */}
@@ -993,7 +1061,18 @@ const ElectoralPage: React.FC = () => {
                                 <i className="fas fa-times text-xs text-gray-500"></i>
                             </button>
                         </div>
-                        <div className="p-5 space-y-3">
+                        <div className="p-5 space-y-3 max-h-[75vh] overflow-y-auto">
+                            {/* Ganador Badge */}
+                            {selectedSeccion.ganador && selectedSeccion.ganador !== 'SIN_DATOS' && (
+                                <div className="p-3.5 rounded-2xl flex items-center justify-between text-white shadow-sm" style={{ backgroundColor: selectedSeccion.ganador_color || '#708090' }}>
+                                    <div className="flex items-center gap-2">
+                                        <i className="fas fa-trophy text-sm"></i>
+                                        <span className="text-xs font-bold uppercase tracking-wider">Ganador 2024:</span>
+                                    </div>
+                                    <span className="font-extrabold text-sm bg-black/20 px-3 py-1 rounded-xl">{selectedSeccion.ganador_label}</span>
+                                </div>
+                            )}
+
                             {[
                                 { label: 'Lista Nominal', value: selectedSeccion.lista_nominal.toLocaleString(), icon: 'fa-users' },
                                 { label: 'Votos emitidos 2024', value: selectedSeccion.total_votos.toLocaleString(), icon: 'fa-vote-yea' },
@@ -1002,19 +1081,57 @@ const ElectoralPage: React.FC = () => {
                                 { label: 'Casillas electorales', value: selectedSeccion.casillas, icon: 'fa-box' },
                                 { label: 'Ciudadanos en tu padrón', value: selectedSeccion.ciudadanos_registrados, icon: 'fa-address-book', valueColor: selectedSeccion.ciudadanos_registrados > 0 ? '#6366f1' : '#d1d5db' },
                             ].map((item, i) => (
-                                <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-slate-50">
+                                <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100/50">
                                     <div className="flex items-center gap-2">
                                         <i className={`fas ${item.icon} text-gray-400 text-xs w-4`}></i>
-                                        <span className="text-sm text-gray-600">{item.label}</span>
+                                        <span className="text-sm text-gray-600 font-medium">{item.label}</span>
                                     </div>
                                     <span className="font-bold text-sm" style={{ color: (item as any).valueColor || '#1e293b' }}>{item.value}</span>
                                 </div>
                             ))}
 
+                            {/* Resultados detallados de partidos */}
+                            {(() => {
+                                const totalValidos = selectedSeccion.votos_validos || selectedSeccion.total_votos || 1;
+                                const forces = [
+                                    { label: 'MORENA-PT-PVEM', votes: selectedSeccion.votos_coalicion_morena || 0, color: '#800020' },
+                                    { label: 'Movimiento Ciudadano', votes: selectedSeccion.votos_mc || 0, color: '#FF8C00' },
+                                    { label: 'PRI-PRD', votes: selectedSeccion.votos_coalicion_pri_prd || 0, color: '#1E5A34' },
+                                    { label: 'PAN', votes: selectedSeccion.votos_pan || 0, color: '#1A535C' },
+                                    { label: 'Otros partidos', votes: selectedSeccion.votos_otros || 0, color: '#708090' }
+                                ].filter(f => f.votes > 0).sort((a, b) => b.votes - a.votes);
+
+                                if (forces.length === 0) return null;
+
+                                return (
+                                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-3">
+                                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                                            <i className="fas fa-chart-bar text-slate-400"></i> Desglose Elección 2024
+                                        </h4>
+                                        <div className="space-y-2">
+                                            {forces.map((force, idx) => {
+                                                const pct = ((force.votes / totalValidos) * 100).toFixed(1);
+                                                return (
+                                                    <div key={idx} className="space-y-1">
+                                                        <div className="flex justify-between text-xs font-semibold">
+                                                            <span className="text-slate-600">{force.label}</span>
+                                                            <span className="text-slate-800">{force.votes.toLocaleString()} votos ({pct}%)</span>
+                                                        </div>
+                                                        <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                                                            <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: force.color }}></div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
                             {/* Insight */}
-                            <div className="p-3 rounded-xl bg-amber-50 border border-amber-100">
-                                <p className="text-xs text-amber-700">
-                                    <i className="fas fa-lightbulb mr-2"></i>
+                            <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-100">
+                                <p className="text-xs text-amber-700 leading-relaxed">
+                                    <i className="fas fa-lightbulb mr-2 text-amber-500"></i>
                                     <strong>Potencial:</strong> Si activas el {Math.min(30, Math.round((selectedSeccion.votos_dormidos * 0.3))).toLocaleString()} de los {selectedSeccion.votos_dormidos.toLocaleString()} votos dormidos, ganas {Math.round(selectedSeccion.votos_dormidos * 0.15).toLocaleString()} votos adicionales para tu candidato.
                                 </p>
                             </div>
