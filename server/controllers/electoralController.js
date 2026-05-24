@@ -267,11 +267,11 @@ Responde en español con recomendaciones tácticas específicas, citando número
 
         const { GoogleGenerativeAI } = require('@google/generative-ai');
         const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
         const result = await model.generateContent(contexto);
         const text = result.response.text();
 
-        res.json({ respuesta: text, fuente: 'Gemini 1.5 Flash', timestamp: new Date().toISOString() });
+        res.json({ respuesta: text, fuente: 'Gemini 3.5 Flash', timestamp: new Date().toISOString() });
     } catch (err) {
         console.error('Electoral AI error:', err);
         res.status(500).json({ error: 'Error en el consultor IA: ' + err.message });
