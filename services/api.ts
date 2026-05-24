@@ -28,7 +28,7 @@ const apiFetch = async (path: string, options: RequestInit = {}): Promise<any> =
 
   const response = await fetch(`${BASE_URL}${path}`, { ...options, headers });
 
-  if (response.status === 401) {
+  if (response.status === 401 && !path.includes('/auth/login')) {
     clearToken();
     window.dispatchEvent(new Event('auth:logout'));
     throw new Error('Sesión expirada. Por favor, inicia sesión de nuevo.');
