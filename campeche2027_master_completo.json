@@ -17366,37 +17366,6 @@
       "ganador_votos": 0,
       "ganador_color": "#94a3b8",
       "ganador_label": "Sin Datos Históricos"
-    },
-    {
-      "municipio": "CAMPECHE",
-      "seccion": 1121,
-      "casillas": 8,
-      "total_votos": 2459,
-      "lista_nominal": 5037,
-      "participacion": 0.4881874131427437,
-      "votos_pan": 0,
-      "votos_pri": 0,
-      "votos_prd": 0,
-      "votos_pt": 0,
-      "votos_verde": 0,
-      "votos_mc": 0,
-      "votos_morena": 0,
-      "votos_pes": 0,
-      "votos_campeche_libre": 0,
-      "votos_espacio_democratico": 0,
-      "votos_movimiento_laborista": 0,
-      "votos_pri_prd": 0,
-      "votos_pt_verde_morena": 0,
-      "votos_pt_verde": 0,
-      "votos_pt_morena": 0,
-      "votos_verde_morena": 0,
-      "votos_coalicion_morena": 0,
-      "votos_coalicion_pri_prd": 0,
-      "votos_otros": 0,
-      "ganador": "SIN_DATOS",
-      "ganador_votos": 0,
-      "ganador_color": "#94a3b8",
-      "ganador_label": "Sin Datos Históricos"
     }
   ]
 }
