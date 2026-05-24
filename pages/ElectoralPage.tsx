@@ -378,22 +378,28 @@ const ElectoralPage: React.FC = () => {
                                         fillOpacity={0.65}
                                         eventHandlers={{ click: () => setSelectedSeccion(s) }}
                                     >
-                                        <Popup>
-                                            <div className="p-2 min-w-[200px]">
-                                                <div className="flex items-center gap-2 mb-3">
-                                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: SEMAFORO_COLOR[s.semaforo] }}></div>
-                                                    <h3 className="font-bold text-slate-800">Sección {s.seccion}</h3>
-                                                    <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: SEMAFORO_COLOR[s.semaforo] + '22', color: SEMAFORO_COLOR[s.semaforo] }}>
+                                        <Popup
+                                            autoPan={true}
+                                            autoPanPadding={[20, 20]}
+                                            keepInView={true}
+                                            maxWidth={240}
+                                            minWidth={220}
+                                        >
+                                            <div style={{ padding: '6px 4px', minWidth: '210px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+                                                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: SEMAFORO_COLOR[s.semaforo], flexShrink: 0 }}></div>
+                                                    <span style={{ fontWeight: 700, fontSize: '14px', color: '#1e293b' }}>Sección {s.seccion}</span>
+                                                    <span style={{ marginLeft: 'auto', fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '999px', backgroundColor: SEMAFORO_COLOR[s.semaforo] + '22', color: SEMAFORO_COLOR[s.semaforo], whiteSpace: 'nowrap' }}>
                                                         {s.prioridad}
                                                     </span>
                                                 </div>
-                                                <div className="space-y-1.5 text-xs">
-                                                    <div className="flex justify-between"><span className="text-gray-500">Lista Nominal:</span><span className="font-bold">{s.lista_nominal.toLocaleString()}</span></div>
-                                                    <div className="flex justify-between"><span className="text-gray-500">Votos 2024:</span><span className="font-bold">{s.total_votos.toLocaleString()}</span></div>
-                                                    <div className="flex justify-between"><span className="text-gray-500">Participación:</span><span className="font-bold" style={{ color: SEMAFORO_COLOR[s.semaforo] }}>{(s.participacion * 100).toFixed(1)}%</span></div>
-                                                    <div className="flex justify-between border-t pt-1.5 mt-1.5"><span className="text-gray-500 font-bold">Votos Dormidos:</span><span className="font-bold text-amber-600">{s.votos_dormidos.toLocaleString()}</span></div>
-                                                    <div className="flex justify-between"><span className="text-gray-500">Casillas:</span><span className="font-bold">{s.casillas}</span></div>
-                                                    <div className="flex justify-between"><span className="text-gray-500">En tu padrón:</span><span className="font-bold text-indigo-600">{s.ciudadanos_registrados}</span></div>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '12px' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Lista Nominal:</span><span style={{ fontWeight: 700 }}>{s.lista_nominal.toLocaleString()}</span></div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Votos 2024:</span><span style={{ fontWeight: 700 }}>{s.total_votos.toLocaleString()}</span></div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Participación:</span><span style={{ fontWeight: 700, color: SEMAFORO_COLOR[s.semaforo] }}>{(s.participacion * 100).toFixed(1)}%</span></div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e5e7eb', paddingTop: '5px', marginTop: '3px' }}><span style={{ color: '#6b7280', fontWeight: 700 }}>Votos Dormidos:</span><span style={{ fontWeight: 700, color: '#d97706' }}>{s.votos_dormidos.toLocaleString()}</span></div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Casillas:</span><span style={{ fontWeight: 700 }}>{s.casillas}</span></div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>En tu padrón:</span><span style={{ fontWeight: 700, color: '#4f46e5' }}>{s.ciudadanos_registrados}</span></div>
                                                 </div>
                                             </div>
                                         </Popup>
