@@ -105,6 +105,21 @@ const ElectoralPage: React.FC = () => {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
+    // Cerrar modal con la tecla Escape
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setSelectedSeccion(null);
+            }
+        };
+        if (selectedSeccion) {
+            window.addEventListener('keydown', handleKeyDown);
+        }
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [selectedSeccion]);
+
     // Recalcular meta cuando cambia el puesto
     useEffect(() => {
         if (!resumen) return;
@@ -376,7 +391,6 @@ const ElectoralPage: React.FC = () => {
                                         weight={1.5}
                                         opacity={0.9}
                                         fillOpacity={0.65}
-                                        eventHandlers={{ click: () => setSelectedSeccion(s) }}
                                     >
                                         <Popup
                                             autoPan={true}
