@@ -303,25 +303,55 @@ const aiConsult = async (req, res) => {
         const totalPadron = await prisma.person.count();
         const stats = calcularMeta(secciones, { participacion_estimada: 0.633, porcentaje_necesario: 0.50 });
 
+        // Calcular agregados de votación por partido para la IA
+        const ganadorCounts = { MORENA: 0, MC: 0, PRI_PRD: 0, PAN: 0, OTROS: 0, SIN_DATOS: 0 };
+        let totalMorenaVotes = 0;
+        let totalMcVotes = 0;
+        let totalPriPrdVotes = 0;
+        let totalPanVotes = 0;
+        let totalOtrosVotes = 0;
+
+        secciones.forEach(s => {
+            const g = s.ganador || 'SIN_DATOS';
+            ganadorCounts[g] = (ganadorCounts[g] || 0) + 1;
+            totalMorenaVotes += s.votos_coalicion_morena || 0;
+            totalMcVotes += s.votos_mc || 0;
+            totalPriPrdVotes += s.votos_coalicion_pri_prd || 0;
+            totalPanVotes += s.votos_pan || 0;
+            totalOtrosVotes += s.votos_otros || 0;
+        });
+
+        const totalVotosCalculados = totalMorenaVotes + totalMcVotes + totalPriPrdVotes + totalPanVotes + totalOtrosVotes;
+
         const contexto = `
-Eres un consultor electoral estratégico experto en campañas políticas en México.
-Estás trabajando en la campaña para ${puesto} en Campeche 2027.
+Eres un consultor electoral estratégico experto en campañas políticas en México, especializado en análisis geo-electoral y movilización territorial de tierra.
+Estás trabajando en la campaña para ${puesto} en el estado de Campeche con miras a la elección de 2027.
 
-DATOS ELECTORALES REALES (elección 2024):
-- Lista Nominal Total: ${stats.lista_nominal_total.toLocaleString()} electores registrados
-- Votos emitidos 2024: ${stats.votos_historicos_2024.toLocaleString()}
-- Participación histórica: ${(stats.participacion_historica * 100).toFixed(1)}%
-- Votos dormidos (no votaron): ${stats.votos_dormidos.toLocaleString()} electores
-- META PARA GANAR (mayoría simple): ${stats.meta_votos.toLocaleString()} votos
-- Total de ciudadanos en el padrón del candidato: ${totalPadron}
+Tienes acceso al MAPA DE CALOR ELECTORAL REAL del estado, cruzado con el padrón actual de simpatizantes del candidato y los resultados oficiales de la elección 2024 por sección.
 
-TOP 10 SECCIONES MÁS URGENTES (mayor cantidad de votos dormidos):
-${top10.map((s, i) => `${i+1}. Sección ${s.seccion}: ${s.dormidos.toLocaleString()} votos dormidos (participación: ${(s.participacion*100).toFixed(1)}%, lista nominal: ${s.lista_nominal.toLocaleString()})`).join('\n')}
+DATOS ELECTORALES GENERALES (Elección 2024):
+- Lista Nominal Total: ${stats.lista_nominal_total.toLocaleString()} electores registrados en el estado.
+- Votos emitidos 2024: ${stats.votos_historicos_2024.toLocaleString()} (Votos válidos en las secciones procesadas: ${totalVotosCalculados.toLocaleString()})
+- Participación promedio histórica: ${(stats.participacion_historica * 100).toFixed(1)}%
+- Votos dormidos (personas con credencial que no votaron): ${stats.votos_dormidos.toLocaleString()} electores.
+- META MÍNIMA PARA GANAR (mayoría simple estimada): ${stats.meta_votos.toLocaleString()} votos.
+- Afiliados/ciudadanos en tu padrón de simpatizantes capturados en el sistema: ${totalPadron} ciudadanos.
 
-PREGUNTA DEL ESTRATEGA:
+VOTACIÓN REAL Y SECCIONES GANADAS EN 2024 (Mapa de Calor):
+1. MORENA-PT-PVEM: ${totalMorenaVotes.toLocaleString()} votos (${((totalMorenaVotes / totalVotosCalculados) * 100).toFixed(1)}% del voto válido) - Ganó ${ganadorCounts.MORENA} secciones electorales.
+2. Movimiento Ciudadano (MC): ${totalMcVotes.toLocaleString()} votos (${((totalMcVotes / totalVotosCalculados) * 100).toFixed(1)}% del voto válido) - Ganó ${ganadorCounts.MC} secciones electorales.
+3. PRI-PRD: ${totalPriPrdVotes.toLocaleString()} votos (${((totalPriPrdVotes / totalVotosCalculados) * 100).toFixed(1)}% del voto válido) - Ganó ${ganadorCounts.PRI_PRD} secciones electorales.
+4. PAN: ${totalPanVotes.toLocaleString()} votos (${((totalPanVotes / totalVotosCalculados) * 100).toFixed(1)}% del voto válido) - Ganó ${ganadorCounts.PAN} secciones electorales.
+5. Otros partidos locales: ${totalOtrosVotes.toLocaleString()} votos (${((totalOtrosVotes / totalVotosCalculados) * 100).toFixed(1)}%) - Ganó ${ganadorCounts.OTROS} secciones.
+- Secciones sin datos/comicios: ${ganadorCounts.SIN_DATOS}
+
+TOP 10 SECCIONES CON MAYOR CANTIDAD DE VOTOS DORMIDOS (Mayor oportunidad de movilización):
+${top10.map((s, i) => `${i+1}. Sección ${s.seccion} (${s.municipio}): ${s.dormidos.toLocaleString()} votos dormidos (Participación: ${(s.participacion*100).toFixed(1)}%, Ganador 2024: ${s.ganador_label || 'Sin datos'} con ${s.ganador_votos?.toLocaleString()} votos).`).join('\n')}
+
+PREGUNTA DEL ESTRATEGA DE CAMPAÑA:
 ${pregunta}
 
-Responde en español con recomendaciones tácticas específicas, citando números de sección cuando sea relevante. Sé directo, conciso y accionable. Usa viñetas y estructura clara.`;
+Responde en español con recomendaciones tácticas específicas, citando números de sección y datos de votación/municipio cuando sea relevante. Analiza la fuerza relativa de MORENA, MC y PRI-PRD, el abstencionismo (votos dormidos) y propón tácticas concretas para el padrón (por ejemplo, dónde capturar más simpatizantes). Sé directo, conciso y altamente accionable. Usa viñetas y estructura clara.`;
 
         const { GoogleGenerativeAI } = require('@google/generative-ai');
         const genAI = new GoogleGenerativeAI(GEMINI_KEY);
@@ -329,7 +359,7 @@ Responde en español con recomendaciones tácticas específicas, citando número
         const result = await model.generateContent(contexto);
         const text = result.response.text();
 
-        res.json({ respuesta: text, fuente: 'Gemini 1.5 Flash', timestamp: new Date().toISOString() });
+        res.json({ respuesta: text, fuente: 'Gemini 2.5 Flash', timestamp: new Date().toISOString() });
     } catch (err) {
         console.error('Electoral AI error:', err);
         res.status(500).json({ error: 'Error en el consultor IA: ' + err.message });
