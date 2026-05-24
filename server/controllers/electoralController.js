@@ -13,8 +13,28 @@ const prisma = require('../services/db');
 // ─────────────────────────────────────────────────────────────────────────────
 const DATA_ROOT = path.join(__dirname, '..', '..');
 
+// Nombres de los 13 municipios de Campeche por ID (IEEC/INE)
+const MUNICIPIO_NOMBRES = {
+    1:  'Calkiní',
+    2:  'Campeche',
+    3:  'Carmen',
+    4:  'Champotón',
+    5:  'Hecelchakán',
+    6:  'Hopelchén',
+    7:  'Palizada',
+    8:  'Tenabo',
+    9:  'Escárcega',
+    10: 'Calakmul',
+    11: 'Candelaria',
+    12: 'Seybaplaya',
+    13: 'Dzitbalché',
+};
+
+const TIPO_NOMBRES = { 2: 'Urbana', 3: 'Mixta', 4: 'Rural' };
+
 let _secciones = null;
 let _ageb = null;
+let _geoMeta = null; // mapa seccion -> { distrito_f, distrito_l, municipio_id, municipio_nombre, tipo }
 
 const getSecciones = () => {
     if (_secciones) return _secciones;
@@ -30,6 +50,34 @@ const getAgeb = () => {
     const data = JSON.parse(raw);
     _ageb = data.ageb_preview || [];
     return _ageb;
+};
+
+// Carga el GeoJSON WGS84 y construye un mapa rápido seccion → metadatos
+const getGeoMeta = () => {
+    if (_geoMeta) return _geoMeta;
+    try {
+        const geoPath = path.join(DATA_ROOT, 'src', 'campeche_secciones_wgs84.json');
+        const raw = fs.readFileSync(geoPath, 'utf-8');
+        const geo = JSON.parse(raw);
+        _geoMeta = {};
+        (geo.features || []).forEach(feat => {
+            const p = feat.properties;
+            const seccion = Number(p.seccion);
+            _geoMeta[seccion] = {
+                distrito_f:       Number(p.distrito_f),
+                distrito_l:       Number(p.distrito_l),
+                municipio_id:     Number(p.municipio),
+                municipio_nombre: MUNICIPIO_NOMBRES[Number(p.municipio)] || `Municipio ${p.municipio}`,
+                tipo:             Number(p.tipo),
+                tipo_nombre:      TIPO_NOMBRES[Number(p.tipo)] || 'Desconocido',
+                control:          Number(p.control),
+            };
+        });
+    } catch (e) {
+        console.warn('[electoralController] GeoJSON no encontrado, metadatos no disponibles:', e.message);
+        _geoMeta = {};
+    }
+    return _geoMeta;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -130,10 +178,13 @@ const getSecciones_ = async (req, res) => {
             if (p.seccion) padronBySec[p.seccion] = p._count.seccion;
         });
 
+        const geoMeta = getGeoMeta();
+
         const enriquecidas = secciones.map(s => {
             const votos_dormidos = s.lista_nominal - s.total_votos;
             const seccionStr = String(s.seccion);
             const ciudadanos_registrados = padronBySec[seccionStr] || 0;
+            const geo = geoMeta[Number(s.seccion)] || {};
 
             return {
                 ...s,
@@ -143,6 +194,13 @@ const getSecciones_ = async (req, res) => {
                 ciudadanos_registrados,
                 // Score de recuperabilidad: muchos dormidos + baja participación = mayor urgencia
                 score_recuperacion: votos_dormidos * (1 - s.participacion),
+                // Metadatos del GeoJSON
+                distrito_f:       geo.distrito_f       ?? null,
+                distrito_l:       geo.distrito_l       ?? null,
+                municipio_id:     geo.municipio_id     ?? null,
+                municipio_nombre: geo.municipio_nombre ?? (s.municipio || null),
+                tipo:             geo.tipo             ?? null,
+                tipo_nombre:      geo.tipo_nombre      ?? null,
             };
         }).sort((a, b) => b.score_recuperacion - a.score_recuperacion);
 

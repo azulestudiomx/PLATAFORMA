@@ -4,7 +4,9 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, Cell, AreaChart, Area, Legend
 } from 'recharts';
-import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, GeoJSON, Popup } from 'react-leaflet';
+import type { Layer, PathOptions, GeoJSONOptions } from 'leaflet';
+import campecheGeo from '../src/campeche_secciones_wgs84.json';
 import 'leaflet/dist/leaflet.css';
 import Swal from 'sweetalert2';
 
@@ -23,6 +25,13 @@ interface Seccion {
     prioridad: string;
     ciudadanos_registrados: number;
     score_recuperacion: number;
+    // GeoJSON metadata
+    distrito_f?:       number | null;
+    distrito_l?:       number | null;
+    municipio_id?:     number | null;
+    municipio_nombre?: string | null;
+    tipo?:             number | null;
+    tipo_nombre?:      string | null;
 }
 
 interface Resumen {
@@ -35,6 +44,13 @@ interface Resumen {
     total_padron_registrado: number;
     cobertura_padron: number;
 }
+
+const MUNICIPIO_NOMBRES: Record<number, string> = {
+    1: 'Calkiní', 2: 'Campeche', 3: 'Carmen', 4: 'Champotón',
+    5: 'Hecelchakán', 6: 'Hopelchén', 7: 'Palizada', 8: 'Tenabo',
+    9: 'Escárcega', 10: 'Calakmul', 11: 'Candelaria', 12: 'Seybaplaya', 13: 'Dzitbalché',
+};
+const TIPO_LABELS: Record<number, string> = { 2: '🏙️ Urbana', 3: '🏘️ Mixta', 4: '🌾 Rural' };
 
 const PUESTOS = [
     { label: 'Presidente Municipal', value: 'presidente_municipal', icon: 'fa-city', pct: 0.50 },
@@ -86,6 +102,11 @@ const ElectoralPage: React.FC = () => {
     const [secSearch, setSecSearch]   = useState('');
     const [municipioFilter, setMunicipioFilter] = useState<string>('');
     const [selectedSeccion, setSelectedSeccion] = useState<Seccion | null>(null);
+
+    // Mapa filters
+    const [mapaDistritoF, setMapaDistritoF] = useState<string>('');
+    const [mapaDistritoL, setMapaDistritoL] = useState<string>('');
+    const [mapaTipo, setMapaTipo]           = useState<string>('');
 
     // Paginación
     const [currentPage, setCurrentPage] = useState(1);
@@ -196,20 +217,49 @@ const ElectoralPage: React.FC = () => {
         }
     };
 
-    const getSeccionCoords = (seccion: number): [number, number] => {
-        const seed = seccion * 9301 + 49297;
-        const lat = 19.72 + ((seed % 1000) / 1000) * 0.30;
-        
-        // Estimación de la línea de costa (más al este a mayor latitud)
-        const lngCoast = -90.58 + (lat - 19.80) * 1.6;
-        
-        // Evitamos caer al agua en el sur limitando la longitud mínima a -90.62
-        const minLng = Math.max(lngCoast, -90.62);
-        
-        // Generamos la longitud al este de la costa
-        const lng = minLng + ((seed % 700) / 700) * 0.30;
-        return [lat, lng];
-    };
+    // Lookup rápido seccion → datos electorales (para el mapa GeoJSON)
+    const seccionesMap = React.useMemo(() => {
+        const map = new Map<number, Seccion>();
+        secciones.forEach(s => map.set(Number(s.seccion), s));
+        return map;
+    }, [secciones]);
+
+    // Estilo dinámico por feature GeoJSON
+    const getGeoStyle = React.useCallback((feature: any): PathOptions => {
+        const seccion = Number(feature?.properties?.seccion);
+        const data = seccionesMap.get(seccion);
+        if (!data) return {
+            fillColor: '#94a3b8',
+            fillOpacity: 0.07,
+            color: '#cbd5e1',
+            weight: 0.8,
+            opacity: 0.4,
+        };
+        const color = SEMAFORO_COLOR[data.semaforo];
+        // Opacidad basada en votos dormidos (más dormidos = más opaco)
+        const maxDormidos = 6000;
+        const fillOpacity = 0.25 + Math.min(0.55, (data.votos_dormidos / maxDormidos) * 0.55);
+        return {
+            fillColor: color,
+            fillOpacity,
+            color: '#fff',
+            weight: 1.0,
+            opacity: 0.8,
+        };
+    }, [seccionesMap]);
+
+    // Filtro del GeoJSON
+    const geoFilterFn = React.useCallback((feature: any): boolean => {
+        const p = feature?.properties;
+        if (!p) return true;
+        if (mapaDistritoF && Number(p.distrito_f) !== Number(mapaDistritoF)) return false;
+        if (mapaDistritoL && Number(p.distrito_l) !== Number(mapaDistritoL)) return false;
+        if (mapaTipo     && Number(p.tipo)       !== Number(mapaTipo))       return false;
+        return true;
+    }, [mapaDistritoF, mapaDistritoL, mapaTipo]);
+
+    // clave para forzar re-render de GeoJSON cuando cambian filtros o datos
+    const geoKey = `geo-${mapaDistritoF}-${mapaDistritoL}-${mapaTipo}-${secciones.length}`;
 
     // ─────────────────────────────────────────────────────────────────────────
     // RENDER
@@ -384,76 +434,157 @@ const ElectoralPage: React.FC = () => {
             )}
 
             {/* ══════════════════════════════════════════════════════════════ */}
-            {/* TAB 2 — MAPA DE CALOR ELECTORAL                               */}
+            {/* TAB 2 — MAPA DE CALOR ELECTORAL (GeoJSON Polygons)             */}
             {/* ══════════════════════════════════════════════════════════════ */}
             {activeTab === 'mapa' && (
                 <div className="space-y-4">
-                    {/* Leyenda */}
+
+                    {/* Leyenda + filtros */}
                     <div className="bg-white rounded-2xl shadow-card border border-gray-50 p-4 flex flex-wrap gap-4 items-center">
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Semáforo de Participación:</p>
-                        {[
-                            { color: '#ef4444', label: '< 55% — CRÍTICA (máxima atención)' },
-                            { color: '#f59e0b', label: '55–70% — MEDIA (fortalecer)' },
-                            { color: '#22c55e', label: '> 70% — CONSOLIDADA (mantener)' },
-                        ].map((item, i) => (
-                            <div key={i} className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
-                                <span className="text-xs font-medium text-gray-600">{item.label}</span>
-                            </div>
-                        ))}
-                        <p className="text-xs text-gray-400 ml-auto">Tamaño = votos dormidos</p>
+                        {/* Semáforo */}
+                        <div className="flex flex-wrap items-center gap-3">
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest shrink-0">Semáforo:</p>
+                            {[
+                                { color: '#ef4444', label: '< 55% Crítica' },
+                                { color: '#f59e0b', label: '55–70% Media' },
+                                { color: '#22c55e', label: '> 70% Consolidada' },
+                                { color: '#94a3b8', label: 'Sin datos' },
+                            ].map((item, i) => (
+                                <div key={i} className="flex items-center gap-1.5">
+                                    <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: item.color }}></div>
+                                    <span className="text-xs font-medium text-gray-600">{item.label}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Filtros de distrito y tipo */}
+                        <div className="flex flex-wrap items-center gap-2 ml-auto">
+                            {/* Distrito Federal */}
+                            <select
+                                value={mapaDistritoF}
+                                onChange={e => setMapaDistritoF(e.target.value)}
+                                className="h-8 px-3 rounded-xl border border-gray-200 bg-slate-50 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200 cursor-pointer"
+                            >
+                                <option value="">Dist. Federal: Todos</option>
+                                <option value="1">Distrito Federal 1</option>
+                                <option value="2">Distrito Federal 2</option>
+                            </select>
+
+                            {/* Distrito Local */}
+                            <select
+                                value={mapaDistritoL}
+                                onChange={e => setMapaDistritoL(e.target.value)}
+                                className="h-8 px-3 rounded-xl border border-gray-200 bg-slate-50 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200 cursor-pointer"
+                            >
+                                <option value="">Dist. Local: Todos</option>
+                                {Array.from({ length: 21 }, (_, i) => i + 1).map(d => (
+                                    <option key={d} value={String(d)}>Distrito Local {d}</option>
+                                ))}
+                            </select>
+
+                            {/* Tipo de sección */}
+                            <select
+                                value={mapaTipo}
+                                onChange={e => setMapaTipo(e.target.value)}
+                                className="h-8 px-3 rounded-xl border border-gray-200 bg-slate-50 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200 cursor-pointer"
+                            >
+                                <option value="">Tipo: Todos</option>
+                                <option value="2">🏙️ Urbana</option>
+                                <option value="3">🏘️ Mixta</option>
+                                <option value="4">🌾 Rural</option>
+                            </select>
+
+                            {/* Limpiar filtros */}
+                            {(mapaDistritoF || mapaDistritoL || mapaTipo) && (
+                                <button
+                                    onClick={() => { setMapaDistritoF(''); setMapaDistritoL(''); setMapaTipo(''); }}
+                                    className="h-8 px-3 rounded-xl bg-red-50 text-red-500 text-xs font-bold hover:bg-red-100 transition-colors"
+                                >
+                                    <i className="fas fa-times mr-1"></i>Limpiar
+                                </button>
+                            )}
+                        </div>
                     </div>
 
-                    {/* Mapa */}
-                    <div className="bg-white rounded-3xl shadow-card border border-gray-50 overflow-hidden" style={{ height: '600px' }}>
-                        <MapContainer center={[19.85, -90.53]} zoom={11} style={{ height: '100%', width: '100%' }}>
+                    {/* Mapa GeoJSON */}
+                    <div className="bg-white rounded-3xl shadow-card border border-gray-50 overflow-hidden" style={{ height: '640px' }}>
+                        <MapContainer
+                            center={[18.5, -90.0]}
+                            zoom={7}
+                            style={{ height: '100%', width: '100%' }}
+                        >
                             <TileLayer
                                 url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                                 attribution='&copy; OpenStreetMap contributors &copy; CARTO'
                             />
-                            {secciones.map((s) => {
-                                const [lat, lng] = getSeccionCoords(s.seccion);
-                                const radius = Math.max(8, Math.min(35, s.votos_dormidos / 120));
-                                return (
-                                    <CircleMarker
-                                        key={s.seccion}
-                                        center={[lat, lng]}
-                                        radius={radius}
-                                        fillColor={SEMAFORO_COLOR[s.semaforo]}
-                                        color={SEMAFORO_COLOR[s.semaforo]}
-                                        weight={1.5}
-                                        opacity={0.9}
-                                        fillOpacity={0.65}
-                                    >
-                                        <Popup
-                                            autoPan={true}
-                                            autoPanPadding={[20, 20]}
-                                            keepInView={true}
-                                            maxWidth={240}
-                                            minWidth={220}
-                                        >
-                                            <div style={{ padding: '6px 4px', minWidth: '210px' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-                                                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: SEMAFORO_COLOR[s.semaforo], flexShrink: 0 }}></div>
-                                                    <span style={{ fontWeight: 700, fontSize: '14px', color: '#1e293b' }}>Sección {s.seccion}</span>
-                                                    <span style={{ marginLeft: 'auto', fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '999px', backgroundColor: SEMAFORO_COLOR[s.semaforo] + '22', color: SEMAFORO_COLOR[s.semaforo], whiteSpace: 'nowrap' }}>
-                                                        {s.prioridad}
-                                                    </span>
-                                                </div>
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '12px' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Lista Nominal:</span><span style={{ fontWeight: 700 }}>{s.lista_nominal.toLocaleString()}</span></div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Votos 2024:</span><span style={{ fontWeight: 700 }}>{s.total_votos.toLocaleString()}</span></div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Participación:</span><span style={{ fontWeight: 700, color: SEMAFORO_COLOR[s.semaforo] }}>{(s.participacion * 100).toFixed(1)}%</span></div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e5e7eb', paddingTop: '5px', marginTop: '3px' }}><span style={{ color: '#6b7280', fontWeight: 700 }}>Votos Dormidos:</span><span style={{ fontWeight: 700, color: '#d97706' }}>{s.votos_dormidos.toLocaleString()}</span></div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Casillas:</span><span style={{ fontWeight: 700 }}>{s.casillas}</span></div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>En tu padrón:</span><span style={{ fontWeight: 700, color: '#4f46e5' }}>{s.ciudadanos_registrados}</span></div>
-                                                </div>
+                            <GeoJSON
+                                key={geoKey}
+                                data={campecheGeo as any}
+                                style={getGeoStyle}
+                                filter={geoFilterFn}
+                                onEachFeature={(feature: any, layer: Layer) => {
+                                    const seccion = Number(feature?.properties?.seccion);
+                                    const data    = seccionesMap.get(seccion);
+                                    const p       = feature?.properties || {};
+                                    const muniNombre = MUNICIPIO_NOMBRES[Number(p.municipio)] || `Municipio ${p.municipio}`;
+                                    const tipoLabel  = TIPO_LABELS[Number(p.tipo)] || '—';
+
+                                    // Hover
+                                    (layer as any).on('mouseover', function (this: any) {
+                                        const base = (this.options as PathOptions).fillOpacity || 0.3;
+                                        this.setStyle({
+                                            fillOpacity: Math.min(0.92, base + 0.25),
+                                            weight: 2.0,
+                                            color: '#ffffff',
+                                        });
+                                    });
+                                    (layer as any).on('mouseout', function (this: any) {
+                                        (layer as any).setStyle(getGeoStyle(feature));
+                                    });
+
+                                    // Popup
+                                    const color = data ? SEMAFORO_COLOR[data.semaforo] : '#94a3b8';
+                                    const popupContent = `
+                                        <div style="padding:6px 4px;min-width:220px;font-family:system-ui,sans-serif">
+                                            <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+                                                <div style="width:10px;height:10px;border-radius:3px;background:${color};flex-shrink:0"></div>
+                                                <span style="font-weight:700;font-size:14px;color:#1e293b">Sección ${seccion}</span>
+                                                ${data ? `<span style="margin-left:auto;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;background:${color}22;color:${color}">${data.prioridad}</span>` : '<span style="margin-left:auto;font-size:10px;color:#94a3b8">Sin datos</span>'}
                                             </div>
-                                        </Popup>
-                                    </CircleMarker>
-                                );
-                            })}
+                                            <div style="display:flex;flex-direction:column;gap:5px;font-size:12px">
+                                                <div style="display:flex;justify-content:space-between"><span style="color:#6b7280">Municipio:</span><span style="font-weight:600">${muniNombre}</span></div>
+                                                <div style="display:flex;justify-content:space-between"><span style="color:#6b7280">Dist. Federal:</span><span style="font-weight:600">D${p.distrito_f || '—'}</span></div>
+                                                <div style="display:flex;justify-content:space-between"><span style="color:#6b7280">Dist. Local:</span><span style="font-weight:600">D${p.distrito_l || '—'}</span></div>
+                                                <div style="display:flex;justify-content:space-between"><span style="color:#6b7280">Tipo:</span><span style="font-weight:600">${tipoLabel}</span></div>
+                                                ${data ? `
+                                                <div style="border-top:1px solid #e5e7eb;padding-top:6px;margin-top:2px;display:flex;flex-direction:column;gap:4px">
+                                                    <div style="display:flex;justify-content:space-between"><span style="color:#6b7280">Lista Nominal:</span><span style="font-weight:700">${data.lista_nominal.toLocaleString()}</span></div>
+                                                    <div style="display:flex;justify-content:space-between"><span style="color:#6b7280">Votos 2024:</span><span style="font-weight:700">${data.total_votos.toLocaleString()}</span></div>
+                                                    <div style="display:flex;justify-content:space-between"><span style="color:#6b7280">Participación:</span><span style="font-weight:700;color:${color}">${(data.participacion * 100).toFixed(1)}%</span></div>
+                                                    <div style="display:flex;justify-content:space-between"><span style="color:#6b7280;font-weight:700">Votos Dormidos:</span><span style="font-weight:700;color:#d97706">${data.votos_dormidos.toLocaleString()}</span></div>
+                                                    <div style="display:flex;justify-content:space-between"><span style="color:#6b7280">En padrón:</span><span style="font-weight:700;color:#4f46e5">${data.ciudadanos_registrados}</span></div>
+                                                </div>` : '<div style="color:#94a3b8;font-size:11px;margin-top:6px;text-align:center">Sin datos electorales históricos</div>'}
+                                            </div>
+                                        </div>`;
+                                    (layer as any).bindPopup(popupContent, { maxWidth: 260, minWidth: 230 });
+                                }}
+                            />
                         </MapContainer>
+                    </div>
+
+                    {/* Resumen de filtros activos */}
+                    <div className="bg-white rounded-2xl shadow-card border border-gray-50 p-3 flex flex-wrap gap-3 items-center text-xs">
+                        <i className="fas fa-info-circle text-slate-400"></i>
+                        <span className="text-slate-500">
+                            <span className="font-bold text-slate-700">{secciones.length}</span> secciones con datos electorales (mun. Campeche) •
+                            <span className="font-bold text-slate-700"> 555</span> secciones totales del estado
+                            {mapaDistritoF && <span className="ml-2 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 font-bold">D. Federal {mapaDistritoF}</span>}
+                            {mapaDistritoL && <span className="ml-1 px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 font-bold">D. Local {mapaDistritoL}</span>}
+                            {mapaTipo === '2' && <span className="ml-1 px-2 py-0.5 rounded-full bg-sky-50 text-sky-600 font-bold">🏙️ Urbanas</span>}
+                            {mapaTipo === '3' && <span className="ml-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 font-bold">🏘️ Mixtas</span>}
+                            {mapaTipo === '4' && <span className="ml-1 px-2 py-0.5 rounded-full bg-green-50 text-green-600 font-bold">🌾 Rurales</span>}
+                        </span>
+                        <span className="ml-auto text-slate-400">Haz click en cualquier sección para ver detalles</span>
                     </div>
                 </div>
             )}
