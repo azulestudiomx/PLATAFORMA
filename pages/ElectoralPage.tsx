@@ -138,6 +138,16 @@ const ElectoralPage: React.FC = () => {
 
     // Paginación
     const [currentPage, setCurrentPage] = useState(1);
+    const [chartPriorityFilter, setChartPriorityFilter] = useState<string>('todos');
+
+    const chartSecciones = React.useMemo(() => {
+        let filtered = secciones;
+        if (chartPriorityFilter !== 'todos') {
+            filtered = secciones.filter(s => s.semaforo === chartPriorityFilter);
+        }
+        return filtered.slice(0, 10);
+    }, [secciones, chartPriorityFilter]);
+
     const itemsPerPage = 15;
 
     const municipiosDisponibles = React.useMemo(() => {
@@ -438,12 +448,29 @@ const ElectoralPage: React.FC = () => {
 
                     {/* Gráfica Top 10 secciones prioritarias */}
                     <div className="bg-white rounded-3xl shadow-card border border-gray-50 p-6">
-                        <h3 className="font-bold text-slate-800 mb-1">Top 10 Secciones con más Votos Dormidos</h3>
-                        <p className="text-xs text-gray-400 mb-4">Mayor potencial de recuperación electoral — prioridad de brigadas</p>
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                            <div>
+                                <h3 className="font-bold text-slate-800 mb-1">Top 10 Secciones con más Votos Dormidos</h3>
+                                <p className="text-xs text-gray-400">Mayor potencial de recuperación electoral — prioridad de brigadas</p>
+                            </div>
+                            
+                            {/* Selector de prioridad interactivo para que salgan verdes, amarillas o rojas */}
+                            <select
+                                value={chartPriorityFilter}
+                                onChange={e => setChartPriorityFilter(e.target.value)}
+                                className="h-8 px-3 rounded-xl border border-gray-200 bg-slate-50 text-[11px] font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-200 cursor-pointer transition-colors hover:bg-slate-100"
+                            >
+                                <option value="todos">🚦 Semáforo: Todos</option>
+                                <option value="rojo">🔴 Prioridad Crítica (&lt; 55% Part.)</option>
+                                <option value="amarillo">🟡 Prioridad Media (55–70% Part.)</option>
+                                <option value="verde">🟢 Prioridad Consolidada (&gt; 70% Part.)</option>
+                            </select>
+                        </div>
+                        
                         <div className="h-72">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart
-                                    data={secciones.slice(0, 10).map(s => ({ name: `Secc. ${s.seccion}`, dormidos: s.votos_dormidos }))}
+                                    data={chartSecciones.map(s => ({ name: `Secc. ${s.seccion}`, dormidos: s.votos_dormidos }))}
                                     layout="vertical"
                                     margin={{ top: 0, right: 20, left: 60, bottom: 0 }}
                                 >
@@ -458,12 +485,29 @@ const ElectoralPage: React.FC = () => {
                                     
                                     {/* Bar de Votos Dormidos (Color dinámico según el semáforo de prioridad, fill base rojo para consistencia en la leyenda) */}
                                     <Bar dataKey="dormidos" fill="#ef4444" radius={[0, 8, 8, 0]} barSize={16}>
-                                        {secciones.slice(0, 10).map((s, i) => (
+                                        {chartSecciones.map((s, i) => (
                                             <Cell key={i} fill={SEMAFORO_COLOR[s.semaforo]} fillOpacity={0.85} />
                                         ))}
                                     </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
+                        </div>
+
+                        {/* Leyenda de Semáforo Explicativa */}
+                        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-4 pt-4 border-t border-slate-50 text-[11px] font-semibold text-gray-500">
+                            <span className="text-gray-400 uppercase tracking-wider text-[9px] font-bold">Estado del Semáforo (Participación 2024):</span>
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-[#ef4444]"></span>
+                                <span>🔴 Crítica (Baja, &lt; 55%)</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-[#f59e0b]"></span>
+                                <span>🟡 En Riesgo (Media, 55%–70%)</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-[#22c55e]"></span>
+                                <span>🟢 Consolidada (Alta, &gt; 70%)</span>
+                            </div>
                         </div>
                     </div>
                 </div>
