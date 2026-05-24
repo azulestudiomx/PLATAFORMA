@@ -543,8 +543,8 @@ const ElectoralPage: React.FC = () => {
                                     max={s.max}
                                     value={s.value}
                                     onChange={e => s.setValue(Number(e.target.value))}
-                                    className="w-full h-2 rounded-full appearance-none cursor-pointer"
-                                    style={{ accentColor: s.color }}
+                                    className="w-full slider-custom cursor-pointer"
+                                    style={{ '--accent-color': s.color, accentColor: s.color } as React.CSSProperties}
                                 />
                                 <p className="text-[10px] text-gray-400 mt-1">{s.hint}</p>
                             </div>
