@@ -148,13 +148,18 @@ const ElectoralPage: React.FC = () => {
         }
     };
 
-    // ─── Mapa: coordenadas aproximadas por sección (Campeche city center + offset)
-    // Como los JSON no incluyen coordenadas GPS por sección, generamos posiciones
-    // dentro del bounding box de Campeche usando el número de sección como seed
     const getSeccionCoords = (seccion: number): [number, number] => {
         const seed = seccion * 9301 + 49297;
-        const lat = 19.75 + ((seed % 1000) / 1000) * 0.35;
-        const lng = -90.65 + ((seed % 700) / 700) * 0.38;
+        const lat = 19.72 + ((seed % 1000) / 1000) * 0.30;
+        
+        // Estimación de la línea de costa (más al este a mayor latitud)
+        const lngCoast = -90.58 + (lat - 19.80) * 1.6;
+        
+        // Evitamos caer al agua en el sur limitando la longitud mínima a -90.62
+        const minLng = Math.max(lngCoast, -90.62);
+        
+        // Generamos la longitud al este de la costa
+        const lng = minLng + ((seed % 700) / 700) * 0.30;
         return [lat, lng];
     };
 
