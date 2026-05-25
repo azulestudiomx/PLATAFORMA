@@ -4,7 +4,7 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, Cell, AreaChart, Area, Legend
 } from 'recharts';
-import { MapContainer, TileLayer, GeoJSON, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, GeoJSON, Popup, useMap } from 'react-leaflet';
 import type { Layer, PathOptions, GeoJSONOptions } from 'leaflet';
 import campecheGeo from '../src/campeche_secciones_wgs84.json';
 import 'leaflet/dist/leaflet.css';
@@ -92,6 +92,81 @@ const SEMAFORO_COLOR: Record<string, string> = {
     verde:    '#22c55e',
 };
 
+const MUNICIPIO_COORDINATES: Record<string, { center: [number, number]; zoom: number }> = {
+    'CAMPECHE': { center: [19.81, -90.48], zoom: 11 },
+    'CALKINÍ': { center: [20.39, -90.12], zoom: 11 },
+    'CARMEN': { center: [18.64, -91.71], zoom: 9 },
+    'CHAMPOTÓN': { center: [19.22, -90.64], zoom: 10 },
+    'HECELCHAKÁN': { center: [20.17, -90.15], zoom: 11 },
+    'HOPELCHÉN': { center: [19.65, -89.72], zoom: 9 },
+    'PALIZADA': { center: [18.25, -91.99], zoom: 11 },
+    'TENABO': { center: [19.99, -90.27], zoom: 11 },
+    'ESCÁRCEGA': { center: [18.58, -90.69], zoom: 10 },
+    'CANDELARIA': { center: [18.10, -90.86], zoom: 10 },
+    'CALAKMUL': { center: [18.43, -89.46], zoom: 9 },
+    'DZITBALCHÉ': { center: [20.30, -90.05], zoom: 11 },
+    'SEYBAPLAYA': { center: [19.61, -90.68], zoom: 11 },
+};
+
+// Componente para transicionar el mapa Leaflet de forma fluida
+const ChangeView: React.FC<{ center: [number, number]; zoom: number }> = ({ center, zoom }) => {
+    const map = useMap();
+    useEffect(() => {
+        map.setView(center, zoom);
+    }, [center, zoom, map]);
+    return null;
+};
+
+const getCompetitividadDetails = (s: Seccion) => {
+    const totalValidos = s.total_votos || 1;
+    const forces = [
+        { label: 'MORENA-PT-PVEM', votes: s.votos_coalicion_morena || 0, color: '#800020' },
+        { label: 'Movimiento Ciudadano', votes: s.votos_mc || 0, color: '#FF8C00' },
+        { label: 'PRI-PRD', votes: s.votos_coalicion_pri_prd || 0, color: '#1E5A34' },
+        { label: 'PAN', votes: s.votos_pan || 0, color: '#1A535C' },
+        { label: 'Otros partidos', votes: s.votos_otros || 0, color: '#708090' }
+    ].filter(f => f.votes > 0).sort((a, b) => b.votes - a.votes);
+
+    if (forces.length === 0) {
+        return {
+            marginVotes: 0,
+            marginPct: 0,
+            tag: 'Sin Datos',
+            colorClass: 'text-gray-400 bg-gray-50 border-gray-100',
+            dotColor: '#94a3b8',
+            forces
+        };
+    }
+
+    const winnerVotes = forces[0]?.votes || 0;
+    const runnerUpVotes = forces[1]?.votes || 0;
+    const marginVotes = winnerVotes - runnerUpVotes;
+    const marginPct = totalValidos > 0 ? (marginVotes / totalValidos) * 100 : 0;
+
+    let tag = 'Margen Amplio';
+    let colorClass = 'text-emerald-700 bg-emerald-50 border-emerald-100';
+    let dotColor = '#10b981';
+
+    if (marginPct < 5) {
+        tag = 'Empate Técnico';
+        colorClass = 'text-rose-700 bg-rose-50 border-rose-100 animate-pulse';
+        dotColor = '#f43f5e';
+    } else if (marginPct < 15) {
+        tag = 'Muy Competitiva';
+        colorClass = 'text-amber-700 bg-amber-50 border-amber-100';
+        dotColor = '#f59e0b';
+    }
+
+    return {
+        marginVotes,
+        marginPct,
+        tag,
+        colorClass,
+        dotColor,
+        forces
+    };
+};
+
 const TABS = [
     { id: 'dashboard', label: 'Dashboard',    icon: 'fa-chart-pie' },
     { id: 'mapa',      label: 'Mapa de Calor', icon: 'fa-map-marked-alt' },
@@ -124,6 +199,11 @@ const ElectoralPage: React.FC = () => {
     const [chatHistory, setChatHistory] = useState<{q: string; r: string}[]>([]);
     const chatRef = useRef<HTMLDivElement>(null);
 
+    // Auto Strategy Modal state
+    const [showStrategyModal, setShowStrategyModal] = useState(false);
+    const [strategyContent, setStrategyContent]     = useState('');
+    const [loadingAutoStrategy, setLoadingAutoStrategy] = useState(false);
+
     // Semaforo filters
     const [semaforoFilter, setSemaforoFilter] = useState<'todos' | 'rojo' | 'amarillo' | 'verde'>('todos');
     const [secSearch, setSecSearch]   = useState('');
@@ -141,12 +221,15 @@ const ElectoralPage: React.FC = () => {
     const [chartPriorityFilter, setChartPriorityFilter] = useState<string>('todos');
 
     const chartSecciones = React.useMemo(() => {
-        let filtered = secciones;
+        let filtered = municipioFilter
+            ? secciones.filter(s => s.municipio === municipioFilter)
+            : secciones;
+            
         if (chartPriorityFilter !== 'todos') {
-            filtered = secciones.filter(s => s.semaforo === chartPriorityFilter);
+            filtered = filtered.filter(s => s.semaforo === chartPriorityFilter);
         }
         return filtered.slice(0, 10);
-    }, [secciones, chartPriorityFilter]);
+    }, [secciones, municipioFilter, chartPriorityFilter]);
 
     const itemsPerPage = 15;
 
@@ -198,6 +281,35 @@ const ElectoralPage: React.FC = () => {
         }).then(setMetaCustom).catch(() => {});
     }, [puesto, partEst, resumen]);
 
+    // Calcular resumen activo (KPIs en caliente por municipio)
+    const activeResumen = React.useMemo(() => {
+        if (!resumen) return null;
+        if (!municipioFilter) return resumen;
+
+        const filtered = secciones.filter(s => s.municipio === municipioFilter);
+        const lista_nominal_total = filtered.reduce((acc, s) => acc + s.lista_nominal, 0);
+        const votos_historicos_2024 = filtered.reduce((acc, s) => acc + s.total_votos, 0);
+        const participacion_historica = lista_nominal_total > 0 ? votos_historicos_2024 / lista_nominal_total : 0;
+
+        const votos_esperados_2027 = Math.round(lista_nominal_total * (partEst / 100));
+        const meta_votos = Math.round(votos_esperados_2027 * puesto.pct) + 1;
+        const votos_dormidos = filtered.reduce((acc, s) => acc + (s.lista_nominal - s.total_votos), 0);
+
+        const total_padron_registrado = filtered.reduce((acc, s) => acc + (s.ciudadanos_registrados || 0), 0);
+        const cobertura_padron = lista_nominal_total > 0 ? total_padron_registrado / lista_nominal_total : 0;
+
+        return {
+            lista_nominal_total,
+            votos_historicos_2024,
+            participacion_historica,
+            votos_esperados_2027,
+            meta_votos,
+            votos_dormidos,
+            total_padron_registrado,
+            cobertura_padron,
+        };
+    }, [resumen, secciones, municipioFilter, partEst, puesto]);
+
     // ─── Secciones filtradas ──────────────────────────────────────────────────
     const seccionesFiltradas = React.useMemo(() => {
         return secciones.filter(s => {
@@ -229,10 +341,10 @@ const ElectoralPage: React.FC = () => {
     }, [seccionesFiltradas, currentPage]);
 
     // ─── Calculadora ──────────────────────────────────────────────────────────
-    const listaNominal  = resumen?.lista_nominal_total || 217472;
+    const listaNominal  = activeResumen?.lista_nominal_total || 217472;
     const votosEsperados = Math.round(listaNominal * (partEst / 100));
     const metaVotos     = Math.round(votosEsperados * (pctNec / 100)) + 1;
-    const votosActuales = resumen?.votos_historicos_2024 || 0;
+    const votosActuales = activeResumen?.votos_historicos_2024 || 0;
     const gap           = Math.max(0, metaVotos - Math.round(votosActuales * (pctNec / 100)));
     const contactosDiarios = diasCampaña > 0 ? Math.ceil(gap / diasCampaña) : 0;
     const votosXBrigadista = brigadistas > 0 ? Math.ceil(gap / brigadistas) : gap;
@@ -244,7 +356,10 @@ const ElectoralPage: React.FC = () => {
         const q = pregunta;
         setPregunta('');
         try {
-            const data = await electoralApi.aiConsult(q, puesto.label);
+            const promptWithContext = municipioFilter
+                ? `[Contexto: El estratega está filtrando y analizando el municipio de ${municipioFilter}] Pregunta: ${q}`
+                : q;
+            const data = await electoralApi.aiConsult(promptWithContext, puesto.label);
             const entry = { q, r: data.respuesta };
             setChatHistory(prev => [...prev, entry]);
             setTimeout(() => chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' }), 100);
@@ -253,6 +368,40 @@ const ElectoralPage: React.FC = () => {
         } finally {
             setLoadingIA(false);
         }
+    };
+
+    // Generación de plan de campaña dinámico automático
+    const handleAutoStrategy = async () => {
+        setLoadingAutoStrategy(true);
+        setShowStrategyModal(true);
+        setStrategyContent('');
+
+        // Formulamos un prompt ultra-táctico en base al municipio seleccionado y puesto
+        const prompt = municipioFilter
+            ? `Genera un plan de campaña sumamente táctico y accionable para competir por el puesto de ${puesto.label} en el municipio de ${municipioFilter}, basándote en los datos electorales de la elección del 2024. Estructura el plan en secciones claras: 1) Diagnóstico y Lista Nominal de ${municipioFilter}, 2) Secciones Críticas (mencionando las que tienen Empate Técnico o mayor volumen de Votos Dormidos en ${municipioFilter}), 3) Despliegue Táctico de Brigadas en campo, y 4) Narrativa/Mensajes clave recomendados para megáfono y visitas casa por casa. Sé sumamente directo, conciso y altamente accionable, usando viñetas e Hitos.`
+            : `Genera un plan estratégico de campaña a nivel estatal en el estado de Campeche para competir por el puesto de ${puesto.label}, basándote en los datos electorales de la elección de 2024. Estructura el plan en: 1) Diagnóstico y Lista Nominal Estatal, 2) Municipios Críticos (identifica los municipios prioritarios con mayor volumen de votos dormidos y abstencionismo), 3) Plan de Despliegue de Tierra y Movilización en el estado, y 4) Ejes Narrativos y Discursos para los simpatizantes. Sé sumamente directo, conciso y accionable, usando viñetas e Hitos.`;
+
+        try {
+            const data = await electoralApi.aiConsult(prompt, puesto.label);
+            setStrategyContent(data.respuesta || 'No se pudo generar el plan estratégico.');
+        } catch (err: any) {
+            setStrategyContent(`⚠️ Error al generar plan: ${err.message}`);
+        } finally {
+            setLoadingAutoStrategy(false);
+        }
+    };
+
+    const handleCopyStrategy = () => {
+        navigator.clipboard.writeText(strategyContent);
+        Swal.fire({
+            icon: 'success',
+            title: '¡Copiado!',
+            text: 'El plan estratégico ha sido copiado al portapapeles.',
+            timer: 2000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end'
+        });
     };
 
     // Lookup rápido seccion → datos electorales (para el mapa GeoJSON)
@@ -300,11 +449,17 @@ const ElectoralPage: React.FC = () => {
         if (mapaDistritoF && Number(p.distrito_f) !== Number(mapaDistritoF)) return false;
         if (mapaDistritoL && Number(p.distrito_l) !== Number(mapaDistritoL)) return false;
         if (mapaTipo     && Number(p.tipo)       !== Number(mapaTipo))       return false;
+        
+        // Filtrar por municipio global activo si está configurado
+        if (municipioFilter) {
+            const muniNombre = MUNICIPIO_NOMBRES[Number(p.municipio)] || '';
+            if (muniNombre.toLowerCase() !== municipioFilter.toLowerCase()) return false;
+        }
         return true;
-    }, [mapaDistritoF, mapaDistritoL, mapaTipo]);
+    }, [mapaDistritoF, mapaDistritoL, mapaTipo, municipioFilter]);
 
     // clave para forzar re-render de GeoJSON cuando cambian filtros o datos
-    const geoKey = `geo-${mapaDistritoF}-${mapaDistritoL}-${mapaTipo}-${mapMode}-${secciones.length}`;
+    const geoKey = `geo-${mapaDistritoF}-${mapaDistritoL}-${mapaTipo}-${mapMode}-${municipioFilter}-${secciones.length}`;
 
     // ─────────────────────────────────────────────────────────────────────────
     // RENDER
@@ -320,7 +475,7 @@ const ElectoralPage: React.FC = () => {
         );
     }
 
-    const meta = metaCustom || resumen;
+    const meta = municipioFilter ? activeResumen : (metaCustom || activeResumen);
 
     return (
         <div className="max-w-7xl mx-auto space-y-6 pb-24">
@@ -334,25 +489,52 @@ const ElectoralPage: React.FC = () => {
                         </span>
                         Inteligencia Electoral
                     </h2>
-                    <p className="text-sm text-gray-400 mt-0.5 ml-12">Análisis estratégico en tiempo real — Campeche 2027</p>
+                    <p className="text-sm text-gray-400 mt-0.5 ml-12">Análisis estratégico en tiempo real — Estado de Campeche</p>
                 </div>
 
-                {/* Selector de puesto */}
-                <div className="flex flex-wrap gap-2">
-                    {PUESTOS.map(p => (
-                        <button
-                            key={p.value}
-                            onClick={() => setPuesto(p)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
-                                puesto.value === p.value
-                                    ? 'bg-brand-gradient text-white shadow-glow-red'
-                                    : 'bg-white text-gray-500 border border-gray-100 hover:border-brand-primary/30'
-                            }`}
+                <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+                    {/* Selector de Municipio Global */}
+                    <div className="flex items-center gap-2 bg-white px-4 py-2 h-10 rounded-xl shadow-card border border-gray-100/80 shrink-0">
+                        <i className="fas fa-map-marker-alt text-brand-primary text-xs"></i>
+                        <select
+                            value={municipioFilter}
+                            onChange={e => setMunicipioFilter(e.target.value)}
+                            className="text-xs font-extrabold uppercase tracking-wider text-slate-700 bg-transparent focus:outline-none cursor-pointer border-none p-0 pr-6"
                         >
-                            <i className={`fas ${p.icon}`}></i>
-                            {p.label}
-                        </button>
-                    ))}
+                            <option value="">🗺️ Todo el Estado</option>
+                            {municipiosDisponibles.map(m => (
+                                <option key={m} value={m}>{m}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Botón de Estrategia IA Automática */}
+                    <button
+                        onClick={handleAutoStrategy}
+                        disabled={loading}
+                        className="flex items-center gap-2 px-4 py-2 h-10 rounded-xl bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-600 hover:to-indigo-700 text-white font-extrabold text-xs uppercase tracking-wider shadow-glow-indigo transition-all shrink-0 active:scale-95 disabled:opacity-50"
+                    >
+                        <i className="fas fa-wand-magic-sparkles text-xs animate-pulse"></i>
+                        <span>Estrategia IA</span>
+                    </button>
+
+                    {/* Selector de puesto */}
+                    <div className="flex flex-wrap gap-1.5 bg-white p-1 rounded-xl shadow-card border border-gray-100/80">
+                        {PUESTOS.map(p => (
+                            <button
+                                key={p.value}
+                                onClick={() => setPuesto(p)}
+                                className={`flex items-center gap-2 px-3 py-1.5 h-8 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+                                    puesto.value === p.value
+                                        ? 'bg-brand-gradient text-white shadow-sm'
+                                        : 'text-gray-400 hover:text-gray-600'
+                                }`}
+                            >
+                                <i className={`fas ${p.icon}`}></i>
+                                {p.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
@@ -377,8 +559,10 @@ const ElectoralPage: React.FC = () => {
             {/* ══════════════════════════════════════════════════════════════ */}
             {/* TAB 1 — DASHBOARD ESTRATÉGICO                                 */}
             {/* ══════════════════════════════════════════════════════════════ */}
-            {activeTab === 'dashboard' && resumen && (
-                <div className="space-y-6">
+            {activeTab === 'dashboard' && activeResumen && (() => {
+                const resumen = activeResumen;
+                return (
+                    <div className="space-y-6">
                     {/* KPI Cards */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         {[
@@ -511,7 +695,8 @@ const ElectoralPage: React.FC = () => {
                         </div>
                     </div>
                 </div>
-            )}
+                );
+            })()}
 
             {/* ══════════════════════════════════════════════════════════════ */}
             {/* TAB 2 — MAPA DE CALOR ELECTORAL (GeoJSON Polygons)             */}
@@ -631,6 +816,18 @@ const ElectoralPage: React.FC = () => {
                                 url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                                 attribution='&copy; OpenStreetMap contributors &copy; CARTO'
                             />
+                            {/* Vuelo de cámara inteligente por municipio */}
+                            {(() => {
+                                if (municipioFilter) {
+                                    const coords = MUNICIPIO_COORDINATES[municipioFilter.toUpperCase()];
+                                    if (coords) {
+                                        return <ChangeView center={coords.center} zoom={coords.zoom} />;
+                                    }
+                                } else {
+                                    return <ChangeView center={[18.5, -90.0]} zoom={7} />;
+                                }
+                                return null;
+                            })()}
                             <GeoJSON
                                 key={geoKey}
                                 data={campecheGeo as any}
@@ -658,6 +855,19 @@ const ElectoralPage: React.FC = () => {
 
                                     // Popup
                                     const color = data ? SEMAFORO_COLOR[data.semaforo] : '#94a3b8';
+                                    let compHtml = '';
+                                    if (data) {
+                                        const comp = getCompetitividadDetails(data);
+                                        if (comp.tag !== 'Sin Datos') {
+                                            compHtml = `
+                                                <div style="border-top:1px solid #e5e7eb;padding-top:6px;margin-top:2px;display:flex;flex-direction:column;gap:4px">
+                                                    <div style="display:flex;justify-content:space-between"><span style="color:#6b7280">Ganador 2024:</span><span style="font-weight:700;color:${data.ganador_color || '#708090'}">${data.ganador_label}</span></div>
+                                                    <div style="display:flex;justify-content:space-between"><span style="color:#6b7280">Margen:</span><span style="font-weight:700;color:${comp.dotColor}">${comp.marginPct.toFixed(1)}% (${comp.tag})</span></div>
+                                                </div>
+                                            `;
+                                        }
+                                    }
+
                                     const popupContent = `
                                         <div style="padding:6px 4px;min-width:220px;font-family:system-ui,sans-serif">
                                             <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
@@ -676,7 +886,10 @@ const ElectoralPage: React.FC = () => {
                                                     <div style="display:flex;justify-content:space-between"><span style="color:#6b7280">Votos 2024:</span><span style="font-weight:700">${data.total_votos.toLocaleString()}</span></div>
                                                     <div style="display:flex;justify-content:space-between"><span style="color:#6b7280">Participación:</span><span style="font-weight:700;color:${color}">${(data.participacion * 100).toFixed(1)}%</span></div>
                                                     <div style="display:flex;justify-content:space-between"><span style="color:#6b7280;font-weight:700">Votos Dormidos:</span><span style="font-weight:700;color:#d97706">${data.votos_dormidos.toLocaleString()}</span></div>
-                                                    <div style="display:flex;justify-content:space-between"><span style="color:#6b7280">En padrón:</span><span style="font-weight:700;color:#4f46e5">${data.ciudadanos_registrados}</span></div>
+                                                </div>
+                                                ${compHtml}
+                                                <div style="border-top:1px solid #e5e7eb;padding-top:6px;margin-top:2px;display:flex;justify-content:space-between">
+                                                    <span style="color:#6b7280">En padrón:</span><span style="font-weight:700;color:#4f46e5">${data.ciudadanos_registrados}</span>
                                                 </div>` : '<div style="color:#94a3b8;font-size:11px;margin-top:6px;text-align:center">Sin datos electorales históricos</div>'}
                                             </div>
                                         </div>`;
@@ -690,7 +903,7 @@ const ElectoralPage: React.FC = () => {
                     <div className="bg-white rounded-2xl shadow-card border border-gray-50 p-3 flex flex-wrap gap-3 items-center text-xs">
                         <i className="fas fa-info-circle text-slate-400"></i>
                         <span className="text-slate-500">
-                            <span className="font-bold text-slate-700">{secciones.length}</span> secciones con datos electorales (mun. Campeche) •
+                            <span className="font-bold text-slate-700">{seccionesFiltradas.length}</span> secciones con datos electorales {municipioFilter ? `(mun. ${municipioFilter})` : '(Todo el Estado)'} •
                             <span className="font-bold text-slate-700"> 555</span> secciones totales del estado
                             {mapaDistritoF && <span className="ml-2 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 font-bold">D. Federal {mapaDistritoF}</span>}
                             {mapaDistritoL && <span className="ml-1 px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 font-bold">D. Local {mapaDistritoL}</span>}
@@ -1118,6 +1331,21 @@ const ElectoralPage: React.FC = () => {
                                 </div>
                             )}
 
+                            {/* Competitividad Badge */}
+                            {(() => {
+                                const comp = getCompetitividadDetails(selectedSeccion);
+                                if (comp.tag === 'Sin Datos') return null;
+                                return (
+                                    <div className={`p-3.5 rounded-2xl border flex items-center justify-between font-bold text-sm ${comp.colorClass}`}>
+                                        <div className="flex items-center gap-2">
+                                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: comp.dotColor }}></span>
+                                            <span>{comp.tag}</span>
+                                        </div>
+                                        <span>Margen: {comp.marginPct.toFixed(1)}%</span>
+                                    </div>
+                                );
+                            })()}
+
                             {[
                                 { label: 'Lista Nominal', value: selectedSeccion.lista_nominal.toLocaleString(), icon: 'fa-users' },
                                 { label: 'Votos emitidos 2024', value: selectedSeccion.total_votos.toLocaleString(), icon: 'fa-vote-yea' },
@@ -1175,12 +1403,87 @@ const ElectoralPage: React.FC = () => {
 
                             {/* Insight */}
                             <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-100">
-                                <p className="text-xs text-amber-700 leading-relaxed">
+                                <p className="text-xs text-amber-700 leading-relaxed font-medium">
                                     <i className="fas fa-lightbulb mr-2 text-amber-500"></i>
-                                    <strong>Potencial:</strong> Si activas el {Math.min(30, Math.round((selectedSeccion.votos_dormidos * 0.3))).toLocaleString()} de los {selectedSeccion.votos_dormidos.toLocaleString()} votos dormidos, ganas {Math.round(selectedSeccion.votos_dormidos * 0.15).toLocaleString()} votos adicionales para tu candidato.
+                                    <strong>Estrategia Recomendada:</strong>{' '}
+                                    {(() => {
+                                        const comp = getCompetitividadDetails(selectedSeccion);
+                                        if (comp.tag === 'Empate Técnico') {
+                                            return <span>Esta sección se definió por un margen mínimo en 2024. Con recuperar un {Math.min(25, Math.round(selectedSeccion.votos_dormidos * 0.25)).toLocaleString()} de los {selectedSeccion.votos_dormidos.toLocaleString()} votos dormidos, podemos cambiar el resultado y ganar la sección. Concentrar esfuerzos aquí es prioridad crítica.</span>;
+                                        } else if (comp.tag === 'Muy Competitiva') {
+                                            return <span>Sección altamente competida. Una movilización táctica con brigadas centradas en convencer a {Math.round(selectedSeccion.votos_dormidos * 0.1).toLocaleString()} abstencionistas aseguraría la ventaja de nuestro candidato.</span>;
+                                        } else {
+                                            return <span>Sección con tendencia marcada en 2024. Recomendamos mantener la presencia para asegurar los votos base o concentrar recursos en zonas más críticas si ya está consolidada.</span>;
+                                        }
+                                    })()}
                                 </p>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Modal de Estrategia IA Automática ────────────────────────── */}
+            {showStrategyModal && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md" onClick={() => setShowStrategyModal(false)}>
+                    <div className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden animate-fade-in flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
+                        {/* Header */}
+                        <div className="p-6 flex justify-between items-center bg-slate-900 text-white shrink-0">
+                            <div className="flex items-center gap-3">
+                                <span className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-400 to-amber-600 flex items-center justify-center shadow-md">
+                                    <i className="fas fa-wand-magic-sparkles text-slate-950 text-sm"></i>
+                                </span>
+                                <div>
+                                    <h3 className="font-brand font-bold text-lg leading-tight">Estrategia Electoral IA</h3>
+                                    <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest mt-0.5">
+                                        {municipioFilter ? `Municipio: ${municipioFilter}` : 'Nivel: Todo el Estado'} • {puesto.label}
+                                    </p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowStrategyModal(false)} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all text-white">
+                                <i className="fas fa-times text-xs"></i>
+                            </button>
+                        </div>
+
+                        {/* Content Body */}
+                        <div className="p-6 overflow-y-auto flex-1 space-y-4 bg-slate-50/50">
+                            {loadingAutoStrategy ? (
+                                <div className="flex flex-col items-center justify-center py-20 gap-4">
+                                    <div className="relative w-16 h-16">
+                                        <div className="absolute inset-0 rounded-full border-4 border-amber-200 border-t-amber-500 animate-spin"></div>
+                                        <div className="absolute inset-2 bg-gradient-to-tr from-amber-500 to-indigo-600 rounded-full animate-pulse flex items-center justify-center">
+                                            <i className="fas fa-sparkles text-white text-xs"></i>
+                                        </div>
+                                    </div>
+                                    <p className="text-sm font-semibold text-slate-600 animate-pulse">Analizando histórico 2024 y trazando estrategia...</p>
+                                </div>
+                            ) : (
+                                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                                    <div className="prose prose-slate max-w-none text-slate-700 text-sm leading-relaxed whitespace-pre-wrap font-sans">
+                                        {strategyContent}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        {!loadingAutoStrategy && (
+                            <div className="p-4 border-t border-slate-100 bg-white flex justify-end gap-3 shrink-0">
+                                <button
+                                    onClick={handleCopyStrategy}
+                                    className="flex items-center gap-2 px-4 py-2.5 h-11 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider transition-all"
+                                >
+                                    <i className="fas fa-copy"></i>
+                                    <span>Copiar Plan</span>
+                                </button>
+                                <button
+                                    onClick={() => setShowStrategyModal(false)}
+                                    className="flex items-center gap-2 px-4 py-2.5 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider transition-all"
+                                >
+                                    <span>Cerrar</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
