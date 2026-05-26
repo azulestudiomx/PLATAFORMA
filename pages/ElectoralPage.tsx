@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { electoralApi } from '../services/api';
+import { electoralApi, peopleApi } from '../services/api';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, Cell, AreaChart, Area, Legend
@@ -210,6 +210,10 @@ const ElectoralPage: React.FC = () => {
     const [repSemaforoFilter, setRepSemaforoFilter] = useState<'todos' | 'rojo' | 'amarillo' | 'verde'>('todos');
     const [repPage, setRepPage] = useState(1);
 
+    const [people, setPeople] = useState<any[]>([]);
+    const [focusedSeccion, setFocusedSeccion] = useState<number | null>(null);
+    const [repQuery, setRepQuery] = useState('');
+
     useEffect(() => {
         localStorage.setItem('representantes_selected_party', selectedParty);
     }, [selectedParty]);
@@ -381,12 +385,14 @@ const ElectoralPage: React.FC = () => {
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const [r, s] = await Promise.all([
+            const [r, s, p] = await Promise.all([
                 electoralApi.getResumen(),
                 electoralApi.getSecciones(),
+                peopleApi.list().catch(() => []) // Fallback in case of server offline
             ]);
             setResumen(r);
             setSecciones(s);
+            setPeople(p || []);
         } catch (err) {
             console.error('Electoral fetch error:', err);
         } finally {
@@ -1416,7 +1422,7 @@ const ElectoralPage: React.FC = () => {
                     {/* Tabla de Secciones y Representantes */}
                     <div className="bg-white rounded-3xl shadow-card border border-gray-50 overflow-hidden min-h-[400px]">
                         <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-50 table-fixed lg:table-auto">
+<table className="min-w-full divide-y divide-gray-50 table-fixed lg:table-auto">
                                 <thead>
                                     <tr className="bg-slate-50/50">
                                         <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest w-[12%]">Sección</th>
@@ -1456,14 +1462,101 @@ const ElectoralPage: React.FC = () => {
                                                     </td>
                                                     
                                                     {/* Input Representante */}
-                                                    <td className="px-6 py-4">
-                                                        <input
-                                                            type="text"
-                                                            value={repName}
-                                                            onChange={e => handleAssignRepresentante(s.seccion, e.target.value)}
-                                                            className="input-modern h-9 text-xs px-3 bg-slate-50 focus:bg-white hover:bg-slate-100/70 w-full"
-                                                            placeholder="👤 Asignar Representante..."
-                                                        />
+                                                    <td className="px-6 py-4 relative">
+                                                        <div className="flex items-center gap-1.5 w-full">
+                                                            <div className="relative flex-1">
+                                                                <input
+                                                                    type="text"
+                                                                    value={focusedSeccion === s.seccion ? repQuery : repName}
+                                                                    onFocus={() => {
+                                                                        setFocusedSeccion(s.seccion);
+                                                                        setRepQuery(repName);
+                                                                    }}
+                                                                    onChange={e => setRepQuery(e.target.value)}
+                                                                    className="input-modern h-9 text-xs pl-8 pr-3 bg-slate-50 focus:bg-white hover:bg-slate-100/70 w-full"
+                                                                    placeholder="👤 Asignar..."
+                                                                />
+                                                                <i className="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400"></i>
+                                                            </div>
+                                                            {repName && (
+                                                                <button 
+                                                                    type="button"
+                                                                    onClick={() => handleAssignRepresentante(s.seccion, '')} 
+                                                                    className="w-7 h-7 rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white flex items-center justify-center shrink-0 transition-colors border-none"
+                                                                    title="Eliminar asignación"
+                                                                >
+                                                                    <i className="fas fa-times text-xs"></i>
+                                                                </button>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Autocomplete Dropdown List */}
+                                                        {focusedSeccion === s.seccion && (() => {
+                                                            const queryLower = repQuery.toLowerCase().trim();
+                                                            
+                                                            let filtered = people.filter(p => {
+                                                                if (!p.name) return false;
+                                                                const isSameSec = Number(p.seccion) === Number(s.seccion);
+                                                                const matchesQuery = p.name.toLowerCase().includes(queryLower);
+                                                                
+                                                                if (queryLower === '') {
+                                                                    return isSameSec;
+                                                                } else {
+                                                                    return matchesQuery;
+                                                                }
+                                                            });
+                                                            
+                                                            // Sort by sections: same section comes first!
+                                                            filtered = [...filtered].sort((a, b) => {
+                                                                const aSameSec = Number(a.seccion) === Number(s.seccion) ? 1 : 0;
+                                                                const bSameSec = Number(b.seccion) === Number(s.seccion) ? 1 : 0;
+                                                                return bSameSec - aSameSec;
+                                                            });
+
+                                                            const suggestions = filtered.slice(0, 5);
+
+                                                            return (
+                                                                <>
+                                                                    {/* Invisible backdrop to close dropdown on click outside */}
+                                                                    <div 
+                                                                        className="fixed inset-0 z-40 bg-transparent" 
+                                                                        onClick={() => setFocusedSeccion(null)}
+                                                                    ></div>
+                                                                    
+                                                                    <div className="absolute left-6 right-6 mt-1 bg-white border border-gray-100 rounded-xl shadow-2xl z-50 overflow-hidden divide-y divide-gray-50 max-h-48 overflow-y-auto animate-fade-in text-left">
+                                                                        <div className="px-3 py-1.5 bg-slate-50 text-[8px] font-bold text-gray-400 uppercase tracking-widest flex justify-between items-center">
+                                                                            <span>{queryLower === '' ? `Vecinos Secc. ${s.seccion}` : 'Coincidencias en Padrón'}</span>
+                                                                            <span>{filtered.length} encontrados</span>
+                                                                        </div>
+                                                                        {suggestions.length === 0 ? (
+                                                                            <div className="px-3 py-3 text-[10px] text-center text-gray-400 italic">
+                                                                                No hay ciudadanos registrados {queryLower === '' ? 'en esta sección' : 'con ese nombre'}.
+                                                                            </div>
+                                                                        ) : (
+                                                                            suggestions.map((p: any, idx) => (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    key={p.id || p._id || idx}
+                                                                                    onClick={() => {
+                                                                                        handleAssignRepresentante(s.seccion, p.name);
+                                                                                        setFocusedSeccion(null);
+                                                                                    }}
+                                                                                    className="w-full text-left px-3 py-2 hover:bg-slate-50 flex flex-col transition-colors border-none bg-transparent"
+                                                                                >
+                                                                                    <span className="text-[11px] font-bold text-slate-800 leading-tight">{p.name}</span>
+                                                                                    <div className="flex justify-between items-center w-full mt-0.5">
+                                                                                        <span className="text-[9px] text-gray-400 truncate max-w-[70%]">{p.address || 'Sin dirección'}</span>
+                                                                                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${Number(p.seccion) === Number(s.seccion) ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                                                                                            Secc. {p.seccion || 'S/S'}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                </button>
+                                                                            ))
+                                                                        )}
+                                                                    </div>
+                                                                </>
+                                                            );
+                                                        })()}
                                                     </td>
 
                                                     {/* Lista Nominal */}
