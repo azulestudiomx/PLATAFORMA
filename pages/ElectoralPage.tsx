@@ -9,6 +9,7 @@ import type { Layer, PathOptions, GeoJSONOptions } from 'leaflet';
 import campecheGeo from '../src/campeche_secciones_wgs84.json';
 import 'leaflet/dist/leaflet.css';
 import Swal from 'sweetalert2';
+import * as XLSX from 'xlsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -172,6 +173,7 @@ const TABS = [
     { id: 'mapa',      label: 'Mapa de Calor', icon: 'fa-map-marked-alt' },
     { id: 'semaforo',  label: 'Semáforo',      icon: 'fa-traffic-light' },
     { id: 'calculadora', label: 'Calculadora', icon: 'fa-calculator' },
+    { id: 'representantes', label: 'Representantes', icon: 'fa-user-tie' },
     { id: 'ia',        label: 'Consultor IA',  icon: 'fa-robot' },
 ];
 
@@ -191,6 +193,79 @@ const ElectoralPage: React.FC = () => {
     const [pctNec, setPctNec]         = useState(50);
     const [brigadistas, setBrigadistas] = useState(100);
     const [diasCampaña, setDiasCampaña] = useState(90);
+
+    // Representantes Tab states with local storage persistence
+    const [selectedParty, setSelectedParty] = useState<'morena' | 'mc' | 'pri_prd' | 'pan'>(() => {
+        return (localStorage.getItem('representantes_selected_party') as any) || 'morena';
+    });
+    const [representantesMap, setRepresentantesMap] = useState<Record<number, string>>(() => {
+        try {
+            const saved = localStorage.getItem('representantes_seccionales');
+            return saved ? JSON.parse(saved) : {};
+        } catch {
+            return {};
+        }
+    });
+    const [repSearch, setRepSearch] = useState('');
+    const [repSemaforoFilter, setRepSemaforoFilter] = useState<'todos' | 'rojo' | 'amarillo' | 'verde'>('todos');
+    const [repPage, setRepPage] = useState(1);
+
+    useEffect(() => {
+        localStorage.setItem('representantes_selected_party', selectedParty);
+    }, [selectedParty]);
+
+    const handleAssignRepresentante = (seccion: number, name: string) => {
+        setRepresentantesMap(prev => {
+            const updated = { ...prev, [seccion]: name };
+            localStorage.setItem('representantes_seccionales', JSON.stringify(updated));
+            return updated;
+        });
+    };
+
+    const handleExportRepExcel = () => {
+        try {
+            const dataToExport = seccionesRepresentantes.map(s => {
+                const repName = representantesMap[s.seccion] || 'Sin asignar';
+                const votes2024 = getPartyVotes2024(s, selectedParty);
+                const meta2027 = Math.round(s.lista_nominal * (partEst / 100) * (pctNec / 100)) + 1;
+                const gapVal = Math.max(0, meta2027 - votes2024);
+                
+                return {
+                    'Sección': s.seccion,
+                    'Municipio': s.municipio || '-',
+                    'Representante': repName,
+                    'Semáforo': s.semaforo.toUpperCase(),
+                    'Lista Nominal': s.lista_nominal,
+                    'Votos Históricos 2024': s.total_votos || 0,
+                    [`Votos Obtenidos 2024 (${selectedParty.toUpperCase()})`]: votes2024,
+                    'Meta Votos 2027': meta2027,
+                    'Votos Faltantes': gapVal
+                };
+            });
+            
+            const ws = XLSX.utils.json_to_sheet(dataToExport);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Estructura Seccional");
+            
+            const fileName = `Estructura_Seccional_${municipioFilter || 'Estado'}_${selectedParty.toUpperCase()}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+            
+            Swal.fire({
+                icon: 'success',
+                title: '¡Exportado!',
+                text: `Se descargó el archivo ${fileName} con éxito.`,
+                timer: 2000,
+                showConfirmButton: false
+            });
+        } catch (error) {
+            console.error('Error al exportar representantes:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'No se pudo generar el archivo Excel.'
+            });
+        }
+    };
 
     // IA state
     const [pregunta, setPregunta]     = useState('');
@@ -237,6 +312,70 @@ const ElectoralPage: React.FC = () => {
         const set = new Set(secciones.map(s => s.municipio).filter(Boolean));
         return Array.from(set).sort();
     }, [secciones]);
+
+    // Representantes Tab calculations
+    const seccionesRepresentantes = React.useMemo(() => {
+        return secciones.filter(s => {
+            const matchMunicipio = municipioFilter === '' || s.municipio === municipioFilter;
+            const matchSemaforo = repSemaforoFilter === 'todos' || s.semaforo === repSemaforoFilter;
+            
+            const repName = representantesMap[s.seccion] || '';
+            const query = repSearch.toLowerCase().trim();
+            const matchSearch = query === '' ||
+                String(s.seccion).includes(query) ||
+                repName.toLowerCase().includes(query);
+                
+            return matchMunicipio && matchSemaforo && matchSearch;
+        });
+    }, [secciones, municipioFilter, repSemaforoFilter, representantesMap, repSearch]);
+
+    // Reset pagination on filter change
+    useEffect(() => {
+        setRepPage(1);
+    }, [repSearch, repSemaforoFilter, municipioFilter]);
+
+    const totalPagesRep = Math.ceil(seccionesRepresentantes.length / itemsPerPage) || 1;
+    const paginatedSeccionesRep = React.useMemo(() => {
+        const start = (repPage - 1) * itemsPerPage;
+        return seccionesRepresentantes.slice(start, start + itemsPerPage);
+    }, [seccionesRepresentantes, repPage]);
+
+    const getPartyVotes2024 = useCallback((s: Seccion, party: 'morena' | 'mc' | 'pri_prd' | 'pan') => {
+        if (party === 'morena') return s.votos_coalicion_morena || s.votos_morena || 0;
+        if (party === 'mc') return s.votos_mc || 0;
+        if (party === 'pri_prd') return s.votos_coalicion_pri_prd || s.votos_pri || 0;
+        if (party === 'pan') return s.votos_pan || 0;
+        return 0;
+    }, []);
+
+    const repStats = React.useMemo(() => {
+        let totalAssigned = 0;
+        let totalGap = 0;
+        
+        const targetSecciones = municipioFilter
+            ? secciones.filter(s => s.municipio === municipioFilter)
+            : secciones;
+            
+        targetSecciones.forEach(s => {
+            if (representantesMap[s.seccion]) {
+                totalAssigned++;
+            }
+            
+            const meta2027 = Math.round(s.lista_nominal * (partEst / 100) * (pctNec / 100)) + 1;
+            const votes2024 = getPartyVotes2024(s, selectedParty);
+            const gap = Math.max(0, meta2027 - votes2024);
+            totalGap += gap;
+        });
+        
+        const avgGap = totalAssigned > 0 ? Math.ceil(totalGap / totalAssigned) : totalGap;
+        
+        return {
+            totalSections: targetSecciones.length,
+            totalAssigned,
+            totalGap,
+            avgGap
+        };
+    }, [secciones, municipioFilter, representantesMap, partEst, pctNec, selectedParty, getPartyVotes2024]);
 
     // ─── Fetch data ───────────────────────────────────────────────────────────
     const fetchData = useCallback(async () => {
@@ -1197,7 +1336,244 @@ const ElectoralPage: React.FC = () => {
             )}
 
             {/* ══════════════════════════════════════════════════════════════ */}
-            {/* TAB 5 — CONSULTOR IA                                          */}
+            {/* TAB 5 — ESTRUCTURA DE REPRESENTANTES SECCIONALES                */}
+            {/* ══════════════════════════════════════════════════════════════ */}
+            {activeTab === 'representantes' && (
+                <div className="space-y-6">
+                    {/* Tarjetas KPI Superiores */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        {[
+                            { label: 'Secciones Totales', value: repStats.totalSections.toLocaleString(), icon: 'fa-list-ol', color: 'indigo', sub: 'en el municipio activo' },
+                            { label: 'Secciones Asignadas', value: `${repStats.totalAssigned} / ${repStats.totalSections}`, icon: 'fa-user-check', color: 'emerald', sub: `${((repStats.totalAssigned / repStats.totalSections) * 100 || 0).toFixed(1)}% de avance` },
+                            { label: 'Votos Faltantes', value: repStats.totalGap.toLocaleString(), icon: 'fa-bullseye', color: 'red', sub: 'para alcanzar meta 2027' },
+                            { label: 'Promedio por Rep.', value: repStats.avgGap.toLocaleString(), icon: 'fa-users', color: 'amber', sub: 'votos nuevos a convencer' },
+                        ].map((kpi, i) => (
+                            <div key={i} className="bg-white p-5 rounded-2xl shadow-card border border-gray-50 hover:border-brand-primary/10 transition-all">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div className={`w-10 h-10 rounded-xl bg-${kpi.color}-50 text-${kpi.color}-600 flex items-center justify-center`}>
+                                        <i className={`fas ${kpi.icon} text-sm`}></i>
+                                    </div>
+                                </div>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{kpi.label}</p>
+                                <p className="text-2xl font-brand font-bold text-slate-800 leading-none">{kpi.value}</p>
+                                <p className="text-[10px] text-gray-400 mt-1">{kpi.sub}</p>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Barra de Filtros y Configuración */}
+                    <div className="bg-white rounded-3xl shadow-card border border-gray-50 p-6 flex flex-col md:flex-row gap-4 items-center justify-between">
+                        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                            {/* Selector de Partido */}
+                            <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 h-10 rounded-xl border border-gray-100 shrink-0">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tu Partido 2024:</span>
+                                <select
+                                    value={selectedParty}
+                                    onChange={e => setSelectedParty(e.target.value as any)}
+                                    className="text-xs font-bold text-slate-700 bg-transparent focus:outline-none cursor-pointer border-none p-0 pr-6"
+                                >
+                                    <option value="morena">🔴 MORENA-PT-PVEM</option>
+                                    <option value="mc">🟠 Movimiento Ciudadano (MC)</option>
+                                    <option value="pri_prd">🟢 PRI-PRD</option>
+                                    <option value="pan">🔵 PAN</option>
+                                </select>
+                            </div>
+
+                            {/* Semáforo Filter */}
+                            <select
+                                value={repSemaforoFilter}
+                                onChange={e => setRepSemaforoFilter(e.target.value as any)}
+                                className="h-10 px-3 rounded-xl border border-gray-200 bg-slate-50 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer w-full sm:w-auto"
+                            >
+                                <option value="todos">🚦 Todos los Semáforos</option>
+                                <option value="rojo">🔴 Críticas (&lt; 55% Part.)</option>
+                                <option value="amarillo">🟡 En Riesgo (55-70% Part.)</option>
+                                <option value="verde">🟢 Consolidadas (&gt; 70% Part.)</option>
+                            </select>
+                        </div>
+
+                        {/* Buscador */}
+                        <div className="relative w-full md:w-80">
+                            <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                            <input
+                                type="text"
+                                placeholder="Buscar por sección o representante..."
+                                className="input-modern pl-10 h-10 text-xs bg-slate-50 border-none w-full"
+                                value={repSearch}
+                                onChange={e => setRepSearch(e.target.value)}
+                            />
+                        </div>
+
+                        {/* Botón Exportar */}
+                        <button
+                            onClick={handleExportRepExcel}
+                            className="btn-ghost py-2 text-xs h-10 border border-gray-100 bg-white hover:bg-slate-50 w-full md:w-auto shrink-0 flex items-center justify-center"
+                        >
+                            <i className="fas fa-file-excel mr-2 text-green-600"></i> Exportar a Excel
+                        </button>
+                    </div>
+
+                    {/* Tabla de Secciones y Representantes */}
+                    <div className="bg-white rounded-3xl shadow-card border border-gray-50 overflow-hidden min-h-[400px]">
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-50 table-fixed lg:table-auto">
+                                <thead>
+                                    <tr className="bg-slate-50/50">
+                                        <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest w-[12%]">Sección</th>
+                                        <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest w-[25%]">Representante de Sección</th>
+                                        <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest w-[15%]">Lista Nominal</th>
+                                        <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest w-[15%]">Votos 2024</th>
+                                        <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest w-[15%]">Meta Votos 2027</th>
+                                        <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest w-[18%]">Votos Faltantes</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {seccionesRepresentantes.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={6} className="py-20 text-center text-gray-400 italic">
+                                                No hay registros que coincidan con la búsqueda.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        paginatedSeccionesRep.map((s, idx) => {
+                                            const repName = representantesMap[s.seccion] || '';
+                                            const votes2024 = getPartyVotes2024(s, selectedParty);
+                                            const meta2027 = Math.round(s.lista_nominal * (partEst / 100) * (pctNec / 100)) + 1;
+                                            const gapVal = Math.max(0, meta2027 - votes2024);
+
+                                            return (
+                                                <tr key={s.seccion || idx} className="hover:bg-slate-50/50 transition-colors">
+                                                    {/* Sección */}
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <span
+                                                                className="w-2.5 h-2.5 rounded-full shrink-0"
+                                                                style={{ backgroundColor: SEMAFORO_COLOR[s.semaforo] }}
+                                                                title={`Prioridad ${s.semaforo.toUpperCase()}`}
+                                                            ></span>
+                                                            <span className="text-sm font-bold text-slate-800">Secc. {s.seccion}</span>
+                                                        </div>
+                                                    </td>
+                                                    
+                                                    {/* Input Representante */}
+                                                    <td className="px-6 py-4">
+                                                        <input
+                                                            type="text"
+                                                            value={repName}
+                                                            onChange={e => handleAssignRepresentante(s.seccion, e.target.value)}
+                                                            className="input-modern h-9 text-xs px-3 bg-slate-50 focus:bg-white hover:bg-slate-100/70 w-full"
+                                                            placeholder="👤 Asignar Representante..."
+                                                        />
+                                                    </td>
+
+                                                    {/* Lista Nominal */}
+                                                    <td className="px-6 py-4">
+                                                        <span className="text-xs font-semibold text-slate-700">{s.lista_nominal.toLocaleString()}</span>
+                                                    </td>
+
+                                                    {/* Votos 2024 */}
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-xs font-bold text-slate-600">{votes2024.toLocaleString()}</span>
+                                                            <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wider">Histórico</span>
+                                                        </div>
+                                                    </td>
+
+                                                    {/* Meta 2027 */}
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-xs font-bold text-indigo-600">{meta2027.toLocaleString()}</span>
+                                                            <span className="text-[8px] text-indigo-400 font-bold uppercase tracking-wider">{partEst}% part. · {pctNec}% victoria</span>
+                                                        </div>
+                                                    </td>
+
+                                                    {/* Votos Faltantes */}
+                                                    <td className="px-6 py-4">
+                                                        {gapVal === 0 ? (
+                                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 uppercase tracking-wider">
+                                                                <i className="fas fa-check-circle"></i> Meta Cubierta
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex flex-col">
+                                                                <span className="text-xs font-extrabold text-rose-600">{gapVal.toLocaleString()} votos</span>
+                                                                <span className="text-[8px] text-rose-400 font-bold uppercase tracking-wider">por convencer</span>
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Paginación */}
+                        {totalPagesRep > 1 && (
+                            <div className="p-4 border-t border-gray-50 flex justify-between items-center bg-slate-50/30">
+                                <div className="text-xs text-slate-500 font-medium">
+                                    Mostrando <span className="font-bold text-slate-800">{Math.min(seccionesRepresentantes.length, (repPage - 1) * itemsPerPage + 1)}</span> a <span className="font-bold text-slate-800">{Math.min(seccionesRepresentantes.length, repPage * itemsPerPage)}</span> de <span className="font-bold text-slate-800">{seccionesRepresentantes.length}</span> secciones
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <button
+                                        onClick={() => setRepPage(prev => Math.max(1, prev - 1))}
+                                        disabled={repPage === 1}
+                                        className="h-8 px-3 rounded-lg border border-gray-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1"
+                                    >
+                                        <i className="fas fa-chevron-left text-[10px]"></i> Anterior
+                                    </button>
+                                    
+                                    {(() => {
+                                        const pages: (number | string)[] = [];
+                                        if (totalPagesRep <= 5) {
+                                            for (let i = 1; i <= totalPagesRep; i++) pages.push(i);
+                                        } else {
+                                            pages.push(1);
+                                            if (repPage > 3) pages.push('...');
+                                            const start = Math.max(2, repPage - 1);
+                                            const end = Math.min(totalPagesRep - 1, repPage + 1);
+                                            for (let i = start; i <= end; i++) {
+                                                if (!pages.includes(i)) pages.push(i);
+                                            }
+                                            if (repPage < totalPagesRep - 2) pages.push('...');
+                                            pages.push(totalPagesRep);
+                                        }
+                                        return pages.map((p, idx) => {
+                                            if (typeof p === 'string') {
+                                                return <span key={idx} className="px-2 text-slate-400 font-bold text-xs">...</span>;
+                                            }
+                                            return (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => setRepPage(p)}
+                                                    className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
+                                                        repPage === p
+                                                            ? 'bg-slate-900 text-white shadow-md'
+                                                            : 'border border-gray-200 bg-white text-slate-600 hover:bg-slate-50'
+                                                    }`}
+                                                >
+                                                    {p}
+                                                </button>
+                                            );
+                                        });
+                                    })()}
+
+                                    <button
+                                        onClick={() => setRepPage(prev => Math.min(totalPagesRep, prev + 1))}
+                                        disabled={repPage === totalPagesRep}
+                                        className="h-8 px-3 rounded-lg border border-gray-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1"
+                                    >
+                                        Siguiente <i className="fas fa-chevron-right text-[10px]"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* ══════════════════════════════════════════════════════════════ */}
+            {/* TAB 6 — CONSULTOR IA                                          */}
             {/* ══════════════════════════════════════════════════════════════ */}
             {activeTab === 'ia' && (
                 <div className="space-y-4">
