@@ -128,6 +128,8 @@ interface Person {
     zona?: string;
     seccion?: string;
     ine: string;
+    email?: string;
+    birthday?: string;
     photo?: string;
     inePhoto?: string;
     lat?: number;
@@ -158,6 +160,8 @@ const PeoplePage: React.FC = () => {
         zona: '',
         seccion: '',
         ine: '',
+        email: '',
+        birthday: '',
         photo: '',
         inePhoto: ''
     });
@@ -213,6 +217,7 @@ const PeoplePage: React.FC = () => {
         setFormData({ 
             name: '', phone: '', address: '', ine: '', photo: '', inePhoto: '', 
             municipio: '', localidad: '', distrito: '', zona: '', seccion: '',
+            email: '', birthday: '',
             lat: undefined, lng: undefined 
         });
         setUserLoc(null);
@@ -345,15 +350,16 @@ const PeoplePage: React.FC = () => {
             p.municipio || '-',
             p.ine, 
             p.phone || '-', 
-            p.address || '-',
-            p.lat && p.lng ? `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}` : 'S/N GPS'
+            p.email || '-',
+            p.birthday || '-',
+            p.address || '-'
         ]);
 
         autoTable(doc, { 
-            head: [['Nombre Completo', 'Secc.', 'Municipio', 'Folio INE', 'Teléfono', 'Domicilio / Referencia', 'Coordenadas GPS']], 
+            head: [['Nombre Completo', 'Secc.', 'Municipio', 'Folio INE', 'Teléfono', 'Correo', 'Cumpleaños', 'Domicilio / Referencia']], 
             body: tableData, 
             startY: 30,
-            styles: { fontSize: 8 },
+            styles: { fontSize: 7.5 },
             headStyles: { fillColor: [139, 0, 0] },
             alternateRowStyles: { fillColor: [245, 245, 245] }
         });
@@ -395,6 +401,8 @@ const PeoplePage: React.FC = () => {
                 const municipio = row['Municipio'] || row['municipio'] || '';
                 const localidad = row['Localidad'] || row['localidad'] || '';
                 const seccion = row['Seccion'] || row['seccion'] || row['Sección'] || '';
+                const email = row['Correo'] || row['correo'] || row['Email'] || row['Correo '] || '';
+                const birthday = row['Cumpleaños'] || row['cumpleaños'] || row['Birthday'] || '';
                 
                 if (!name) continue;
                 const newPerson: Person = {
@@ -405,6 +413,8 @@ const PeoplePage: React.FC = () => {
                     municipio,
                     localidad,
                     seccion: seccion.toString(),
+                    email: email.toString(),
+                    birthday: birthday.toString(),
                     synced: 0
                 };
                 await db.people.add(newPerson);
@@ -424,7 +434,7 @@ const PeoplePage: React.FC = () => {
 
     const handleDownloadTemplate = () => {
         const ws = XLSX.utils.json_to_sheet([
-            { Nombre: 'Juan Pérez', INE: 'ABC1234567890', Telefono: '9811234567', Direccion: 'Centro, Campeche', Municipio: 'Campeche', Localidad: 'Centro', Seccion: '123' }
+            { Nombre: 'Juan Pérez', INE: 'ABC1234567890', Telefono: '9811234567', Direccion: 'Centro, Campeche', Municipio: 'Campeche', Localidad: 'Centro', Seccion: '123', Correo: 'juan.perez@email.com', Cumpleaños: '15 de Marzo' }
         ]);
 
         const wb = XLSX.utils.book_new();
@@ -691,7 +701,8 @@ const PeoplePage: React.FC = () => {
                             setEditingId(null); 
                             setFormData({ 
                                 name: '', phone: '', address: '', ine: '', photo: '', inePhoto: '', 
-                                municipio: '', localidad: '', distrito: '', zona: '', seccion: '' 
+                                municipio: '', localidad: '', distrito: '', zona: '', seccion: '',
+                                email: '', birthday: ''
                             }); 
                             setShowModal(true); 
                         }}
@@ -860,6 +871,25 @@ const PeoplePage: React.FC = () => {
                                                     <div className="min-w-0">
                                                         <p className="text-sm font-bold text-slate-800 truncate">{p.name}</p>
                                                         <p className="text-[10px] text-gray-400 truncate">{p.address || 'Sin dirección'}</p>
+                                                        {(p.phone || p.email || p.birthday) && (
+                                                            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                                                                {p.phone && p.phone !== 'PENDIENTE' && (
+                                                                    <span className="text-[9px] font-medium text-slate-500 flex items-center gap-1">
+                                                                        <i className="fas fa-phone text-slate-400 text-[8px]"></i> {p.phone}
+                                                                    </span>
+                                                                )}
+                                                                {p.email && p.email !== 'PENDIENTE' && (
+                                                                    <span className="text-[9px] font-medium text-slate-500 flex items-center gap-1 truncate max-w-[150px]" title={p.email}>
+                                                                        <i className="fas fa-envelope text-slate-400 text-[8px]"></i> {p.email}
+                                                                    </span>
+                                                                )}
+                                                                {p.birthday && p.birthday !== 'PENDIENTE' && (
+                                                                    <span className="text-[9px] font-medium text-slate-500 flex items-center gap-1">
+                                                                        <i className="fas fa-birthday-cake text-slate-400 text-[8px]"></i> {p.birthday}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </td>
@@ -1085,6 +1115,16 @@ const PeoplePage: React.FC = () => {
                                             <div>
                                                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Teléfono</label>
                                                 <input type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="input-modern" placeholder="981..." />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Correo Electrónico</label>
+                                                <input type="email" value={formData.email || ''} onChange={e => setFormData({ ...formData, email: e.target.value })} className="input-modern" placeholder="correo@ejemplo.com" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Cumpleaños / F. Nacimiento</label>
+                                                <input type="text" value={formData.birthday || ''} onChange={e => setFormData({ ...formData, birthday: e.target.value })} className="input-modern" placeholder="Ej. 15 de Marzo o AAAA-MM-DD" />
                                             </div>
                                         </div>
 

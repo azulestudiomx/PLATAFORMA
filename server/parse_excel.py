@@ -1,28 +1,63 @@
-"""
-parse_excel.py
-Lee el archivo 'padron campeche (1).xlsx' ubicado en la raiz del proyecto,
-limpia y normaliza los datos, y genera 'padron_campeche.json' en server/.
-"""
 import json
-import sys
 import os
 import openpyxl
+from datetime import datetime
 
-# Ruta al Excel (relativa al directorio donde se ejecuta este script: server/)
-EXCEL_PATH = os.path.join(os.path.dirname(__file__), '..', 'padron campeche (1).xlsx')
+# Input and output paths
+EXCEL_PATH = os.path.join(os.path.dirname(__file__), '..', 'ESTRUCTURA  ESTATAL .xlsx')
 OUTPUT_PATH = os.path.join(os.path.dirname(__file__), 'padron_campeche.json')
+
+# Standardized sheet name mappings (or fallback to original names)
+SHEETS = ['CAMP', 'CAND', 'HECE', 'CARM', 'CALA', 'CHAM', 'PALI', 'TENA', 'CALK', 'DZIT', 'SEYB', 'ESC']
+
+# Normalized mapping from header strings to Person fields
+HEADER_MAP = {
+    'nombre': 'name',
+    'nombre completo': 'name',
+    'dirección': 'address',
+    'direccion': 'address',
+    'municipio': 'municipio',
+    'distrito': 'distrito',
+    'distrito local': 'distrito',
+    'distrito local ': 'distrito',
+    'sección': 'seccion',
+    'seccion': 'seccion',
+    'celular': 'phone',
+    'telefono': 'phone',
+    'teléfono': 'phone',
+    'correo': 'email',
+    'correo ': 'email',
+    'correo electrónico': 'email',
+    'email': 'email',
+    'cumpleaños': 'birthday',
+    'cumpleaños ': 'birthday',
+    'cumpleanos': 'birthday',
+    'fecha de nacimiento': 'birthday'
+}
 
 def clean_str(val):
     if val is None:
         return ''
     s = str(val).strip()
-    # Remove floating point artifacts like '9811685660.0'
-    if s.endswith('.0') and s[:-2].isdigit():
+    
+    # Remove floating point artifacts e.g. "9811685660.0" or "123.0"
+    if s.endswith('.0') and s[:-2].replace('-', '').isdigit():
         s = s[:-2]
     return s
 
+def format_birthday(val):
+    if val is None:
+        return ''
+    if isinstance(val, datetime):
+        return val.strftime('%Y-%m-%d')
+    s = str(val).strip()
+    # If it is a datetime represented as string with hours like "1990-03-15 00:00:00"
+    if ' ' in s and s.split()[0].replace('-', '').isdigit() and len(s.split()[0]) == 10:
+        return s.split()[0]
+    return s
+
 def title_case_name(name):
-    """Capitaliza el nombre de forma adecuada para nombres en español."""
+    """Capitalizes names properly in Spanish (e.g. Juan De La Cruz)."""
     if not name:
         return name
     exceptions = {'de', 'del', 'la', 'las', 'los', 'y', 'e', 'a'}
@@ -36,64 +71,137 @@ def title_case_name(name):
     return ' '.join(result)
 
 def main():
-    print(f"Leyendo: {EXCEL_PATH}")
-    wb = openpyxl.load_workbook(EXCEL_PATH)
-    sheet = wb.active
+    print(f"📖 Iniciando procesamiento de Excel: {EXCEL_PATH}")
+    if not os.path.exists(EXCEL_PATH):
+        print(f"❌ Error: El archivo no existe en {EXCEL_PATH}")
+        return
 
-    # Headers están en la fila 4 (index 3, 0-based)
-    # Datos comienzan en la fila 5 (index 4, 0-based)
-    all_rows = list(sheet.rows)
-    
-    # Mapeo de columnas (0-based):
-    # Col 0: vacía, Col 1: No., Col 2: Nombre, Col 3: Dirección, 
-    # Col 4: Municipio, Col 5: Distrito, Col 6: Sección, 
-    # Col 7: Celular, Col 8: Correo, Col 9: Cumpleaños
-
+    wb = openpyxl.load_workbook(EXCEL_PATH, read_only=True)
     records = []
-    for row_idx, row in enumerate(all_rows[4:], start=5):  # Skip filas 1-4
-        vals = [cell.value for cell in row]
+    total_raw_rows = 0
+
+    # Process sheet by sheet
+    for sheet_name in wb.sheetnames:
+        if sheet_name not in SHEETS:
+            print(f"⚠️  Saltando hoja no configurada: {sheet_name}")
+            continue
+
+        sheet = wb[sheet_name]
+        print(f"   📂 Procesando hoja: {sheet_name}")
         
-        nombre = clean_str(vals[2] if len(vals) > 2 else None)
-        if not nombre or nombre.lower() in ('nombre', 'no.', 'estructura', ''):
-            continue  # Saltar filas vacías o de encabezado residual
+        # 1. Locate headers row
+        header_row_index = None
+        col_mapping = {} # maps col_idx -> person_field
         
-        numero = clean_str(vals[1] if len(vals) > 1 else None)
-        direccion = clean_str(vals[3] if len(vals) > 3 else None)
-        municipio = clean_str(vals[4] if len(vals) > 4 else None)
-        distrito = clean_str(vals[5] if len(vals) > 5 else None)
-        seccion = clean_str(vals[6] if len(vals) > 6 else None)
-        celular = clean_str(vals[7] if len(vals) > 7 else None)
+        # We search first 10 rows to detect the header
+        rows_iterator = sheet.iter_rows(values_only=True)
+        rows_list = []
+        for r_idx in range(1, 12):
+            try:
+                row = next(rows_iterator)
+                rows_list.append((r_idx, row))
+            except StopIteration:
+                break
         
-        # Formatear nombre con title case
-        nombre_limpio = title_case_name(nombre)
+        for idx, row in rows_list:
+            if not row:
+                continue
+            # Check if this row contains 'nombre' or 'nombre completo' or similar header keywords
+            row_str_vals = [str(val).strip().lower() for val in row if val is not None]
+            if any(k in row_str_vals for k in ['nombre', 'nombre completo', 'no.', 'no']):
+                header_row_index = idx
+                # Map columns dynamically
+                for col_idx, cell_val in enumerate(row):
+                    if cell_val is not None:
+                        clean_header = str(cell_val).strip().lower()
+                        if clean_header in HEADER_MAP:
+                            col_mapping[col_idx] = HEADER_MAP[clean_header]
+                break
+
+        if header_row_index is None:
+            print(f"   ⚠️  No se encontró fila de encabezado en la hoja {sheet_name}. Saltando.")
+            continue
+
+        print(f"      Headers encontrados en fila {header_row_index}. Columnas mapeadas: {col_mapping}")
         
-        # Generar identificador de padrón único (CAMP-001, CAMP-002, ...)
-        idx_padron = len(records) + 1
-        ine_padron = f"CAMP-{str(idx_padron).zfill(3)}"
-        
-        record = {
-            "name": nombre_limpio,
-            "phone": celular,
-            "address": direccion,
-            "municipio": municipio or "Campeche",
-            "localidad": "",
-            "distrito": distrito,
-            "zona": "",
-            "seccion": seccion,
-            "ine": ine_padron,
-            "synced": 1
-        }
-        records.append(record)
+        # Re-iterate or continue iteration from the row after headers
+        # Since iter_rows is read-only, we can just instantiate a fresh iterator and skip first header_row_index rows
+        sheet_rows = sheet.iter_rows(values_only=True)
+        for _ in range(header_row_index):
+            next(sheet_rows)
+            
+        # Parse data rows
+        sheet_records_count = 0
+        for row_idx, row in enumerate(sheet_rows, start=header_row_index + 1):
+            total_raw_rows += 1
+            
+            # Map row columns to fields
+            data = {}
+            for col_idx, field in col_mapping.items():
+                if col_idx < len(row):
+                    data[field] = row[col_idx]
+            
+            # Extract and validate name
+            raw_name = clean_str(data.get('name'))
+            if not raw_name or raw_name.lower() in ('nombre', 'no.', 'no', 'estructura', ''):
+                continue # Skip residual headers or blank rows
+
+            # Clean and normalize fields
+            nombre_limpio = title_case_name(raw_name)
+            phone = clean_str(data.get('phone'))
+            address = clean_str(data.get('address'))
+            
+            # Default or fallback municipality based on sheet name if not in cell
+            municipio = clean_str(data.get('municipio'))
+            if not municipio:
+                # Map sheet codes to full names
+                municipio_fallbacks = {
+                    'CAMP': 'Campeche', 'CAND': 'Candelaria', 'HECE': 'Hecelchakán',
+                    'CARM': 'Carmen', 'CALA': 'Calakmul', 'CHAM': 'Champotón',
+                    'PALI': 'Palizada', 'TENA': 'Tenabo', 'CALK': 'Calkiní',
+                    'DZIT': 'Dzitbalché', 'SEYB': 'Seybaplaya', 'ESC': 'Escárcega'
+                }
+                municipio = municipio_fallbacks.get(sheet_name, sheet_name)
+            
+            distrito = clean_str(data.get('distrito'))
+            seccion = clean_str(data.get('seccion'))
+            email = clean_str(data.get('email'))
+            birthday = format_birthday(data.get('birthday'))
+            
+            # Create standard record
+            record = {
+                "name": nombre_limpio,
+                "phone": phone,
+                "address": address,
+                "municipio": municipio,
+                "localidad": "",
+                "distrito": distrito,
+                "zona": "",
+                "seccion": seccion,
+                "email": email,
+                "birthday": birthday,
+                "synced": 1
+            }
+            records.append(record)
+            sheet_records_count += 1
+            
+        print(f"      ✅ Hoja {sheet_name} procesada. Registros válidos: {sheet_records_count}")
+
+    # Generate sequential unique INEs
+    for idx, r in enumerate(records, start=1):
+        r["ine"] = f"CAMP-{str(idx).zfill(4)}"
+
+    print(f"\n📊 RESUMEN DE PROCESAMIENTO:")
+    print(f"   Total de registros válidos: {len(records)}")
     
-    print(f"Registros válidos encontrados: {len(records)}")
-    
+    # Save JSON output
     with open(OUTPUT_PATH, 'w', encoding='utf-8') as f:
         json.dump(records, f, ensure_ascii=False, indent=2)
-    
-    print(f"✅ JSON exportado a: {OUTPUT_PATH}")
-    print("Primeros 3 registros de muestra:")
-    for r in records[:3]:
-        print(f"  {r['ine']}: {r['name']} | Tel: {r['phone']} | Secc: {r['seccion']} | Dist: {r['distrito']}")
+        
+    print(f"✅ JSON exportado correctamente a: {OUTPUT_PATH}")
+    print("\nPrimeros 5 registros de muestra:")
+    for r in records[:5]:
+        print(f"  {r['ine']}: {r['name']} | Cel: {r['phone']} | Correo: {r['email']} | Cumple: {r['birthday']} | Secc: {r['seccion']}")
 
 if __name__ == '__main__':
     main()

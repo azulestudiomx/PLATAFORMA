@@ -52,6 +52,8 @@ model Person {
   zona      String?
   seccion   String?
   ine       String?  @unique
+  email     String?
+  birthday  String?
   photo     String?
   inePhoto  String?
   lat       Float?

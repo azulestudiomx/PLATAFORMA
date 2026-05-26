@@ -1,7 +1,8 @@
 /**
  * import_padron.js
  * Lee el JSON limpio generado por parse_excel.py e inserta en masa
- * todos los registros en la base de datos SQLite via Prisma.
+ * todos los registros en la base de datos SQLite via Prisma, incluyendo email y cumpleaños.
+ * Limpia los registros anteriores para asegurar una importación estatal limpia.
  * 
  * Uso: node import_padron.js
  */
@@ -14,7 +15,7 @@ const prisma = new PrismaClient();
 const JSON_PATH = path.join(__dirname, 'padron_campeche.json');
 
 async function main() {
-    console.log('🚀 Iniciando importación de Padrón de Ciudadanos...\n');
+    console.log('🚀 Iniciando importación del Padrón Estatal de Ciudadanos...\n');
 
     // Verificar que el JSON exista
     if (!fs.existsSync(JSON_PATH)) {
@@ -24,32 +25,21 @@ async function main() {
     }
 
     const records = JSON.parse(fs.readFileSync(JSON_PATH, 'utf-8'));
-    console.log(`📋 Registros en JSON: ${records.length}`);
+    console.log(`📋 Registros cargados desde el JSON: ${records.length}`);
 
-    // Verificar cuántos ya existen en la BD
-    const existingCount = await prisma.person.count();
-    console.log(`📊 Registros actuales en BD: ${existingCount}`);
-
-    if (existingCount > 0) {
-        console.log('\n⚠️  La tabla ya tiene registros. Importando solo los nuevos (por clave INE)...');
-    }
+    // Limpiar tabla Person de la base de datos para una importación estatal limpia y sin duplicados
+    console.log('⚠️  Vaciando la tabla de ciudadanos para una importación estatal limpia...');
+    const deletedCount = await prisma.person.deleteMany();
+    console.log(`🧹 Eliminados ${deletedCount.count} registros previos.`);
 
     let inserted = 0;
-    let skipped = 0;
     let errors = 0;
 
+    console.log('\n📥 Importando nuevos registros estatales...');
+    
+    // Inserción secuencial rápida
     for (const record of records) {
         try {
-            // Verificar si la clave INE ya existe para evitar duplicados
-            const exists = await prisma.person.findUnique({
-                where: { ine: record.ine }
-            });
-
-            if (exists) {
-                skipped++;
-                continue;
-            }
-
             await prisma.person.create({
                 data: {
                     name: record.name,
@@ -61,38 +51,39 @@ async function main() {
                     zona: record.zona || null,
                     seccion: record.seccion || null,
                     ine: record.ine,
+                    email: record.email || null,
+                    birthday: record.birthday || null,
                     synced: 1
                 }
             });
             inserted++;
 
-            // Mostrar progreso cada 50 registros
-            if (inserted % 50 === 0) {
+            // Mostrar progreso cada 100 registros
+            if (inserted % 100 === 0) {
                 console.log(`   ✅ ${inserted} registros insertados...`);
             }
         } catch (err) {
             errors++;
-            console.error(`   ❌ Error en ${record.name}: ${err.message}`);
+            console.error(`   ❌ Error al importar a "${record.name}": ${err.message}`);
         }
     }
 
-    // Conteo final
+    // Conteo final en la base de datos
     const finalCount = await prisma.person.count();
 
     console.log('\n' + '='.repeat(50));
-    console.log('📊 RESULTADO FINAL DE IMPORTACIÓN');
+    console.log('📊 RESULTADO FINAL DE LA IMPORTACIÓN ESTATAL');
     console.log('='.repeat(50));
-    console.log(`   ✅ Insertados:    ${inserted}`);
-    console.log(`   ⏭️  Omitidos:      ${skipped} (ya existían)`);
-    console.log(`   ❌ Errores:       ${errors}`);
-    console.log(`   📋 Total en BD:   ${finalCount}`);
+    console.log(`   ✅ Insertados exitosamente:  ${inserted}`);
+    console.log(`   ❌ Errores encontrados:      ${errors}`);
+    console.log(`   📋 Total actual en BD:       ${finalCount}`);
     console.log('='.repeat(50));
-    console.log('\n🎉 ¡Importación completada! El Padrón de Ciudadanos ya está activo.\n');
+    console.log('\n🎉 ¡Importación estatal completada con éxito! El Padrón de simpatizantes está activo.\n');
 }
 
 main()
     .catch((e) => {
-        console.error('Error crítico:', e);
+        console.error('❌ Error crítico en importación:', e);
         process.exit(1);
     })
     .finally(async () => {
