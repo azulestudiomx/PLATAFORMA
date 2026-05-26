@@ -1462,7 +1462,7 @@ const ElectoralPage: React.FC = () => {
                                                     </td>
                                                     
                                                     {/* Input Representante */}
-                                                    <td className="px-6 py-4 relative">
+                                                    <td className={`px-6 py-4 relative transition-all duration-200 ${focusedSeccion === s.seccion ? 'pb-48' : ''}`}>
                                                         <div className="flex items-center gap-1.5 w-full">
                                                             <div className="relative flex-1">
                                                                 <input
