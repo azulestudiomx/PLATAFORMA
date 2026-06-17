@@ -8,7 +8,7 @@ if (process.env.GEMINI_API_KEY) {
 const analyzeReport = async (description, needType) => {
   if (!genAI) return null;
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const prompt = `Analiza el siguiente reporte ciudadano y devuelve un JSON con dos campos: "sentiment" (Positivo, Neutral, Negativo) y "urgency" (Alta, Media, Baja).\n\nReporte: "${description}"\nTipo: "${needType}"\n\nJSON:`;
     
     const result = await model.generateContent(prompt);
