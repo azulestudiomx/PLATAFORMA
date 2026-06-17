@@ -12,7 +12,7 @@ async function main() {
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
     
     console.log('Enviando consulta de prueba a Gemini ("Hola, di que estás activo y listo en español")...');
     const result = await model.generateContent('Hola, di que estás activo y listo en español');
