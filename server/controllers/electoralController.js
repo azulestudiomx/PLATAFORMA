@@ -392,7 +392,8 @@ ${top15.map((s, i) => `${i+1}. Sección ${s.seccion} (${s.municipio}): ${s.dormi
 PREGUNTA DEL ESTRATEGA DE CAMPAÑA:
 ${pregunta}
 
-Responde en español con recomendaciones tácticas específicas, citando números de sección y datos de votación/municipio cuando sea relevante. Analiza la fuerza relativa de MORENA, MC y PRI-PRD, el abstencionismo (votos dormidos) y propón tácticas concretas para el padrón (por ejemplo, dónde capturar más simpatizantes). Sé directo, conciso y altamente accionable. Usa viñetas y estructura clara.`;
+Responde en español con recomendaciones tácticas específicas, citando números de sección y datos de votación/municipio cuando sea relevante. Analiza la fuerza relativa de MORENA, MC y PRI-PRD, el abstencionismo (votos dormidos) y propón tácticas concretas para el padrón (por ejemplo, dónde capturar más simpatizantes).
+IMPORTANTE: Sé extremadamente directo, conciso y altamente accionable. Limita tu respuesta a un máximo de 3 a 5 puntos clave cortos (máximo 300 palabras en total) para asegurar una respuesta rápida y evitar que la conexión expire (Timeout). Usa viñetas y estructura clara.`;
 
         const { GoogleGenerativeAI } = require('@google/generative-ai');
         const genAI = new GoogleGenerativeAI(GEMINI_KEY);
