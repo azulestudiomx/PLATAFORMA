@@ -397,11 +397,35 @@ IMPORTANTE: Sé extremadamente directo, conciso y altamente accionable. Limita t
 
         const { GoogleGenerativeAI } = require('@google/generative-ai');
         const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-        const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-        const result = await model.generateContent(contexto);
-        const text = result.response.text();
+        
+        const modelsToTry = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-3.1-flash-lite'];
+        let result = null;
+        let chosenModel = '';
+        let lastError = null;
 
-        res.json({ respuesta: text, fuente: 'Gemini 3.5 Flash', timestamp: new Date().toISOString() });
+        for (const modelName of modelsToTry) {
+            try {
+                console.log(`Intentando consultar Gemini con el modelo: ${modelName}`);
+                const model = genAI.getGenerativeModel({ model: modelName });
+                result = await model.generateContent(contexto);
+                chosenModel = modelName;
+                break;
+            } catch (err) {
+                console.error(`Error con modelo ${modelName}:`, err.message);
+                lastError = err;
+            }
+        }
+
+        if (!result) {
+            throw lastError || new Error('Todos los modelos fallaron.');
+        }
+
+        const text = result.response.text();
+        res.json({ 
+            respuesta: text, 
+            fuente: `Gemini (${chosenModel.replace('gemini-', '').toUpperCase()})`, 
+            timestamp: new Date().toISOString() 
+        });
     } catch (err) {
         console.error('Electoral AI error:', err);
         res.status(500).json({ error: 'Error en el consultor IA: ' + err.message });
