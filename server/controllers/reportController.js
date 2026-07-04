@@ -56,7 +56,8 @@ const getReports = async (req, res) => {
       pages: Math.ceil(total / limit)
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error al listar reportes:', error);
+    res.status(500).json({ error: 'Error al obtener reportes' });
   }
 };
 
@@ -135,7 +136,7 @@ const createReport = async (req, res) => {
     res.status(201).json({ message: 'Sincronización exitosa', id: savedReport.id });
   } catch (error) {
     console.error('Error al guardar reporte:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Error al guardar el reporte' });
   }
 };
 
@@ -155,9 +156,19 @@ const getReportById = async (req, res) => {
   }
 };
 
+// Solo estos campos pueden modificarse vía API; evita escribir columnas arbitrarias
+const UPDATABLE_REPORT_FIELDS = [
+  'municipio', 'comunidad', 'lat', 'lng', 'needType', 'description',
+  'status', 'response', 'resolvedAt', 'sentiment', 'urgency',
+  'customData', 'evidenceGallery', 'evidenceUrl', 'evidenceBase64'
+];
+
 const updateReport = async (req, res) => {
   try {
-    const updateData = { ...req.body };
+    const updateData = {};
+    for (const field of UPDATABLE_REPORT_FIELDS) {
+      if (field in req.body) updateData[field] = req.body[field];
+    }
     if (updateData.evidenceGallery && Array.isArray(updateData.evidenceGallery)) {
       updateData.evidenceGallery = JSON.stringify(updateData.evidenceGallery);
     }

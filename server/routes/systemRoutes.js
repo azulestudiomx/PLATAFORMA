@@ -10,13 +10,14 @@ router.put('/people/:id', authMiddleware, systemController.updatePerson);
 router.delete('/people/:id', authMiddleware, systemController.deletePerson);
 
 // Eventos (Calendario)
-router.get('/events', systemController.getEvents);
-router.post('/events', systemController.createEvent);
-router.put('/events/:id', systemController.updateEvent);
-router.delete('/events/:id', systemController.deleteEvent);
+router.get('/events', authMiddleware, systemController.getEvents);
+router.post('/events', authMiddleware, systemController.createEvent);
+router.put('/events/:id', authMiddleware, systemController.updateEvent);
+router.delete('/events/:id', authMiddleware, systemController.deleteEvent);
 
 // Configuración
+// GET queda público: el tema/colores se cargan antes del login y no contiene datos sensibles
 router.get('/config', systemController.getConfig);
-router.post('/config', systemController.updateConfig);
+router.post('/config', authMiddleware, adminMiddleware, systemController.updateConfig);
 
 module.exports = router;

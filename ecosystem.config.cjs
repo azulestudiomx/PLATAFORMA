@@ -12,8 +12,9 @@ module.exports = {
         },
         env_production: {
             NODE_ENV: "production",
-            PORT: 3003,
-            MONGO_URI: "mongodb://127.0.0.1:27017/plataforma_campeche"
+            PORT: 3003
+            // JWT_SECRET, GEMINI_API_KEY, CLOUDINARY_* y CORS_ORIGIN
+            // se cargan desde server/.env (dotenv), nunca desde este archivo.
         }
     }]
 };

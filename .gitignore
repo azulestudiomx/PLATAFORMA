@@ -12,6 +12,16 @@ dist
 dist-ssr
 *.local
 .env
+.env.*
+!.env.example
+!.env.production
+
+# Datos sensibles: padrón electoral y bases de datos NUNCA van a git
+*.db
+*.db-journal
+*.sqlite
+*.xlsx
+server/padron_campeche.json
 
 # Editor directories and files
 .vscode/*

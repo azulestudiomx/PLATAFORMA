@@ -8,7 +8,7 @@ const authMiddleware = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'campeche_secreto_local');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded; // { id, username, role }
     next();
   } catch (error) {

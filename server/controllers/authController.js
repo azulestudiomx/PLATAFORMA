@@ -2,17 +2,21 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const prisma = require('../services/db');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'campeche_secreto_local';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 const login = async (req, res) => {
   try {
     const { username, password } = req.body;
+    if (typeof username !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ error: 'Usuario y contraseña son requeridos' });
+    }
     const user = await prisma.user.findUnique({ where: { username } });
 
-    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    // Mensaje idéntico exista o no el usuario: evita enumeración de cuentas
+    if (!user) return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).json({ error: 'Contraseña incorrecta' });
+    if (!isMatch) return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
 
     const token = jwt.sign(
       { id: user.id, username: user.username, role: user.role, name: user.name },
@@ -39,7 +43,17 @@ const login = async (req, res) => {
 const register = async (req, res) => {
   try {
     const { username, password, name, role } = req.body;
-    
+
+    if (typeof username !== 'string' || username.trim().length < 3) {
+      return res.status(400).json({ error: 'El usuario debe tener al menos 3 caracteres' });
+    }
+    if (typeof password !== 'string' || password.length < 8) {
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
+    }
+    if (role && !['ADMIN', 'CAPTURIST'].includes(role)) {
+      return res.status(400).json({ error: 'Rol inválido' });
+    }
+
     const existingUser = await prisma.user.findUnique({ where: { username } });
     if (existingUser) return res.status(400).json({ error: 'El usuario ya existe' });
 
@@ -77,8 +91,14 @@ const updateUser = async (req, res) => {
     const { id } = req.params;
     const { username, password, name, role } = req.body;
 
+    if (role && !['ADMIN', 'CAPTURIST'].includes(role)) {
+      return res.status(400).json({ error: 'Rol inválido' });
+    }
     const data = { username, name, role };
     if (password) {
+      if (typeof password !== 'string' || password.length < 8) {
+        return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
+      }
       const salt = await bcrypt.genSalt(10);
       data.password = await bcrypt.hash(password, salt);
     }
@@ -107,26 +127,4 @@ const deleteUser = async (req, res) => {
   }
 };
 
-const setupAdmin = async (req, res) => {
-  try {
-    const adminExists = await prisma.user.findUnique({ where: { username: 'admin' } });
-    if (adminExists) {
-      return res.json({ message: 'El usuario admin ya existe' });
-    }
-    const salt = await bcrypt.genSalt(10);
-    const adminPass = await bcrypt.hash('admin123', salt);
-    await prisma.user.create({
-      data: { username: 'admin', password: adminPass, name: 'Administradora Layda', role: 'ADMIN' }
-    });
-    const userPass = await bcrypt.hash('campo123', salt);
-    await prisma.user.create({
-      data: { username: 'campo', password: userPass, name: 'Capturista de Campo', role: 'CAPTURIST' }
-    });
-
-    res.json({ message: 'Usuarios por defecto creados' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-module.exports = { login, register, listUsers, setupAdmin, updateUser, deleteUser };
+module.exports = { login, register, listUsers, updateUser, deleteUser };
