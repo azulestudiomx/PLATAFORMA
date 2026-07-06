@@ -1,16 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { peopleApi } from '../services/api';
 import { db } from '../services/db'; // Using the centralized Dexie DB
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import QRCode from 'qrcode';
-import * as XLSX from 'xlsx';
 import Webcam from 'react-webcam';
 import Swal from 'sweetalert2';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import campecheGeo from '../src/campeche_secciones_wgs84.json';
+import { loadSectionCentroids } from '../src/geoData';
+import { loadXLSX, loadPdf } from '../services/lazyLibs';
 
 // Fix for map rendering issues
 const MapResizer = () => {
@@ -21,47 +19,9 @@ const MapResizer = () => {
     return null;
 };
 
-// Helper to calculate polygon centroids
-const getCentroid = (feature: any): [number, number] | null => {
-    if (!feature || !feature.geometry) return null;
-    const { type, coordinates } = feature.geometry;
-    let latSum = 0;
-    let lngSum = 0;
-    let count = 0;
-
-    const processPolygon = (polygonCoords: any) => {
-        polygonCoords.forEach((ring: any) => {
-            ring.forEach((coord: any) => {
-                lngSum += coord[0];
-                latSum += coord[1];
-                count++;
-            });
-        });
-    };
-
-    if (type === 'Polygon') {
-        processPolygon(coordinates);
-    } else if (type === 'MultiPolygon') {
-        coordinates.forEach((poly: any) => processPolygon(poly));
-    }
-
-    if (count === 0) return null;
-    return [latSum / count, lngSum / count];
-};
-
-// Pre-calculate all centroids for fast lookups
+// Centroides de sección: se llenan de forma diferida desde geoData
+// (el GeoJSON de 2.3 MB ya no viaja en el bundle principal)
 const sectionCentroidsMap = new Map<number, [number, number]>();
-if (campecheGeo && (campecheGeo as any).features) {
-    (campecheGeo as any).features.forEach((feat: any) => {
-        const seccion = Number(feat?.properties?.seccion);
-        if (!isNaN(seccion)) {
-            const centroid = getCentroid(feat);
-            if (centroid) {
-                sectionCentroidsMap.set(seccion, centroid);
-            }
-        }
-    });
-}
 
 // Geolocate using real section centroids with stable dispersion based on name
 const getApproxCoords = (seccion?: string, name?: string): [number, number] | null => {
@@ -141,6 +101,15 @@ interface Person {
 const PeoplePage: React.FC = () => {
     const [people, setPeople] = useState<Person[]>([]);
     const [loading, setLoading] = useState(true);
+    // Fuerza re-render cuando los centroides del GeoJSON terminan de cargar
+    const [, setGeoReady] = useState(false);
+
+    useEffect(() => {
+        loadSectionCentroids().then(m => {
+            m.forEach((v, k) => sectionCentroidsMap.set(k, v));
+            setGeoReady(true);
+        }).catch(err => console.error('Error cargando centroides de secciones:', err));
+    }, []);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterMunicipio, setFilterMunicipio] = useState('');
     const [filterSeccion, setFilterSeccion] = useState('');
@@ -334,7 +303,8 @@ const PeoplePage: React.FC = () => {
         fetchPeople();
     };
 
-    const handleExportPDF = () => {
+    const handleExportPDF = async () => {
+        const { jsPDF, autoTable } = await loadPdf();
         const doc = new jsPDF({ orientation: 'landscape' });
         doc.setFontSize(16);
         doc.setTextColor(139, 0, 0);
@@ -388,6 +358,7 @@ const PeoplePage: React.FC = () => {
         if (!file) return;
         setLoading(true);
         try {
+            const XLSX = await loadXLSX();
             const data = await file.arrayBuffer();
             const workbook = XLSX.read(data);
             const worksheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -432,7 +403,8 @@ const PeoplePage: React.FC = () => {
         }
     };
 
-    const handleDownloadTemplate = () => {
+    const handleDownloadTemplate = async () => {
+        const XLSX = await loadXLSX();
         const ws = XLSX.utils.json_to_sheet([
             { Nombre: 'Juan Pérez', INE: 'ABC1234567890', Telefono: '9811234567', Direccion: 'Centro, Campeche', Municipio: 'Campeche', Localidad: 'Centro', Seccion: '123', Correo: 'juan.perez@email.com', Cumpleaños: '15 de Marzo' }
         ]);
@@ -565,6 +537,7 @@ const PeoplePage: React.FC = () => {
 
     const generateCredential = async (person: Person) => {
         try {
+            const { jsPDF } = await loadPdf();
             const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [85.6, 53.98] });
             
             // Card dimensions

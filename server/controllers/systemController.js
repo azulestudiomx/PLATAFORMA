@@ -1,4 +1,5 @@
 const prisma = require('../services/db');
+const { audit } = require('../services/auditService');
 
 // Person (Padrón)
 const getPeople = async (req, res) => {
@@ -12,8 +13,11 @@ const getPeople = async (req, res) => {
 
 const createPerson = async (req, res) => {
   try {
-    const { id, _id, ...data } = req.body;
-    const person = await prisma.person.create({ data });
+    const { id, _id, createdBy, ...data } = req.body;
+    const person = await prisma.person.create({
+      data: { ...data, createdBy: req.user?.username || null }
+    });
+    audit(req, 'CREATE', 'Person', person.id, person.name);
     res.status(201).json(person);
   } catch (error) {
     if (error.code === 'P2002') return res.status(400).json({ error: 'La clave INE ya está registrada' });
@@ -24,11 +28,12 @@ const createPerson = async (req, res) => {
 
 const updatePerson = async (req, res) => {
   try {
-    const { id, _id, createdAt, updatedAt, ...data } = req.body;
-    const updated = await prisma.person.update({ 
-      where: { id: req.params.id }, 
-      data 
+    const { id, _id, createdAt, updatedAt, createdBy, ...data } = req.body;
+    const updated = await prisma.person.update({
+      where: { id: req.params.id },
+      data
     });
+    audit(req, 'UPDATE', 'Person', updated.id, updated.name);
     res.json(updated);
   } catch (error) {
     if (error.code === 'P2002') return res.status(400).json({ error: 'La clave INE ya está registrada en otra persona' });
@@ -39,7 +44,8 @@ const updatePerson = async (req, res) => {
 
 const deletePerson = async (req, res) => {
   try {
-    await prisma.person.delete({ where: { id: req.params.id } });
+    const person = await prisma.person.delete({ where: { id: req.params.id } });
+    audit(req, 'DELETE', 'Person', req.params.id, person.name);
     res.json({ message: 'Persona eliminada' });
   } catch (error) {
     res.status(500).json({ error: 'Error al eliminar persona' });
@@ -58,7 +64,11 @@ const getEvents = async (req, res) => {
 
 const createEvent = async (req, res) => {
   try {
-    const event = await prisma.event.create({ data: req.body });
+    const { id, _id, createdAt, updatedAt, ...data } = req.body;
+    const event = await prisma.event.create({
+      data: { ...data, createdBy: data.createdBy || req.user?.username || null }
+    });
+    audit(req, 'CREATE', 'Event', event.id, event.title);
     res.status(201).json(event);
   } catch (error) {
     res.status(500).json({ error: 'Error al crear evento' });
@@ -67,10 +77,12 @@ const createEvent = async (req, res) => {
 
 const updateEvent = async (req, res) => {
   try {
+    const { id, _id, createdAt, updatedAt, ...data } = req.body;
     const updated = await prisma.event.update({
        where: { id: req.params.id },
-       data: req.body
+       data
     });
+    audit(req, 'UPDATE', 'Event', updated.id, updated.title);
     res.json(updated);
   } catch (error) {
     res.status(500).json({ error: 'Error al actualizar evento' });
@@ -79,7 +91,8 @@ const updateEvent = async (req, res) => {
 
 const deleteEvent = async (req, res) => {
   try {
-    await prisma.event.delete({ where: { id: req.params.id } });
+    const event = await prisma.event.delete({ where: { id: req.params.id } });
+    audit(req, 'DELETE', 'Event', req.params.id, event.title);
     res.json({ message: 'Evento eliminado' });
   } catch (error) {
     res.status(500).json({ error: 'Error al eliminar evento' });
@@ -123,7 +136,8 @@ const updateConfig = async (req, res) => {
     } else {
       config = await prisma.systemConfig.create({ data: dataToUpdate });
     }
-    
+    audit(req, 'UPDATE', 'SystemConfig', config.id, Object.keys(dataToUpdate).join(', '));
+
     res.json({
       theme: { primary: config.primaryColor, secondary: config.secondaryCol, accent: config.accentColor },
       needTypes: JSON.parse(config.needTypes),

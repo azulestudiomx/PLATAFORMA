@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Report } from '../types';
-import { reportsApi } from '../services/api';
-import { jsPDF } from 'jspdf';
+import { Report, ReportHistoryEntry } from '../types';
+import { reportsApi, authApi } from '../services/api';
 import Swal from 'sweetalert2';
+import { loadPdf } from '../services/lazyLibs';
+
+const HISTORY_ICONS: Record<string, { icon: string; cls: string }> = {
+    STATUS_CHANGE: { icon: 'fa-arrows-rotate', cls: 'bg-blue-100 text-blue-600' },
+    ASSIGNED:      { icon: 'fa-user-check',    cls: 'bg-indigo-100 text-indigo-600' },
+    COMMENT:       { icon: 'fa-comment',       cls: 'bg-emerald-100 text-emerald-600' },
+};
 
 interface ReportDetailsModalProps {
     reportId: string;
@@ -22,6 +28,9 @@ const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({ reportId, onClo
     const [response, setResponse] = useState('');
     const [customData, setCustomData] = useState<Record<string, any>>({});
     const [tempImage, setTempImage] = useState<string | null>(null);
+    const [assignedTo, setAssignedTo] = useState('');
+    const [history, setHistory] = useState<ReportHistoryEntry[]>([]);
+    const [assignableUsers, setAssignableUsers] = useState<{ username: string; name: string }[]>([]);
 
     useEffect(() => {
         fetchReportDetails();
@@ -43,6 +52,12 @@ const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({ reportId, onClo
             setStatus(data.status || 'Pendiente');
             setDescription(data.description || '');
             setResponse(data.response || '');
+            setAssignedTo(data.assignedTo || '');
+
+            // Historial del flujo (no bloquea la carga principal)
+            reportsApi.history(reportId).then(setHistory).catch(() => setHistory([]));
+            // Lista de usuarios para asignar (solo disponible para admin; si falla, se usa texto libre)
+            authApi.listUsers().then(setAssignableUsers).catch(() => setAssignableUsers([]));
             // customData is stored as JSON string in SQLite
             let cd = data.customData;
             if (typeof cd === 'string') { try { cd = JSON.parse(cd); } catch { cd = {}; } }
@@ -62,6 +77,7 @@ const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({ reportId, onClo
             await reportsApi.update(reportId, {
                 status,
                 description,
+                assignedTo: assignedTo || null,
                 evidenceBase64: tempImage || report?.evidenceBase64,
                 customData: JSON.stringify(customData),
                 response: status === 'Resuelto' ? response : undefined,
@@ -78,9 +94,10 @@ const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({ reportId, onClo
         }
     };
 
-    const generatePDF = () => {
+    const generatePDF = async () => {
         if (!report) return;
 
+        const { jsPDF } = await loadPdf();
         const doc = new jsPDF();
         const pageWidth = doc.internal.pageSize.getWidth();
         const margin = 20;
@@ -194,27 +211,65 @@ const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({ reportId, onClo
 
                         {/* Left Column: Info & Form */}
                         <div className="space-y-6">
-                            {/* Status Section */}
-                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Estatus del Reporte</label>
-                                {editMode ? (
-                                    <select
-                                        value={status}
-                                        onChange={(e) => setStatus(e.target.value)}
-                                        className="w-full p-2 border rounded-md"
-                                    >
-                                        <option value="Pendiente">Pendiente</option>
-                                        <option value="En Proceso">En Proceso</option>
-                                        <option value="Resuelto">Resuelto</option>
-                                    </select>
-                                ) : (
-                                    <span className={`px-3 py-1 rounded-full text-sm font-bold ${status === 'Resuelto' ? 'bg-green-100 text-green-800' :
-                                        status === 'En Proceso' ? 'bg-yellow-100 text-yellow-800' :
-                                            'bg-red-100 text-red-800'
-                                        }`}>
-                                        {status}
-                                    </span>
-                                )}
+                            {/* Status + Asignación */}
+                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Estatus del Reporte</label>
+                                    {editMode ? (
+                                        <select
+                                            value={status}
+                                            onChange={(e) => setStatus(e.target.value)}
+                                            className="w-full p-2 border rounded-md"
+                                        >
+                                            <option value="Pendiente">Pendiente</option>
+                                            <option value="Asignado">Asignado</option>
+                                            <option value="En Proceso">En Proceso</option>
+                                            <option value="Resuelto">Resuelto</option>
+                                        </select>
+                                    ) : (
+                                        <span className={`px-3 py-1 rounded-full text-sm font-bold ${status === 'Resuelto' ? 'bg-green-100 text-green-800' :
+                                            status === 'En Proceso' ? 'bg-yellow-100 text-yellow-800' :
+                                            status === 'Asignado' ? 'bg-indigo-100 text-indigo-800' :
+                                                'bg-red-100 text-red-800'
+                                            }`}>
+                                            {status}
+                                        </span>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                        <i className="fas fa-user-check text-indigo-500 mr-1.5"></i>
+                                        Responsable asignado
+                                    </label>
+                                    {editMode ? (
+                                        assignableUsers.length > 0 ? (
+                                            <select
+                                                value={assignedTo}
+                                                onChange={(e) => setAssignedTo(e.target.value)}
+                                                className="w-full p-2 border rounded-md"
+                                            >
+                                                <option value="">Sin asignar</option>
+                                                {assignableUsers.map(u => (
+                                                    <option key={u.username} value={u.username}>{u.name} (@{u.username})</option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <input
+                                                type="text"
+                                                value={assignedTo}
+                                                onChange={(e) => setAssignedTo(e.target.value)}
+                                                placeholder="Usuario responsable"
+                                                className="w-full p-2 border rounded-md"
+                                            />
+                                        )
+                                    ) : (
+                                        <p className="text-sm text-gray-700">
+                                            {assignedTo
+                                                ? <><i className="fas fa-user text-gray-400 mr-1.5"></i>{assignableUsers.find(u => u.username === assignedTo)?.name || assignedTo}</>
+                                                : <span className="text-gray-400 italic">Sin asignar</span>}
+                                        </p>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Description */}
@@ -275,6 +330,44 @@ const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({ reportId, onClo
                                     <p>{report.user || 'Desconocido'}</p>
                                 </div>
                             </div>
+
+                            {/* Historial del flujo */}
+                            {history.length > 0 && (
+                                <div className="border-t pt-4">
+                                    <h3 className="font-bold text-gray-800 mb-3">
+                                        <i className="fas fa-timeline text-gray-400 mr-2"></i>
+                                        Historial del expediente
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {history.map(h => {
+                                            const s = HISTORY_ICONS[h.action] || { icon: 'fa-circle-info', cls: 'bg-gray-100 text-gray-500' };
+                                            return (
+                                                <div key={h.id} className="flex gap-3 items-start">
+                                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${s.cls}`}>
+                                                        <i className={`fas ${s.icon} text-[10px]`}></i>
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-sm text-gray-700">
+                                                            {h.action === 'STATUS_CHANGE' && (
+                                                                <>Cambio de estatus: <b>{h.fromStatus || '—'}</b> → <b>{h.toStatus}</b></>
+                                                            )}
+                                                            {h.action === 'ASSIGNED' && <>{h.note || 'Asignación actualizada'}</>}
+                                                            {h.action === 'COMMENT' && <>{h.note}</>}
+                                                        </p>
+                                                        <p className="text-[11px] text-gray-400">
+                                                            {h.username ? `@${h.username} · ` : ''}
+                                                            {new Date(h.createdAt).toLocaleString('es-MX')}
+                                                        </p>
+                                                        {h.action === 'STATUS_CHANGE' && h.note && (
+                                                            <p className="text-xs text-gray-500 mt-0.5 italic">"{h.note}"</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Dynamic Fields */}
                             {Object.keys(customData).length > 0 && (

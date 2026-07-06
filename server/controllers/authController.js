@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const prisma = require('../services/db');
+const { audit } = require('../services/auditService');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -23,6 +24,8 @@ const login = async (req, res) => {
       JWT_SECRET,
       { expiresIn: '7d' } // 7 días para facilitar el uso offline/móvil
     );
+
+    audit({ user }, 'LOGIN', 'User', user.id, user.username);
 
     res.json({
       message: 'Login exitoso',
@@ -60,7 +63,7 @@ const register = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    await prisma.user.create({
+    const created = await prisma.user.create({
       data: {
         username,
         password: hashedPassword,
@@ -69,6 +72,7 @@ const register = async (req, res) => {
       }
     });
 
+    audit(req, 'CREATE', 'User', created.id, `${username} (${created.role})`);
     res.status(201).json({ message: 'Usuario creado exitosamente' });
   } catch (error) {
     res.status(500).json({ error: 'Error al registrar usuario' });
@@ -108,6 +112,7 @@ const updateUser = async (req, res) => {
       data
     });
 
+    audit(req, 'UPDATE', 'User', updated.id, `${updated.username}${password ? ' (cambio de contraseña)' : ''}`);
     res.json({ message: 'Usuario actualizado exitosamente', user: { id: updated.id, username: updated.username } });
   } catch (error) {
     res.status(500).json({ error: 'Error al actualizar usuario' });
@@ -120,7 +125,8 @@ const deleteUser = async (req, res) => {
     if (req.user && req.user.id === id) {
       return res.status(400).json({ error: 'No puedes eliminar tu propio usuario' });
     }
-    await prisma.user.delete({ where: { id } });
+    const deleted = await prisma.user.delete({ where: { id } });
+    audit(req, 'DELETE', 'User', id, deleted.username);
     res.json({ message: 'Usuario eliminado exitosamente' });
   } catch (error) {
     res.status(500).json({ error: 'Error al eliminar usuario' });

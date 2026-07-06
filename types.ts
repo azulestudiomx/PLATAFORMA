@@ -39,6 +39,18 @@ export interface Report {
   sentiment?: string;
   urgency?: string;
   evidenceGallery?: string[];
+  assignedTo?: string | null;
+}
+
+export interface ReportHistoryEntry {
+  id: string;
+  reportId: string;
+  username: string | null;
+  action: string; // STATUS_CHANGE | ASSIGNED | COMMENT
+  fromStatus?: string | null;
+  toStatus?: string | null;
+  note?: string | null;
+  createdAt: string;
 }
 
 export interface CalendarEvent {

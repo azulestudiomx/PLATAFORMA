@@ -6,10 +6,10 @@ import {
 } from 'recharts';
 import { MapContainer, TileLayer, GeoJSON, Popup, useMap } from 'react-leaflet';
 import type { Layer, PathOptions, GeoJSONOptions } from 'leaflet';
-import campecheGeo from '../src/campeche_secciones_wgs84.json';
+import { loadCampecheGeo } from '../src/geoData';
+import { loadXLSX } from '../services/lazyLibs';
 import 'leaflet/dist/leaflet.css';
 import Swal from 'sweetalert2';
-import * as XLSX from 'xlsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -182,6 +182,14 @@ const TABS = [
 // ─────────────────────────────────────────────────────────────────────────────
 const ElectoralPage: React.FC = () => {
     const [activeTab, setActiveTab]   = useState('dashboard');
+    const [campecheGeo, setCampecheGeo] = useState<any>(null);
+
+    // El GeoJSON (2.3 MB) llega como chunk aparte al abrir esta página
+    useEffect(() => {
+        loadCampecheGeo().then(setCampecheGeo).catch(err =>
+            console.error('Error cargando GeoJSON de secciones:', err));
+    }, []);
+
     const [puesto, setPuesto]         = useState(PUESTOS[0]);
     const [resumen, setResumen]       = useState<Resumen | null>(null);
     const [secciones, setSecciones]   = useState<Seccion[]>([]);
@@ -226,8 +234,9 @@ const ElectoralPage: React.FC = () => {
         });
     };
 
-    const handleExportRepExcel = () => {
+    const handleExportRepExcel = async () => {
         try {
+            const XLSX = await loadXLSX();
             const dataToExport = seccionesRepresentantes.map(s => {
                 const repName = representantesMap[s.seccion] || 'Sin asignar';
                 const votes2024 = getPartyVotes2024(s, selectedParty);
@@ -973,7 +982,7 @@ const ElectoralPage: React.FC = () => {
                                 }
                                 return null;
                             })()}
-                            <GeoJSON
+                            {campecheGeo && <GeoJSON
                                 key={geoKey}
                                 data={campecheGeo as any}
                                 style={getGeoStyle}
@@ -1040,7 +1049,7 @@ const ElectoralPage: React.FC = () => {
                                         </div>`;
                                     (layer as any).bindPopup(popupContent, { maxWidth: 260, minWidth: 230 });
                                 }}
-                            />
+                            />}
                         </MapContainer>
                     </div>
 

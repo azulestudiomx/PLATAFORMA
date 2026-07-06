@@ -78,6 +78,25 @@ export const reportsApi = {
 
   delete: (id: string) =>
     apiFetch(`/api/reports/${id}`, { method: 'DELETE' }),
+
+  history: (id: string) => apiFetch(`/api/reports/${id}/history`),
+};
+
+// ---------------------------------------------------------------------------
+// Stats API (Panel de Brigadas y Bitácora — solo admin)
+// ---------------------------------------------------------------------------
+export const statsApi = {
+  brigadas: () => apiFetch('/api/stats/brigadas'),
+
+  audit: (params: { page?: number; limit?: number; entity?: string; username?: string; action?: string } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.page) qs.set('page', String(params.page));
+    if (params.limit) qs.set('limit', String(params.limit));
+    if (params.entity) qs.set('entity', params.entity);
+    if (params.username) qs.set('username', params.username);
+    if (params.action) qs.set('action', params.action);
+    return apiFetch(`/api/stats/audit?${qs.toString()}`);
+  },
 };
 
 // ---------------------------------------------------------------------------

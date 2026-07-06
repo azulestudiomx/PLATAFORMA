@@ -26,6 +26,8 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
     { path: '/people',       label: 'Padrón',       icon: 'fa-address-book',  roles: [UserRole.ADMIN, UserRole.CAPTURIST] },
     { path: '/reports',      label: 'Expedientes',  icon: 'fa-folder-open',   roles: [UserRole.ADMIN, UserRole.CAPTURIST] },
     { path: '/calendar',     label: 'Calendario',   icon: 'fa-calendar-alt',  roles: [UserRole.ADMIN, UserRole.CAPTURIST] },
+    { path: '/brigadas',     label: 'Brigadas',     icon: 'fa-people-group',  roles: [UserRole.ADMIN] },
+    { path: '/bitacora',     label: 'Bitácora',     icon: 'fa-clipboard-list',roles: [UserRole.ADMIN] },
     { path: '/users',        label: 'Usuarios',     icon: 'fa-users',         roles: [UserRole.ADMIN] },
     { path: '/configuracion',label: 'Configuración',icon: 'fa-sliders-h',     roles: [UserRole.ADMIN] },
   ];
@@ -200,6 +202,19 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
             </div>
           </div>
         </header>
+
+        {/* ── Banner de sin conexión ── */}
+        {!isOnline && (
+          <div className="bg-amber-500 text-white text-sm font-medium px-4 py-2 flex items-center gap-2 shrink-0">
+            <i className="fas fa-triangle-exclamation text-xs" aria-hidden="true"></i>
+            Sin conexión — tus capturas se guardan en el teléfono y se enviarán solas al reconectar
+            {pendingCount > 0 && (
+              <span className="ml-auto bg-white/25 rounded-full px-2 py-0.5 text-xs font-bold">
+                {pendingCount} pendiente{pendingCount > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* ── Main content ── */}
         <main className="flex-1 overflow-auto p-4 md:p-7 pb-24 md:pb-7">

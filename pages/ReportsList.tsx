@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Report } from '../types';
 import { reportsApi } from '../services/api';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import QRCode from 'qrcode';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -10,7 +8,7 @@ import ReportDetailsModal from '../components/ReportDetailsModal';
 import Swal from 'sweetalert2';
 import { db } from '../services/db';
 import { useSyncReports } from '../services/syncHook';
-import * as XLSX from 'xlsx';
+import { loadXLSX, loadPdf } from '../services/lazyLibs';
 
 export const ReportsList: React.FC = () => {
   const [reports, setReports] = useState<Report[]>([]);
@@ -114,6 +112,7 @@ export const ReportsList: React.FC = () => {
         return;
       }
 
+      const { jsPDF, autoTable } = await loadPdf();
       const doc = new jsPDF({ orientation: 'landscape' });
       doc.setFont('helvetica', 'bold');
       doc.text('PLATAFORMA CIUDADANA CAMPECHE', 14, 15);
@@ -166,6 +165,7 @@ export const ReportsList: React.FC = () => {
         allExportData = await db.reports.toArray();
       }
 
+      const XLSX = await loadXLSX();
       const worksheet = XLSX.utils.json_to_sheet(allExportData.map(r => ({
         Folio: r.id || r._id,
         Municipio: r.municipio,
@@ -197,6 +197,7 @@ export const ReportsList: React.FC = () => {
 
   const generateReportPDF = async (report: Report) => {
     try {
+      const { jsPDF } = await loadPdf();
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const primaryColor = [139, 0, 0]; // Campeche Red
       

@@ -1,5 +1,6 @@
 const prisma = require('../services/db');
 const { analyzeReport } = require('../services/aiService');
+const { audit } = require('../services/auditService');
 const cloudinary = require('cloudinary').v2;
 
 cloudinary.config({
@@ -28,6 +29,7 @@ const getReports = async (req, res) => {
         timestamp: true,
         status: true,
         user: true,
+        assignedTo: true,
         syncedAt: true,
         response: true,
         resolvedAt: true,
@@ -133,6 +135,9 @@ const createReport = async (req, res) => {
       }
     });
 
+    audit(req, 'CREATE', 'Report', savedReport.id,
+      `${reportData.needType || 'Reporte'} en ${reportData.comunidad || reportData.municipio || 's/ubicación'}`);
+
     res.status(201).json({ message: 'Sincronización exitosa', id: savedReport.id });
   } catch (error) {
     console.error('Error al guardar reporte:', error);
@@ -159,12 +164,15 @@ const getReportById = async (req, res) => {
 // Solo estos campos pueden modificarse vía API; evita escribir columnas arbitrarias
 const UPDATABLE_REPORT_FIELDS = [
   'municipio', 'comunidad', 'lat', 'lng', 'needType', 'description',
-  'status', 'response', 'resolvedAt', 'sentiment', 'urgency',
+  'status', 'assignedTo', 'response', 'resolvedAt', 'sentiment', 'urgency',
   'customData', 'evidenceGallery', 'evidenceUrl', 'evidenceBase64'
 ];
 
 const updateReport = async (req, res) => {
   try {
+    const previous = await prisma.report.findUnique({ where: { id: req.params.id } });
+    if (!previous) return res.status(404).json({ error: 'Reporte no encontrado' });
+
     const updateData = {};
     for (const field of UPDATABLE_REPORT_FIELDS) {
       if (field in req.body) updateData[field] = req.body[field];
@@ -175,13 +183,47 @@ const updateReport = async (req, res) => {
     if (updateData.customData && typeof updateData.customData === 'object') {
        updateData.customData = JSON.stringify(updateData.customData);
     }
+    // Al marcar como resuelto, registrar la fecha automáticamente
+    if (updateData.status === 'Resuelto' && previous.status !== 'Resuelto' && !updateData.resolvedAt) {
+      updateData.resolvedAt = new Date();
+    }
 
     const updated = await prisma.report.update({
       where: { id: req.params.id },
       data: updateData
     });
+
+    // Historial del flujo: cambios de estado y asignación de responsable
+    const username = req.user?.username || null;
+    const historyEntries = [];
+    if ('status' in updateData && updateData.status !== previous.status) {
+      historyEntries.push({
+        reportId: updated.id, username, action: 'STATUS_CHANGE',
+        fromStatus: previous.status, toStatus: updateData.status,
+        note: req.body.note || null
+      });
+    }
+    if ('assignedTo' in updateData && updateData.assignedTo !== previous.assignedTo) {
+      historyEntries.push({
+        reportId: updated.id, username, action: 'ASSIGNED',
+        note: updateData.assignedTo ? `Asignado a ${updateData.assignedTo}` : 'Asignación removida'
+      });
+    }
+    if ('response' in updateData && updateData.response !== previous.response && updateData.response) {
+      historyEntries.push({
+        reportId: updated.id, username, action: 'COMMENT', note: updateData.response
+      });
+    }
+    if (historyEntries.length > 0) {
+      await prisma.reportHistory.createMany({ data: historyEntries });
+    }
+
+    audit(req, 'UPDATE', 'Report', updated.id,
+      historyEntries.map(h => h.action).join(', ') || 'Edición de datos');
+
     res.json(updated);
   } catch (error) {
+    console.error('Error al actualizar reporte:', error);
     res.status(500).json({ error: 'Error al actualizar reporte' });
   }
 };
@@ -189,10 +231,23 @@ const updateReport = async (req, res) => {
 const deleteReport = async (req, res) => {
   try {
     await prisma.report.delete({ where: { id: req.params.id } });
+    audit(req, 'DELETE', 'Report', req.params.id);
     res.json({ message: 'Reporte eliminado' });
   } catch (error) {
     res.status(500).json({ error: 'Error al eliminar reporte' });
   }
 };
 
-module.exports = { getReports, createReport, getReportById, updateReport, deleteReport };
+const getReportHistory = async (req, res) => {
+  try {
+    const history = await prisma.reportHistory.findMany({
+      where: { reportId: req.params.id },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(history);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener historial' });
+  }
+};
+
+module.exports = { getReports, createReport, getReportById, updateReport, deleteReport, getReportHistory };

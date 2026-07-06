@@ -37,8 +37,31 @@ model Report {
   resolvedAt     DateTime?
   sentiment      String?
   urgency        String?
+  assignedTo     String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+  history        ReportHistory[]
+
+  @@index([status])
+  @@index([needType])
+  @@index([municipio])
+  @@index([timestamp])
+  @@index([user])
+  @@index([assignedTo])
+}
+
+model ReportHistory {
+  id         String   @id @default(uuid())
+  reportId   String
+  report     Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  username   String?
+  action     String   // STATUS_CHANGE, ASSIGNED, COMMENT, EDIT
+  fromStatus String?
+  toStatus   String?
+  note       String?
+  createdAt  DateTime @default(now())
+
+  @@index([reportId])
 }
 
 model Person {
@@ -59,8 +82,14 @@ model Person {
   lat       Float?
   lng       Float?
   synced    Int      @default(1)
+  createdBy String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([seccion])
+  @@index([municipio])
+  @@index([localidad])
+  @@index([createdBy])
 }
 
 
@@ -76,6 +105,21 @@ model Event {
   createdBy   String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  username  String?
+  role      String?
+  action    String   // CREATE, UPDATE, DELETE, LOGIN
+  entity    String   // Person, Report, Event, User, SystemConfig
+  entityId  String?
+  detail    String?  // resumen legible del cambio
+  createdAt DateTime @default(now())
+
+  @@index([entity])
+  @@index([username])
+  @@index([createdAt])
 }
 
 model SystemConfig {

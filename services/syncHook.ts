@@ -22,7 +22,8 @@ export const useSyncReports = () => {
     };
   }, []);
 
-  // Check pending reports count
+  // Conteo de pendientes dirigido por eventos (sin polling: ahorra batería).
+  // Se recalcula cuando la tabla local cambia, al volver a la app o al reconectar.
   useEffect(() => {
     const updateCount = async () => {
       const count = await db.reports.filter(r => r.synced === false || (r as any).synced === 0).count();
@@ -30,9 +31,26 @@ export const useSyncReports = () => {
     };
 
     updateCount();
-    // Poll db every few seconds or use useLiveQuery
-    const interval = setInterval(updateCount, 3000);
-    return () => clearInterval(interval);
+
+    // Dexie hooks: cualquier alta/edición/borrado local dispara el recálculo
+    const onCreating = () => { setTimeout(updateCount, 50); };
+    const onUpdating = () => { setTimeout(updateCount, 50); };
+    const onDeleting = () => { setTimeout(updateCount, 50); };
+    db.reports.hook('creating', onCreating);
+    db.reports.hook('updating', onUpdating);
+    db.reports.hook('deleting', onDeleting);
+
+    const onVisible = () => { if (!document.hidden) updateCount(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('online', updateCount);
+
+    return () => {
+      db.reports.hook('creating').unsubscribe(onCreating);
+      db.reports.hook('updating').unsubscribe(onUpdating);
+      db.reports.hook('deleting').unsubscribe(onDeleting);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('online', updateCount);
+    };
   }, []);
 
   // Automatic Sync Trigger
@@ -96,7 +114,7 @@ export const useSyncReports = () => {
     } finally {
       setIsSyncing(false);
       // Re-check pending count immediately after sync attempt
-      const remaining = await db.reports.where('synced').equals(0).count();
+      const remaining = await db.reports.filter(r => r.synced === false || (r as any).synced === 0).count();
       setPendingCount(remaining);
     }
   };

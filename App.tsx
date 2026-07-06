@@ -1,19 +1,30 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Layout from './components/Layout';
-import Dashboard from './pages/Dashboard';
-import CaptureForm from './pages/CaptureForm';
-import CalendarPage from './pages/CalendarPage';
-import ReportsList from './pages/ReportsList';
 import Login from './pages/Login';
-import UserManagement from './pages/UserManagement';
-import SettingsPage from './pages/SettingsPage';
-import PeoplePage from './pages/PeoplePage';
-import ElectoralPage from './pages/ElectoralPage';
 import { ConfigProvider } from './contexts/ConfigContext';
 import { UserRole } from './types';
 import { useAuth } from './hooks/useAuth';
+
+// Code splitting: cada página se descarga solo cuando se visita.
+// Crítico para capturistas en campo con datos móviles limitados.
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const CaptureForm = lazy(() => import('./pages/CaptureForm'));
+const CalendarPage = lazy(() => import('./pages/CalendarPage'));
+const ReportsList = lazy(() => import('./pages/ReportsList'));
+const UserManagement = lazy(() => import('./pages/UserManagement'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const PeoplePage = lazy(() => import('./pages/PeoplePage'));
+const ElectoralPage = lazy(() => import('./pages/ElectoralPage'));
+const BrigadasPage = lazy(() => import('./pages/BrigadasPage'));
+const AuditPage = lazy(() => import('./pages/AuditPage'));
+
+const PageLoader: React.FC = () => (
+  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+    <i className="fas fa-circle-notch fa-spin" style={{ fontSize: 32, color: 'var(--color-primary)' }} />
+  </div>
+);
 
 // ---------------------------------------------------------------------------
 // React Query global client
@@ -49,6 +60,7 @@ const AppInner: React.FC = () => {
     <ConfigProvider>
       <Router>
         <Layout user={legacyUser} onLogout={logout}>
+          <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* Public */}
             <Route
@@ -101,8 +113,21 @@ const AppInner: React.FC = () => {
               </ProtectedRoute>
             } />
 
+            <Route path="/brigadas" element={
+              <ProtectedRoute authenticated={isAuthenticated}>
+                {isAdmin ? <BrigadasPage /> : <Navigate to="/" replace />}
+              </ProtectedRoute>
+            } />
+
+            <Route path="/bitacora" element={
+              <ProtectedRoute authenticated={isAuthenticated}>
+                {isAdmin ? <AuditPage /> : <Navigate to="/" replace />}
+              </ProtectedRoute>
+            } />
+
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </Suspense>
         </Layout>
       </Router>
     </ConfigProvider>
