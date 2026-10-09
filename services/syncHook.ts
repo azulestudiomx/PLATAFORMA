@@ -97,7 +97,8 @@ export const useSyncReports = () => {
 
 
           // 3. Mark as synced locally ONLY if server confirmed receipt
-          if (report.id !== undefined) {
+          // Dexie indexa por número; un id de texto es del servidor y no aplica.
+          if (typeof report.id === 'number') {
             await db.reports.update(report.id, { synced: true });
             console.log(`Reporte local ID ${report.id} sincronizado exitosamente.`);
           }

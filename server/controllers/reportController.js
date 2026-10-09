@@ -1,61 +1,100 @@
+/**
+ * controllers/reportController.js
+ * Expedientes de gestión ciudadana.
+ *
+ * La evidencia fotográfica ya no viaja en base64 dentro de la fila: se guarda
+ * en disco y el reporte conserva solo la URL. El listado se acota al
+ * territorio del usuario y admite filtros y folio.
+ */
+
 const prisma = require('../services/db');
 const { analyzeReport } = require('../services/aiService');
 const { audit } = require('../services/auditService');
-const cloudinary = require('cloudinary').v2;
+const { saveImage, deleteForOwner } = require('../services/storage');
+const { reportScope, withScope } = require('../services/scope');
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
+const MAX_LIMIT = 200;
+
+/** Folio legible y consecutivo por año: CAM-2026-000123 */
+const nextFolio = async () => {
+  const year = new Date().getFullYear();
+  const count = await prisma.report.count({
+    where: { createdAt: { gte: new Date(`${year}-01-01T00:00:00.000Z`) } }
+  });
+  return `CAM-${year}-${String(count + 1).padStart(6, '0')}`;
+};
+
+const shape = (r) => ({
+  ...r,
+  location: { lat: r.lat, lng: r.lng },
+  hasEvidence: Boolean(r.evidenceUrl || r.evidenceGallery),
+  evidenceGallery: r.evidenceGallery ? safeParse(r.evidenceGallery, []) : []
 });
 
+const safeParse = (str, fallback) => {
+  try { return JSON.parse(str); } catch { return fallback; }
+};
+
+// ───────────────────────────────────────────────────────────────────────────
+// GET /api/reports
+// ───────────────────────────────────────────────────────────────────────────
 const getReports = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(MAX_LIMIT, Math.max(1, parseInt(req.query.limit, 10) || 20));
     const skip = (page - 1) * limit;
 
-    const reports = await prisma.report.findMany({
-      skip,
-      take: limit,
-      orderBy: { timestamp: 'desc' },
-      select: {
-        id: true,
-        municipio: true,
-        comunidad: true,
-        lat: true,
-        lng: true,
-        needType: true,
-        timestamp: true,
-        status: true,
-        user: true,
-        assignedTo: true,
-        syncedAt: true,
-        response: true,
-        resolvedAt: true,
-        evidenceUrl: true,
-        sentiment: true,
-        urgency: true,
-        evidenceBase64: true,
-        evidenceGallery: true
-      }
-    });
+    const { status, needType, municipio, assignedTo, urgency, search, desde, hasta } = req.query;
+    const filters = [];
 
-    const total = await prisma.report.count();
+    if (status) filters.push({ status: String(status) });
+    if (needType) filters.push({ needType: String(needType) });
+    if (municipio) filters.push({ municipio: String(municipio) });
+    if (assignedTo) filters.push({ assignedTo: String(assignedTo) });
+    if (urgency) filters.push({ urgency: String(urgency) });
+    if (search) {
+      filters.push({
+        OR: [
+          { folio: { contains: String(search), mode: 'insensitive' } },
+          { description: { contains: String(search), mode: 'insensitive' } },
+          { comunidad: { contains: String(search), mode: 'insensitive' } }
+        ]
+      });
+    }
+    if (desde || hasta) {
+      const createdAt = {};
+      if (desde) createdAt.gte = new Date(desde);
+      if (hasta) createdAt.lte = new Date(`${hasta}T23:59:59.999Z`);
+      filters.push({ createdAt });
+    }
 
-    // Mapping for frontend compatibility
-    const mappedReports = reports.map(r => ({
-      ...r,
-      location: { lat: r.lat, lng: r.lng },
-      hasEvidence: !!(r.evidenceBase64 || r.evidenceUrl || r.evidenceGallery),
-      evidenceGallery: r.evidenceGallery ? JSON.parse(r.evidenceGallery) : []
-    }));
+    const scope = await reportScope(req.user);
+    const where = withScope(scope, filters.length ? { AND: filters } : {});
+
+    const [total, reports] = await Promise.all([
+      prisma.report.count({ where }),
+      prisma.report.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true, folio: true, municipio: true, comunidad: true,
+          lat: true, lng: true, needType: true, description: true,
+          timestamp: true, status: true, user: true, assignedTo: true,
+          syncedAt: true, response: true, resolvedAt: true, dueAt: true,
+          evidenceUrl: true, evidenceGallery: true,
+          sentiment: true, urgency: true, createdAt: true
+        }
+      })
+    ]);
 
     res.json({
-      data: mappedReports,
+      data: reports.map(shape),
       total,
       page,
-      pages: Math.ceil(total / limit)
+      limit,
+      pages: Math.ceil(total / limit) || 1
     });
   } catch (error) {
     console.error('Error al listar reportes:', error);
@@ -63,111 +102,180 @@ const getReports = async (req, res) => {
   }
 };
 
+// ───────────────────────────────────────────────────────────────────────────
+// GET /api/reports/stats
+// ───────────────────────────────────────────────────────────────────────────
+const getReportStats = async (req, res) => {
+  try {
+    const scope = await reportScope(req.user);
+
+    const [total, porEstatus, porTipo, porMunicipio, resueltos, ultimos7] = await Promise.all([
+      prisma.report.count({ where: scope }),
+      prisma.report.groupBy({ by: ['status'], where: scope, _count: { _all: true } }),
+      prisma.report.groupBy({
+        by: ['needType'], where: scope, _count: { _all: true },
+        orderBy: { _count: { needType: 'desc' } }, take: 12
+      }),
+      prisma.report.groupBy({
+        by: ['municipio'], where: scope, _count: { _all: true },
+        orderBy: { _count: { municipio: 'desc' } }, take: 12
+      }),
+      prisma.report.count({ where: withScope(scope, { status: 'Resuelto' }) }),
+      prisma.report.count({
+        where: withScope(scope, {
+          createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+        })
+      })
+    ]);
+
+    res.json({
+      total,
+      resueltos,
+      pendientes: total - resueltos,
+      tasaResolucion: total > 0 ? resueltos / total : 0,
+      ultimos7dias: ultimos7,
+      porEstatus: porEstatus.map(s => ({ status: s.status, total: s._count._all })),
+      porTipo: porTipo.map(t => ({ needType: t.needType || 'Sin tipo', total: t._count._all })),
+      porMunicipio: porMunicipio.map(m => ({
+        municipio: m.municipio || 'Sin municipio', total: m._count._all
+      }))
+    });
+  } catch (error) {
+    console.error('Error en estadísticas de reportes:', error);
+    res.status(500).json({ error: 'Error al calcular estadísticas' });
+  }
+};
+
+// ───────────────────────────────────────────────────────────────────────────
+// GET /api/reports/map
+// ───────────────────────────────────────────────────────────────────────────
+const getReportsMap = async (req, res) => {
+  try {
+    const scope = await reportScope(req.user);
+    const points = await prisma.report.findMany({
+      where: withScope(scope, { lat: { not: null }, lng: { not: null } }),
+      select: {
+        id: true, folio: true, lat: true, lng: true,
+        needType: true, status: true, urgency: true, municipio: true, comunidad: true
+      },
+      take: Math.min(5000, parseInt(req.query.limit, 10) || 2000)
+    });
+    res.json(points);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener puntos del mapa' });
+  }
+};
+
+// ───────────────────────────────────────────────────────────────────────────
+// POST /api/reports
+// ───────────────────────────────────────────────────────────────────────────
 const createReport = async (req, res) => {
   try {
-    const reportData = { ...req.body };
-    let evidenceUrl = null;
-    let evidenceBase64 = reportData.evidenceBase64;
-    let galleryUrls = [];
-
-    // Upload main image
-    if (evidenceBase64 && evidenceBase64.startsWith('data:image')) {
-      try {
-        const uploadResponse = await cloudinary.uploader.upload(evidenceBase64, {
-          folder: 'plataforma_ciudadana',
-          resource_type: 'image'
-        });
-        evidenceUrl = uploadResponse.secure_url;
-        evidenceBase64 = null; 
-      } catch (e) {
-        console.error('Error Cloudinary Main:', e.message);
-      }
-    }
-
-    // Upload gallery images
-    if (Array.isArray(reportData.evidenceGallery) && reportData.evidenceGallery.length > 0) {
-      for (const img of reportData.evidenceGallery) {
-        if (img && img.startsWith('data:image')) {
-          try {
-            const res = await cloudinary.uploader.upload(img, {
-              folder: 'plataforma_ciudadana/gallery',
-              resource_type: 'image'
-            });
-            galleryUrls.push(res.secure_url);
-          } catch (e) {
-            console.error('Error Cloudinary Gallery Item:', e.message);
-            galleryUrls.push(img); // Fallback to base64 if upload fails
-          }
-        } else {
-          galleryUrls.push(img);
-        }
-      }
-    }
+    const d = { ...req.body };
 
     let sentiment = null;
     let urgency = null;
-
-    if (reportData.description && process.env.GEMINI_API_KEY) {
-      const aiData = await analyzeReport(reportData.description, reportData.needType);
-      if (aiData) {
-        sentiment = aiData.sentiment;
-        urgency = aiData.urgency;
-      }
+    if (d.description && process.env.GEMINI_API_KEY) {
+      const ai = await analyzeReport(d.description, d.needType);
+      if (ai) { sentiment = ai.sentiment; urgency = ai.urgency; }
     }
 
-    const savedReport = await prisma.report.create({
+    const campaign = req.user?.campaignId
+      ? { id: req.user.campaignId }
+      : await prisma.campaign.findFirst({ where: { isDefault: true } });
+
+    const saved = await prisma.report.create({
       data: {
-        municipio: reportData.municipio,
-        comunidad: reportData.comunidad,
-        lat: reportData.location?.lat,
-        lng: reportData.location?.lng,
-        needType: reportData.needType,
-        description: reportData.description,
-        evidenceBase64: evidenceBase64,
-        evidenceUrl: evidenceUrl,
-        timestamp: reportData.timestamp,
-        user: reportData.user,
+        folio: await nextFolio(),
+        municipio: d.municipio,
+        comunidad: d.comunidad,
+        lat: d.location?.lat ?? d.lat ?? null,
+        lng: d.location?.lng ?? d.lng ?? null,
+        needType: d.needType,
+        description: d.description,
+        timestamp: d.timestamp,
+        user: d.user || req.user?.username || null,
+        campaignId: campaign?.id ?? null,
         sentiment,
         urgency,
-        customData: typeof reportData.customData === 'object' ? JSON.stringify(reportData.customData) : reportData.customData,
-        evidenceGallery: galleryUrls.length > 0 ? JSON.stringify(galleryUrls) : null,
-        response: reportData.response || null
+        customData: typeof d.customData === 'object'
+          ? JSON.stringify(d.customData)
+          : d.customData,
+        response: d.response || null
       }
     });
 
-    audit(req, 'CREATE', 'Report', savedReport.id,
-      `${reportData.needType || 'Reporte'} en ${reportData.comunidad || reportData.municipio || 's/ubicación'}`);
+    // La evidencia va a disco, nunca a la fila.
+    let evidenceUrl = null;
+    const galleryUrls = [];
 
-    res.status(201).json({ message: 'Sincronización exitosa', id: savedReport.id });
+    if (d.evidenceBase64) {
+      const s = await saveImage({
+        data: d.evidenceBase64, kind: 'REPORT_EVIDENCE',
+        ownerType: 'Report', ownerId: saved.id, uploadedBy: req.user?.username
+      });
+      if (s) evidenceUrl = s.url;
+    }
+
+    if (Array.isArray(d.evidenceGallery)) {
+      for (const img of d.evidenceGallery) {
+        if (!img) continue;
+        // Puede venir ya como URL (reenvío) o como base64 (captura nueva).
+        if (typeof img === 'string' && img.startsWith('/api/media/')) {
+          galleryUrls.push(img);
+          continue;
+        }
+        const s = await saveImage({
+          data: img, kind: 'REPORT_EVIDENCE',
+          ownerType: 'Report', ownerId: saved.id, uploadedBy: req.user?.username
+        });
+        if (s) galleryUrls.push(s.url);
+      }
+    }
+
+    if (evidenceUrl || galleryUrls.length) {
+      await prisma.report.update({
+        where: { id: saved.id },
+        data: {
+          evidenceUrl: evidenceUrl || galleryUrls[0] || null,
+          evidenceGallery: galleryUrls.length ? JSON.stringify(galleryUrls) : null
+        }
+      });
+    }
+
+    audit(req, 'CREATE', 'Report', saved.id,
+      `${d.needType || 'Reporte'} en ${d.comunidad || d.municipio || 's/ubicación'}`);
+
+    res.status(201).json({ message: 'Sincronización exitosa', id: saved.id, folio: saved.folio });
   } catch (error) {
     console.error('Error al guardar reporte:', error);
     res.status(500).json({ error: 'Error al guardar el reporte' });
   }
 };
 
+// ───────────────────────────────────────────────────────────────────────────
+// GET /api/reports/:id
+// ───────────────────────────────────────────────────────────────────────────
 const getReportById = async (req, res) => {
   try {
     const report = await prisma.report.findUnique({ where: { id: req.params.id } });
     if (!report) return res.status(404).json({ error: 'Reporte no encontrado' });
-    // Normalize for frontend compatibility (same shape as list endpoint)
-    res.json({
-      ...report,
-      location: { lat: report.lat, lng: report.lng },
-      hasEvidence: !!(report.evidenceBase64 || report.evidenceUrl || report.evidenceGallery),
-      evidenceGallery: report.evidenceGallery ? JSON.parse(report.evidenceGallery) : []
-    });
+    res.json(shape(report));
   } catch (error) {
     res.status(500).json({ error: 'Error al obtener reporte' });
   }
 };
 
-// Solo estos campos pueden modificarse vía API; evita escribir columnas arbitrarias
+// Campos que la API acepta modificar. Evita escribir columnas arbitrarias.
 const UPDATABLE_REPORT_FIELDS = [
   'municipio', 'comunidad', 'lat', 'lng', 'needType', 'description',
   'status', 'assignedTo', 'response', 'resolvedAt', 'sentiment', 'urgency',
-  'customData', 'evidenceGallery', 'evidenceUrl', 'evidenceBase64'
+  'customData', 'evidenceGallery', 'evidenceUrl', 'dueAt'
 ];
 
+// ───────────────────────────────────────────────────────────────────────────
+// PUT /api/reports/:id
+// ───────────────────────────────────────────────────────────────────────────
 const updateReport = async (req, res) => {
   try {
     const previous = await prisma.report.findUnique({ where: { id: req.params.id } });
@@ -177,15 +285,24 @@ const updateReport = async (req, res) => {
     for (const field of UPDATABLE_REPORT_FIELDS) {
       if (field in req.body) updateData[field] = req.body[field];
     }
-    if (updateData.evidenceGallery && Array.isArray(updateData.evidenceGallery)) {
+
+    if (Array.isArray(updateData.evidenceGallery)) {
       updateData.evidenceGallery = JSON.stringify(updateData.evidenceGallery);
     }
     if (updateData.customData && typeof updateData.customData === 'object') {
-       updateData.customData = JSON.stringify(updateData.customData);
+      updateData.customData = JSON.stringify(updateData.customData);
     }
-    // Al marcar como resuelto, registrar la fecha automáticamente
     if (updateData.status === 'Resuelto' && previous.status !== 'Resuelto' && !updateData.resolvedAt) {
       updateData.resolvedAt = new Date();
+    }
+
+    // Evidencia nueva en base64
+    if (req.body.evidenceBase64) {
+      const s = await saveImage({
+        data: req.body.evidenceBase64, kind: 'REPORT_EVIDENCE',
+        ownerType: 'Report', ownerId: req.params.id, uploadedBy: req.user?.username
+      });
+      if (s) updateData.evidenceUrl = s.url;
     }
 
     const updated = await prisma.report.update({
@@ -193,9 +310,9 @@ const updateReport = async (req, res) => {
       data: updateData
     });
 
-    // Historial del flujo: cambios de estado y asignación de responsable
     const username = req.user?.username || null;
     const historyEntries = [];
+
     if ('status' in updateData && updateData.status !== previous.status) {
       historyEntries.push({
         reportId: updated.id, username, action: 'STATUS_CHANGE',
@@ -214,22 +331,26 @@ const updateReport = async (req, res) => {
         reportId: updated.id, username, action: 'COMMENT', note: updateData.response
       });
     }
-    if (historyEntries.length > 0) {
+    if (historyEntries.length) {
       await prisma.reportHistory.createMany({ data: historyEntries });
     }
 
     audit(req, 'UPDATE', 'Report', updated.id,
       historyEntries.map(h => h.action).join(', ') || 'Edición de datos');
 
-    res.json(updated);
+    res.json(shape(updated));
   } catch (error) {
     console.error('Error al actualizar reporte:', error);
     res.status(500).json({ error: 'Error al actualizar reporte' });
   }
 };
 
+// ───────────────────────────────────────────────────────────────────────────
+// DELETE /api/reports/:id
+// ───────────────────────────────────────────────────────────────────────────
 const deleteReport = async (req, res) => {
   try {
+    await deleteForOwner('Report', req.params.id);
     await prisma.report.delete({ where: { id: req.params.id } });
     audit(req, 'DELETE', 'Report', req.params.id);
     res.json({ message: 'Reporte eliminado' });
@@ -250,4 +371,7 @@ const getReportHistory = async (req, res) => {
   }
 };
 
-module.exports = { getReports, createReport, getReportById, updateReport, deleteReport, getReportHistory };
+module.exports = {
+  getReports, getReportStats, getReportsMap, createReport,
+  getReportById, updateReport, deleteReport, getReportHistory
+};

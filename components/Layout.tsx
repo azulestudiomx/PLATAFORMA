@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { User, UserRole } from '../types';
+import { User, levelOf, ROLE_LABEL } from '../types';
 import { useSyncReports } from '../services/syncHook';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import changelog from '../src/changelog.json';
@@ -19,20 +19,27 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
   if (!user) return <>{children}</>;
 
+  // maxLevel = nivel jerárquico mínimo que ve la opción (menor = más alto).
   const navItems = [
-    { path: '/',             label: 'Dashboard',    icon: 'fa-chart-pie',     roles: [UserRole.ADMIN] },
-    { path: '/electoral',    label: 'Intel. Electoral', icon: 'fa-brain',     roles: [UserRole.ADMIN] },
-    { path: '/capture',      label: 'Capturar',     icon: 'fa-camera',        roles: [UserRole.ADMIN, UserRole.CAPTURIST] },
-    { path: '/people',       label: 'Padrón',       icon: 'fa-address-book',  roles: [UserRole.ADMIN, UserRole.CAPTURIST] },
-    { path: '/reports',      label: 'Expedientes',  icon: 'fa-folder-open',   roles: [UserRole.ADMIN, UserRole.CAPTURIST] },
-    { path: '/calendar',     label: 'Calendario',   icon: 'fa-calendar-alt',  roles: [UserRole.ADMIN, UserRole.CAPTURIST] },
-    { path: '/brigadas',     label: 'Brigadas',     icon: 'fa-people-group',  roles: [UserRole.ADMIN] },
-    { path: '/bitacora',     label: 'Bitácora',     icon: 'fa-clipboard-list',roles: [UserRole.ADMIN] },
-    { path: '/users',        label: 'Usuarios',     icon: 'fa-users',         roles: [UserRole.ADMIN] },
-    { path: '/configuracion',label: 'Configuración',icon: 'fa-sliders-h',     roles: [UserRole.ADMIN] },
+    { path: '/',             label: 'Dashboard',        icon: 'fa-chart-pie',      maxLevel: 4 },
+    { path: '/electoral',    label: 'Intel. Electoral', icon: 'fa-brain',          maxLevel: 4 },
+    { path: '/capture',      label: 'Capturar',         icon: 'fa-camera',         maxLevel: 7 },
+    { path: '/people',       label: 'Padrón',           icon: 'fa-address-book',   maxLevel: 7 },
+    { path: '/reports',      label: 'Expedientes',      icon: 'fa-folder-open',    maxLevel: 7 },
+    { path: '/calendar',     label: 'Calendario',       icon: 'fa-calendar-alt',   maxLevel: 7 },
+    { path: '/estructura',   label: 'Red de Promoción', icon: 'fa-sitemap',        maxLevel: 5 },
+    { path: '/campo',        label: 'Campo',            icon: 'fa-route',          maxLevel: 6 },
+    { path: '/encuestas',    label: 'Encuestas',        icon: 'fa-clipboard-question', maxLevel: 6 },
+    { path: '/mensajeria',   label: 'Mensajería',       icon: 'fa-paper-plane',    maxLevel: 3 },
+    { path: '/brigadas',     label: 'Productividad',    icon: 'fa-people-group',   maxLevel: 4 },
+    { path: '/calidad',      label: 'Calidad Padrón',   icon: 'fa-shield-halved',  maxLevel: 3 },
+    { path: '/users',        label: 'Usuarios',         icon: 'fa-users',          maxLevel: 3 },
+    { path: '/bitacora',     label: 'Bitácora',         icon: 'fa-clipboard-list', maxLevel: 2 },
+    { path: '/configuracion',label: 'Configuración',    icon: 'fa-sliders-h',      maxLevel: 2 },
   ];
 
-  const visibleItems = navItems.filter(item => item.roles.includes(user.role));
+  const userLevel = levelOf(user.role);
+  const visibleItems = navItems.filter(item => userLevel <= item.maxLevel);
   const initials = user.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
 
   const SidebarContent = () => (
@@ -80,7 +87,12 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-white truncate">{user.name}</p>
-            <p className="text-[11px] text-white/40 capitalize">{user.role.toLowerCase()}</p>
+            <p className="text-[11px] text-white/40 truncate">{ROLE_LABEL[user.role] || user.role}</p>
+            {user.territory && (
+              <p className="text-[10px] text-white/30 truncate">
+                <i className="fas fa-location-dot mr-1"></i>{user.territory.name}
+              </p>
+            )}
           </div>
         </div>
       </div>

@@ -1,57 +1,6 @@
 const prisma = require('../services/db');
 const { audit } = require('../services/auditService');
 
-// Person (Padrón)
-const getPeople = async (req, res) => {
-  try {
-    const people = await prisma.person.findMany({ orderBy: { createdAt: 'desc' } });
-    res.json(people);
-  } catch (error) {
-    res.status(500).json({ error: 'Error al obtener padrón' });
-  }
-};
-
-const createPerson = async (req, res) => {
-  try {
-    const { id, _id, createdBy, ...data } = req.body;
-    const person = await prisma.person.create({
-      data: { ...data, createdBy: req.user?.username || null }
-    });
-    audit(req, 'CREATE', 'Person', person.id, person.name);
-    res.status(201).json(person);
-  } catch (error) {
-    if (error.code === 'P2002') return res.status(400).json({ error: 'La clave INE ya está registrada' });
-    console.error('Backend Person Create Error:', error);
-    res.status(500).json({ error: 'Error al registrar persona' });
-  }
-};
-
-const updatePerson = async (req, res) => {
-  try {
-    const { id, _id, createdAt, updatedAt, createdBy, ...data } = req.body;
-    const updated = await prisma.person.update({
-      where: { id: req.params.id },
-      data
-    });
-    audit(req, 'UPDATE', 'Person', updated.id, updated.name);
-    res.json(updated);
-  } catch (error) {
-    if (error.code === 'P2002') return res.status(400).json({ error: 'La clave INE ya está registrada en otra persona' });
-    console.error('Backend Person Update Error:', error);
-    res.status(500).json({ error: 'Error al actualizar persona' });
-  }
-};
-
-const deletePerson = async (req, res) => {
-  try {
-    const person = await prisma.person.delete({ where: { id: req.params.id } });
-    audit(req, 'DELETE', 'Person', req.params.id, person.name);
-    res.json({ message: 'Persona eliminada' });
-  } catch (error) {
-    res.status(500).json({ error: 'Error al eliminar persona' });
-  }
-};
-
 // Events (Calendario)
 const getEvents = async (req, res) => {
   try {
@@ -62,11 +11,26 @@ const getEvents = async (req, res) => {
   }
 };
 
+const EVENT_FIELDS = [
+  'title','date','location','community','type','description','assignedTo',
+  'lat','lng','territoryId','aforoEsperado','aforoReal','costo',
+  'responsableAvanzada','contactoLocal','telefonoLocal','estado'
+];
+
+const pickEvent = (body) => {
+  const out = {};
+  for (const f of EVENT_FIELDS) if (f in body) out[f] = body[f];
+  if (out.aforoEsperado != null) out.aforoEsperado = Number(out.aforoEsperado) || null;
+  if (out.aforoReal != null) out.aforoReal = Number(out.aforoReal) || null;
+  if (out.costo != null && out.costo !== '') out.costo = String(out.costo); else delete out.costo;
+  return out;
+};
+
 const createEvent = async (req, res) => {
   try {
-    const { id, _id, createdAt, updatedAt, ...data } = req.body;
+    const data = pickEvent(req.body);
     const event = await prisma.event.create({
-      data: { ...data, createdBy: data.createdBy || req.user?.username || null }
+      data: { ...data, createdBy: req.user?.username || null }
     });
     audit(req, 'CREATE', 'Event', event.id, event.title);
     res.status(201).json(event);
@@ -77,7 +41,7 @@ const createEvent = async (req, res) => {
 
 const updateEvent = async (req, res) => {
   try {
-    const { id, _id, createdAt, updatedAt, ...data } = req.body;
+    const data = pickEvent(req.body);
     const updated = await prisma.event.update({
        where: { id: req.params.id },
        data
@@ -150,7 +114,131 @@ const updateConfig = async (req, res) => {
 };
 
 module.exports = {
-  getPeople, createPerson, updatePerson, deletePerson,
   getEvents, createEvent, updateEvent, deleteEvent,
   getConfig, updateConfig
 };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Agenda del candidato (Fase 3)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const { findSeccion } = require('../services/territoryService');
+
+/**
+ * GET /api/events/:id/ficha
+ * Todo lo que hace falta saber antes de pisar un evento: histórico electoral
+ * de la sección, gestiones pendientes y quién es líder local ahí.
+ */
+const getEventFicha = async (req, res) => {
+  try {
+    const evento = await prisma.event.findUnique({
+      where: { id: req.params.id },
+      include: {
+        territory: true,
+        asistentes: { orderBy: { createdAt: 'desc' } },
+        _count: { select: { asistentes: true } },
+      },
+    });
+    if (!evento) return res.status(404).json({ error: 'Evento no encontrado' });
+
+    const t = evento.territory;
+    let contexto = null;
+
+    if (t) {
+      const [padron, lideres, pendientes] = await Promise.all([
+        prisma.person.count({ where: { territoryId: t.id } }),
+        prisma.person.findMany({
+          where: { territoryId: t.id, esLider: true },
+          select: { id: true, name: true, phone: true },
+          take: 10,
+        }),
+        prisma.report.count({
+          where: {
+            municipio: evento.community || undefined,
+            status: { not: 'Resuelto' },
+          },
+        }),
+      ]);
+
+      contexto = {
+        territorio: { id: t.id, nombre: t.name, code: t.code, tipo: t.type },
+        listaNominal: t.listaNominal,
+        padronPropio: padron,
+        cobertura: t.listaNominal > 0 ? padron / t.listaNominal : null,
+        lideresLocales: lideres,
+        gestionesPendientes: pendientes,
+      };
+    }
+
+    res.json({
+      ...evento,
+      asistentesRegistrados: evento._count.asistentes,
+      // Un evento con 300 asistentes que no deja nombres no sirve de nada:
+      // esta cifra es la que mide si el evento aportó al padrón.
+      cumplimientoAforo: evento.aforoEsperado > 0
+        ? (evento.aforoReal ?? evento._count.asistentes) / evento.aforoEsperado
+        : null,
+      costoPorAsistente: evento.costo && evento._count.asistentes > 0
+        ? Number(evento.costo) / evento._count.asistentes
+        : null,
+      contexto,
+    });
+  } catch (error) {
+    console.error('Error al obtener la ficha del evento:', error);
+    res.status(500).json({ error: 'Error al obtener la ficha del evento' });
+  }
+};
+
+/** POST /api/events/:id/asistentes — registro en la puerta */
+const addEventAttendee = async (req, res) => {
+  try {
+    const { nombre, telefono, personId, estado } = req.body;
+    if (!nombre?.trim() && !personId) {
+      return res.status(400).json({ error: 'Indica el nombre o elige a alguien del padrón' });
+    }
+
+    const evento = await prisma.event.findUnique({ where: { id: req.params.id } });
+    if (!evento) return res.status(404).json({ error: 'Evento no encontrado' });
+
+    let nombreFinal = nombre?.trim();
+    if (personId && !nombreFinal) {
+      const p = await prisma.person.findUnique({ where: { id: personId } });
+      nombreFinal = p?.name || 'Asistente';
+    }
+
+    const asistente = await prisma.eventAttendee.create({
+      data: {
+        eventId: evento.id,
+        personId: personId || null,
+        nombre: nombreFinal,
+        telefono: telefono || null,
+        estado: estado || 'ASISTIO',
+        registradoPor: req.user?.username || null,
+      },
+    });
+
+    // El aforo real se mantiene al día con cada registro en la puerta.
+    const total = await prisma.eventAttendee.count({ where: { eventId: evento.id } });
+    await prisma.event.update({ where: { id: evento.id }, data: { aforoReal: total } });
+
+    res.status(201).json({ ...asistente, aforoReal: total });
+  } catch (error) {
+    console.error('Error al registrar asistente:', error);
+    res.status(500).json({ error: 'Error al registrar al asistente' });
+  }
+};
+
+const deleteEventAttendee = async (req, res) => {
+  try {
+    const a = await prisma.eventAttendee.delete({ where: { id: req.params.attendeeId } });
+    const total = await prisma.eventAttendee.count({ where: { eventId: a.eventId } });
+    await prisma.event.update({ where: { id: a.eventId }, data: { aforoReal: total } });
+    res.json({ message: 'Asistente eliminado', aforoReal: total });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar al asistente' });
+  }
+};
+
+module.exports.getEventFicha = getEventFicha;
+module.exports.addEventAttendee = addEventAttendee;
+module.exports.deleteEventAttendee = deleteEventAttendee;

@@ -1,46 +1,336 @@
+// ───────────────────────────────────────────────────────────────────────────
+// Plataforma Ciudadana Campeche — modelo de datos
+// Fase 1 (Cimientos): PostgreSQL, campaña, territorio, roles jerárquicos,
+// sesiones revocables, consentimiento y archivos fuera de la base.
+// ───────────────────────────────────────────────────────────────────────────
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(uuid())
-  username  String   @unique
-  password  String
-  name      String
-  role      String   @default("CAPTURIST")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// ───────────────────────────────────────────────────────────────────────────
+// Campaña — permite varias campañas en la misma instalación
+// ───────────────────────────────────────────────────────────────────────────
+model Campaign {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  eleccion    String   @default("2027")
+  cargo       String   @default("Presidente Municipal")
+  ambito      String   @default("MUNICIPAL") // ESTATAL, MUNICIPAL, DISTRITAL
+  fechaInicio DateTime?
+  fechaJornada DateTime?
+  topeGastos  Decimal? @db.Decimal(14, 2)
+  estado      String   @default("ACTIVA") // ACTIVA, ARCHIVADA
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users   User[]
+  people  Person[]
+  reports Report[]
+  events  Event[]
+  structureNodes StructureNode[]
+  goals          Goal[]
+  brigades       Brigade[]
+  surveys        Survey[]
+  messageCampaigns MessageCampaign[]
+
+  @@index([estado])
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// Territorio — jerarquía estado → distrito → municipio → sección → manzana
+// ───────────────────────────────────────────────────────────────────────────
+model Territory {
+  id       String  @id @default(uuid())
+  type     String // ESTADO, DISTRITO_F, DISTRITO_L, MUNICIPIO, SECCION, MANZANA
+  code     String // clave dentro de su tipo (ej. sección "0001", municipio "1")
+  name     String
+  parentId String?
+  parent   Territory?  @relation("TerritoryTree", fields: [parentId], references: [id])
+  children Territory[] @relation("TerritoryTree")
+
+  // Atributos electorales (poblados desde los datos del IEEC / INE)
+  listaNominal Int?
+  casillas     Int?
+  tipoSeccion  String? // Urbana, Mixta, Rural
+  distritoF    Int?
+  distritoL    Int?
+  lat          Float?
+  lng          Float?
+
+  // Ruta materializada: acelera "todo lo que cuelga de aquí" sin recursión
+  path  String @default("")
+  depth Int    @default(0)
+
+  users           User[]
+  people          Person[]
+  structureNodes  StructureNode[]
+  goals           Goal[]
+  brigades        Brigade[]
+  brigadeShifts   BrigadeShift[]
+  visits          Visit[]
+  surveyResponses SurveyResponse[]
+  events          Event[]
+
+  @@unique([type, code])
+  @@index([parentId])
+  @@index([type])
+  @@index([path])
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Usuario — roles jerárquicos con alcance territorial
+// ───────────────────────────────────────────────────────────────────────────
+model User {
+  id       String @id @default(uuid())
+  username String @unique
+  password String
+  name     String
+
+  // Rol jerárquico. El nivel numérico decide qué puede ver y sobre quién manda.
+  // 0 SUPERADMIN · 1 CANDIDATO · 2 COORD_GENERAL · 3 COORD_MUNICIPAL
+  // 4 COORD_SECCIONAL · 5 PROMOTOR · 6 CAPTURISTA · 7 REPRESENTANTE
+  role  String @default("CAPTURISTA")
+  level Int    @default(6)
+
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id])
+
+  // Alcance territorial: el usuario solo ve datos que cuelgan de este nodo
+  territoryId String?
+  territory   Territory? @relation(fields: [territoryId], references: [id])
+
+  phone    String?
+  email    String?
+  active   Boolean @default(true)
+  photoUrl String?
+
+  lastLoginAt       DateTime?
+  passwordChangedAt DateTime  @default(now())
+  failedAttempts    Int       @default(0)
+  lockedUntil       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions        Session[]
+  structureNode   StructureNode?
+  brigadeMemberOf BrigadeMember[]
+
+  @@index([role])
+  @@index([campaignId])
+  @@index([territoryId])
+  @@index([active])
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Sesión — permite revocar un token concreto (dispositivo perdido en campo)
+// ───────────────────────────────────────────────────────────────────────────
+model Session {
+  id        String   @id @default(uuid())
+  jti       String   @unique // identificador del JWT emitido
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userAgent String?
+  ip        String?
+  createdAt DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+  revokedBy String?
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Archivo — las imágenes viven en disco, la base solo guarda la referencia
+// ───────────────────────────────────────────────────────────────────────────
+model MediaAsset {
+  id        String   @id @default(uuid())
+  kind      String // PERSON_PHOTO, PERSON_INE, REPORT_EVIDENCE, ACTA, INCIDENT
+  path      String // ruta relativa dentro de UPLOAD_DIR
+  thumbPath String?
+  mime      String   @default("image/jpeg")
+  bytes     Int      @default(0)
+  sha256    String // huella: detecta fotos reutilizadas entre registros
+  width     Int?
+  height    Int?
+
+  ownerType String // Person, Report, Incident
+  ownerId   String
+  sensitive Boolean @default(false) // credencial de elector: acceso restringido
+
+  uploadedBy String?
+  createdAt  DateTime @default(now())
+
+  @@index([ownerType, ownerId])
+  @@index([sha256])
+  @@index([kind])
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Consentimiento — base legal del tratamiento de datos personales
+// ───────────────────────────────────────────────────────────────────────────
+model Consent {
+  id           String   @id @default(uuid())
+  personId     String
+  person       Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  otorgado     Boolean  @default(false)
+  medio        String   @default("FISICO") // FISICO, DIGITAL, VERBAL
+  avisoVersion String   @default("1.0")
+  firmaPath    String? // imagen de la firma o del formato firmado
+  finalidades  String   @default("CONTACTO,GESTION") // separadas por coma
+  ip           String?
+  capturedBy   String?
+  otorgadoAt   DateTime @default(now())
+  revocadoAt   DateTime?
+
+  @@index([personId])
+  @@index([otorgado])
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Persona (padrón de simpatizantes)
+// ───────────────────────────────────────────────────────────────────────────
+model Person {
+  id    String  @id @default(uuid())
+  name  String
+  phone String?
+  email String?
+
+  address   String?
+  municipio String?
+  localidad String?
+  distrito  String?
+  zona      String?
+  seccion   String?
+
+  // Clave de elector cifrada en reposo (AES-256-GCM).
+  // ineHash es un HMAC determinista: permite unicidad y búsqueda exacta
+  // sin guardar el dato en claro.
+  ineEnc  String?
+  ineHash String? @unique
+  ineLast4 String? // últimos 4 dígitos, para mostrar sin descifrar
+
+  birthday String?
+  genero   String?
+
+  photoUrl    String?
+  inePhotoUrl String?
+
+  lat Float?
+  lng Float?
+
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id])
+
+  territoryId String?
+  territory   Territory? @relation(fields: [territoryId], references: [id])
+
+  // ── Fase 2: lo que convierte un contacto en un voto contable ──
+
+  // Quién responde por esta persona dentro de la red de promoción.
+  promotorId String?
+  promotor   StructureNode? @relation("PersonasDelPromotor", fields: [promotorId], references: [id])
+
+  // DURO, BLANDO, INDECISO, OPOSITOR, NO_CONTACTADO
+  afinidad String @default("NO_CONTACTADO")
+
+  // Compromiso explícito de ir a votar, con rastro de quién lo levantó.
+  compromisoVoto   Boolean   @default(false)
+  compromisoAt     DateTime?
+  compromisoPor    String?
+
+  // A cuántas personas más se compromete a llevar. El multiplicador es la
+  // diferencia entre un padrón de nombres y una estructura de movilización.
+  multiplicador Int @default(0)
+
+  // BRIGADA, EVENTO, REFERIDO, GESTION, REDES, IMPORTACION
+  origen String @default("BRIGADA")
+
+  // Verificación en segunda visita: un dato sin verificar envejece.
+  verificado   Boolean   @default(false)
+  verificadoAt DateTime?
+  verificadoPor String?
+
+  // Marcas de perfil para segmentar movilización y mensajería.
+  esLider           Boolean @default(false)
+  requiereTransporte Boolean @default(false)
+  primeraVotacion   Boolean @default(false)
+  adultoMayor       Boolean @default(false)
+
+  notas String?
+
+  synced    Int      @default(1)
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  consents        Consent[]
+  qualityFlags    DataQualityFlag[]
+  visitas         Visit[]
+  surveyResponses SurveyResponse[]
+  mensajes        Message[]
+  asistencias     EventAttendee[]
+
+  @@index([seccion])
+  @@index([municipio])
+  @@index([localidad])
+  @@index([createdBy])
+  @@index([campaignId])
+  @@index([territoryId])
+  @@index([name])
+  @@index([phone])
+  @@index([createdAt])
+  @@index([promotorId])
+  @@index([afinidad])
+  @@index([compromisoVoto])
+  @@index([verificado])
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Reporte ciudadano (expedientes de gestión)
+// ───────────────────────────────────────────────────────────────────────────
 model Report {
-  id             String    @id @default(uuid())
-  municipio      String?
-  comunidad      String?
-  lat            Float?
-  lng            Float?
-  needType       String?
-  description    String?
-  evidenceBase64 String?
+  id          String  @id @default(uuid())
+  folio       String? @unique
+  municipio   String?
+  comunidad   String?
+  lat         Float?
+  lng         Float?
+  needType    String?
+  description String?
+
+  evidenceUrl     String?
   evidenceGallery String?
-  evidenceUrl    String?
-  timestamp      Float?
-  user           String?
-  status         String    @default("Pendiente")
-  syncedAt       DateTime  @default(now())
-  customData     String?
-  response       String?
-  resolvedAt     DateTime?
-  sentiment      String?
-  urgency        String?
-  assignedTo     String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  history        ReportHistory[]
+
+  timestamp Float?
+  user      String?
+  status    String  @default("Pendiente")
+
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id])
+
+  syncedAt   DateTime  @default(now())
+  customData String?
+  response   String?
+  resolvedAt DateTime?
+  sentiment  String?
+  urgency    String?
+  assignedTo String?
+  dueAt      DateTime?
+
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  history   ReportHistory[]
 
   @@index([status])
   @@index([needType])
@@ -48,6 +338,8 @@ model Report {
   @@index([timestamp])
   @@index([user])
   @@index([assignedTo])
+  @@index([campaignId])
+  @@index([createdAt])
 }
 
 model ReportHistory {
@@ -55,7 +347,7 @@ model ReportHistory {
   reportId   String
   report     Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
   username   String?
-  action     String   // STATUS_CHANGE, ASSIGNED, COMMENT, EDIT
+  action     String // STATUS_CHANGE, ASSIGNED, COMMENT, EDIT
   fromStatus String?
   toStatus   String?
   note       String?
@@ -64,64 +356,74 @@ model ReportHistory {
   @@index([reportId])
 }
 
-model Person {
-  id        String   @id @default(uuid())
-  name      String
-  phone     String?
-  address   String?
-  municipio String?
-  localidad String?
-  distrito  String?
-  zona      String?
-  seccion   String?
-  ine       String?  @unique
-  email     String?
-  birthday  String?
-  photo     String?
-  inePhoto  String?
-  lat       Float?
-  lng       Float?
-  synced    Int      @default(1)
-  createdBy String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([seccion])
-  @@index([municipio])
-  @@index([localidad])
-  @@index([createdBy])
-}
-
-
+// ───────────────────────────────────────────────────────────────────────────
+// Evento de agenda
+// ───────────────────────────────────────────────────────────────────────────
 model Event {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   title       String
   date        String
   location    String?
   community   String?
-  type        String   @default("Reunión") // Reunión, Visita, Jornada, Mitin
+  type        String  @default("Reunión")
   description String?
-  assignedTo  String?  // Comma separated users or JSON
-  createdBy   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  assignedTo  String?
+
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id])
+
+  // ── Fase 3: logística de la agenda del candidato ──
+  lat Float?
+  lng Float?
+
+  territoryId String?
+  territory   Territory? @relation(fields: [territoryId], references: [id])
+
+  aforoEsperado Int?
+  aforoReal     Int?
+  costo         Decimal? @db.Decimal(12, 2)
+
+  responsableAvanzada String?
+  contactoLocal       String?
+  telefonoLocal       String?
+  // PLANEADO, CONFIRMADO, REALIZADO, CANCELADO
+  estado String @default("PLANEADO")
+
+  asistentes EventAttendee[]
+
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@index([campaignId])
+  @@index([territoryId])
+  @@index([estado])
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// Bitácora de auditoría
+// ───────────────────────────────────────────────────────────────────────────
 model AuditLog {
-  id        String   @id @default(uuid())
-  username  String?
-  role      String?
-  action    String   // CREATE, UPDATE, DELETE, LOGIN
-  entity    String   // Person, Report, Event, User, SystemConfig
-  entityId  String?
-  detail    String?  // resumen legible del cambio
+  id       String  @id @default(uuid())
+  username String?
+  role     String?
+  action   String // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, EXPORT, VIEW_SENSITIVE
+  entity   String
+  entityId String?
+  detail   String?
+  ip       String?
   createdAt DateTime @default(now())
 
   @@index([entity])
   @@index([username])
   @@index([createdAt])
+  @@index([action])
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// Configuración del sistema
+// ───────────────────────────────────────────────────────────────────────────
 model SystemConfig {
   id           String @id @default(uuid())
   primaryColor String @default("#8B0000")
@@ -130,4 +432,449 @@ model SystemConfig {
   needTypes    String @default("[\"Agua Potable\", \"Luz Eléctrica\", \"Drenaje\", \"Salud\", \"Educación\", \"Seguridad\", \"Otro\"]")
   eventTypes   String @default("[\"Jornada de Captura\", \"Visita de Campo\", \"Reunión Vecinal\", \"Entrega de Apoyo\"]")
   customFields String @default("[]")
+  avisoPrivacidad String @default("")
+  avisoVersion    String @default("1.0")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FASE 2 — Estructura de campaña
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ───────────────────────────────────────────────────────────────────────────
+// Red de promoción: la pirámide real de la campaña.
+//
+// coordinador general → coordinador municipal → coordinador seccional →
+// promotor → simpatizantes. Cada nodo responde por una meta y por su rama.
+//
+// Se guarda ruta materializada (`path`) para resolver "todo lo que cuelga
+// de aquí" en una sola consulta, igual que en Territory.
+// ───────────────────────────────────────────────────────────────────────────
+model StructureNode {
+  id       String @id @default(uuid())
+  nombre   String
+  telefono String?
+  email    String?
+
+  // Cuenta del sistema, si la persona tiene acceso a la plataforma.
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id])
+
+  // Nivel dentro de la red, alineado con los roles de config/roles.js.
+  rol   String // COORD_GENERAL, COORD_MUNICIPAL, COORD_SECCIONAL, PROMOTOR
+  nivel Int    @default(5)
+
+  parentId String?
+  parent   StructureNode?  @relation("RedDePromocion", fields: [parentId], references: [id])
+  children StructureNode[] @relation("RedDePromocion")
+
+  // Territorio del que responde este nodo.
+  territoryId String?
+  territory   Territory? @relation(fields: [territoryId], references: [id])
+
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id])
+
+  metaSimpatizantes Int     @default(0)
+  activo            Boolean @default(true)
+
+  path  String @default("")
+  depth Int    @default(0)
+
+  personas Person[] @relation("PersonasDelPromotor")
+  goals    Goal[]
+  brigadas Brigade[] @relation("BrigadasDelJefe")
+
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+  @@index([territoryId])
+  @@index([campaignId])
+  @@index([path])
+  @@index([rol])
+  @@index([activo])
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Meta asignada a un nodo de la estructura o a un territorio.
+// La calculadora electoral ya produce la meta global; esto la baja a
+// responsables concretos y medibles.
+// ───────────────────────────────────────────────────────────────────────────
+model Goal {
+  id     String @id @default(uuid())
+  tipo   String @default("SIMPATIZANTES") // SIMPATIZANTES, COMPROMISOS, VERIFICADOS
+  target Int    @default(0)
+
+  nodeId String?
+  node   StructureNode? @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  territoryId String?
+  territory   Territory? @relation(fields: [territoryId], references: [id])
+
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id])
+
+  // Ventana de cumplimiento. Sin fecha de corte, una meta no se puede medir.
+  desde DateTime?
+  hasta DateTime?
+
+  notas     String?
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([nodeId])
+  @@index([territoryId])
+  @@index([campaignId])
+  @@index([tipo])
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Marca de sospecha sobre un registro del padrón.
+//
+// En toda campaña se infla el padrón. Si el sistema no lo detecta, la meta
+// se cumple en pantalla y se pierde en la urna. Cada marca guarda por qué
+// se levantó y qué se resolvió, para que nadie borre evidencia en silencio.
+// ───────────────────────────────────────────────────────────────────────────
+model DataQualityFlag {
+  id String @id @default(uuid())
+
+  personId String?
+  person   Person? @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  // RAFAGA, GPS_DUPLICADO, FOTO_REPETIDA, TELEFONO_REPETIDO,
+  // DOMICILIO_REPETIDO, SECCION_INVALIDA, SECCION_INCOHERENTE,
+  // INE_INVALIDA, MUNICIPIO_INVALIDO, EDAD_IMPROBABLE
+  tipo     String
+  // ALTA, MEDIA, BAJA
+  severidad String @default("MEDIA")
+  detalle   String?
+
+  // Con quién choca este registro, cuando la marca es por duplicado.
+  relacionadoCon String?
+  capturadoPor   String?
+
+  // PENDIENTE, CONFIRMADO, DESCARTADO, CORREGIDO
+  estado     String    @default("PENDIENTE")
+  resueltoPor String?
+  resueltoAt DateTime?
+  resolucion String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([personId])
+  @@index([tipo])
+  @@index([estado])
+  @@index([severidad])
+  @@index([capturadoPor])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FASE 3 — Operación en campo
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ───────────────────────────────────────────────────────────────────────────
+// Brigada: el equipo que sale a territorio.
+// Antes "Brigadas" era solo una vista estadística derivada de los usuarios;
+// aquí pasa a ser una entidad con integrantes, territorio y jornadas.
+// ───────────────────────────────────────────────────────────────────────────
+model Brigade {
+  id       String  @id @default(uuid())
+  nombre   String
+  vehiculo String?
+  activa   Boolean @default(true)
+
+  // Quién la encabeza dentro de la red de promoción.
+  jefeId String?
+  jefe   StructureNode? @relation("BrigadasDelJefe", fields: [jefeId], references: [id])
+
+  territoryId String?
+  territory   Territory? @relation(fields: [territoryId], references: [id])
+
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id])
+
+  integrantes BrigadeMember[]
+  jornadas    BrigadeShift[]
+  visitas     Visit[]
+
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([territoryId])
+  @@index([campaignId])
+  @@index([activa])
+}
+
+model BrigadeMember {
+  id        String  @id @default(uuid())
+  brigadeId String
+  brigade   Brigade @relation(fields: [brigadeId], references: [id], onDelete: Cascade)
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+  nombre String
+  rol    String  @default("BRIGADISTA") // JEFE, BRIGADISTA, CHOFER
+
+  createdAt DateTime @default(now())
+
+  @@index([brigadeId])
+  @@index([userId])
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Jornada de brigada: una salida a campo con hora de entrada y de salida.
+//
+// El check-in guarda si la ubicación cayó dentro del territorio asignado.
+// Sin esa comprobación, "estuve en campo" es solo una afirmación.
+// ───────────────────────────────────────────────────────────────────────────
+model BrigadeShift {
+  id        String  @id @default(uuid())
+  brigadeId String
+  brigade   Brigade @relation(fields: [brigadeId], references: [id], onDelete: Cascade)
+
+  fecha DateTime @default(now())
+
+  territoryId String?
+  territory   Territory? @relation(fields: [territoryId], references: [id])
+
+  checkInAt   DateTime?
+  checkInLat  Float?
+  checkInLng  Float?
+  // Distancia en km al centro del territorio asignado, al momento de entrar.
+  checkInKm   Float?
+  dentroDeZona Boolean @default(false)
+
+  checkOutAt  DateTime?
+  checkOutLat Float?
+  checkOutLng Float?
+
+  metaVisitas Int    @default(0)
+  estado      String @default("PLANEADA") // PLANEADA, EN_CURSO, CERRADA
+  notas       String?
+  resumen     String?
+
+  visitas Visit[]
+
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([brigadeId])
+  @@index([fecha])
+  @@index([estado])
+  @@index([territoryId])
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Visita a un domicilio. Registrar los "no estaba" y los rechazos es lo que
+// evita que la brigada siguiente vuelva a tocar la misma puerta.
+// ───────────────────────────────────────────────────────────────────────────
+model Visit {
+  id String @id @default(uuid())
+
+  shiftId String?
+  shift   BrigadeShift? @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+
+  brigadeId String?
+  brigade   Brigade? @relation(fields: [brigadeId], references: [id], onDelete: SetNull)
+
+  personId String?
+  person   Person?  @relation(fields: [personId], references: [id], onDelete: SetNull)
+
+  direccion String?
+  lat       Float?
+  lng       Float?
+
+  territoryId String?
+  territory   Territory? @relation(fields: [territoryId], references: [id])
+
+  // CONTACTADO, NO_ESTABA, RECHAZO, DOMICILIO_INEXISTENTE, CERRADO, YA_APOYA
+  resultado String @default("CONTACTADO")
+  notas     String?
+  evidenciaUrl String?
+
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@index([shiftId])
+  @@index([brigadeId])
+  @@index([personId])
+  @@index([territoryId])
+  @@index([resultado])
+  @@index([createdAt])
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Encuestas aplicadas en campo
+// ───────────────────────────────────────────────────────────────────────────
+model Survey {
+  id          String  @id @default(uuid())
+  titulo      String
+  descripcion String?
+  activa      Boolean @default(true)
+  anonima     Boolean @default(false)
+
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id])
+
+  preguntas  SurveyQuestion[]
+  respuestas SurveyResponse[]
+
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([activa])
+  @@index([campaignId])
+}
+
+model SurveyQuestion {
+  id       String @id @default(uuid())
+  surveyId String
+  survey   Survey @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+
+  orden  Int    @default(0)
+  texto  String
+  // UNICA, MULTIPLE, ESCALA, ABIERTA, NUMERO
+  tipo   String @default("UNICA")
+  // Opciones en JSON para UNICA y MULTIPLE.
+  opciones String @default("[]")
+  requerida Boolean @default(false)
+
+  respuestas SurveyAnswer[]
+
+  @@index([surveyId])
+}
+
+model SurveyResponse {
+  id       String @id @default(uuid())
+  surveyId String
+  survey   Survey @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+
+  personId String?
+  person   Person?  @relation(fields: [personId], references: [id], onDelete: SetNull)
+
+  territoryId String?
+  territory   Territory? @relation(fields: [territoryId], references: [id])
+  seccion     String?
+
+  lat Float?
+  lng Float?
+
+  respuestas SurveyAnswer[]
+
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@index([surveyId])
+  @@index([personId])
+  @@index([territoryId])
+  @@index([seccion])
+  @@index([createdAt])
+}
+
+model SurveyAnswer {
+  id         String @id @default(uuid())
+  responseId String
+  response   SurveyResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  questionId String
+  question   SurveyQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  valor    String? // texto, opción elegida, o JSON para múltiple
+  valorNum Float?  // escalas y números, para poder promediar
+
+  @@index([responseId])
+  @@index([questionId])
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Mensajería masiva segmentada
+//
+// El envío real depende de un proveedor externo con credenciales. Sin ellas
+// el módulo opera en modo simulación: arma la lista, respeta las bajas y
+// registra todo, pero no manda nada.
+// ───────────────────────────────────────────────────────────────────────────
+model MessageCampaign {
+  id     String @id @default(uuid())
+  nombre String
+  canal  String @default("WHATSAPP") // WHATSAPP, SMS, EMAIL
+
+  plantilla String
+  // Filtros del padrón que definen a quién va, en JSON.
+  segmento  String @default("{}")
+
+  // BORRADOR, LISTA, ENVIANDO, ENVIADA, CANCELADA
+  estado String @default("BORRADOR")
+  // Sin credenciales de proveedor, el envío se simula y se marca aquí.
+  simulado Boolean @default(true)
+
+  programadaPara DateTime?
+  enviadaAt      DateTime?
+
+  totalDestinatarios Int @default(0)
+  enviados           Int @default(0)
+  fallidos           Int @default(0)
+
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id])
+
+  mensajes Message[]
+
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([estado])
+  @@index([campaignId])
+}
+
+model Message {
+  id                String @id @default(uuid())
+  messageCampaignId String
+  messageCampaign   MessageCampaign @relation(fields: [messageCampaignId], references: [id], onDelete: Cascade)
+
+  personId String?
+  person   Person?  @relation(fields: [personId], references: [id], onDelete: SetNull)
+
+  destino String // teléfono o correo ya resuelto
+  cuerpo  String
+
+  // PENDIENTE, ENVIADO, ENTREGADO, FALLIDO, OMITIDO
+  estado String  @default("PENDIENTE")
+  error  String?
+  enviadoAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([messageCampaignId])
+  @@index([personId])
+  @@index([estado])
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Asistencia a eventos: liga la agenda con el padrón.
+// Sin esto, un evento con 300 asistentes no deja ni un nombre nuevo.
+// ───────────────────────────────────────────────────────────────────────────
+model EventAttendee {
+  id      String @id @default(uuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  personId String?
+  person   Person?  @relation(fields: [personId], references: [id], onDelete: SetNull)
+
+  nombre   String
+  telefono String?
+  // REGISTRADO, CONFIRMADO, ASISTIO, NO_ASISTIO
+  estado   String @default("ASISTIO")
+
+  registradoPor String?
+  createdAt     DateTime @default(now())
+
+  @@index([eventId])
+  @@index([personId])
 }

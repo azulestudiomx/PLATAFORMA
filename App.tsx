@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import { ConfigProvider } from './contexts/ConfigContext';
-import { UserRole } from './types';
 import { useAuth } from './hooks/useAuth';
 
 // Code splitting: cada página se descarga solo cuando se visita.
@@ -19,6 +18,11 @@ const PeoplePage = lazy(() => import('./pages/PeoplePage'));
 const ElectoralPage = lazy(() => import('./pages/ElectoralPage'));
 const BrigadasPage = lazy(() => import('./pages/BrigadasPage'));
 const AuditPage = lazy(() => import('./pages/AuditPage'));
+const EstructuraPage = lazy(() => import('./pages/EstructuraPage'));
+const CalidadPage = lazy(() => import('./pages/CalidadPage'));
+const CampoPage = lazy(() => import('./pages/CampoPage'));
+const EncuestasPage = lazy(() => import('./pages/EncuestasPage'));
+const MensajeriaPage = lazy(() => import('./pages/MensajeriaPage'));
 
 const PageLoader: React.FC = () => (
   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
@@ -42,8 +46,14 @@ const queryClient = new QueryClient({
 // ---------------------------------------------------------------------------
 // Protected route wrapper
 // ---------------------------------------------------------------------------
-const ProtectedRoute: React.FC<{ authenticated: boolean; children: React.ReactNode }> = ({ authenticated, children }) => {
+const ProtectedRoute: React.FC<{
+  authenticated: boolean;
+  allowed?: boolean;
+  redirectTo?: string;
+  children: React.ReactNode;
+}> = ({ authenticated, allowed = true, redirectTo = '/', children }) => {
   if (!authenticated) return <Navigate to="/login" replace />;
+  if (!allowed) return <Navigate to={redirectTo} replace />;
   return <>{children}</>;
 };
 
@@ -51,81 +61,114 @@ const ProtectedRoute: React.FC<{ authenticated: boolean; children: React.ReactNo
 // Inner app — needs useAuth which must live inside QueryClientProvider
 // ---------------------------------------------------------------------------
 const AppInner: React.FC = () => {
-  const { user, isAuthenticated, isAdmin, login, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, can, login, logout } = useAuth();
 
-  // Adapt User type for Layout/Login legacy props
-  const legacyUser = user ? { ...user } : null;
+  // Mientras se revalida la sesión guardada, no se decide ninguna ruta:
+  // hacerlo antes mandaría al login a un usuario que sí tiene sesión válida.
+  if (isLoading) return <PageLoader />;
+
+  // Cada quien aterriza donde su rol tiene algo que hacer.
+  const home = can(4) ? '/' : '/capture';
 
   return (
     <ConfigProvider>
       <Router>
-        <Layout user={legacyUser} onLogout={logout}>
+        <Layout user={user} onLogout={logout}>
           <Suspense fallback={<PageLoader />}>
           <Routes>
-            {/* Public */}
             <Route
               path="/login"
-              element={!isAuthenticated ? <Login onLogin={login} /> : <Navigate to="/" replace />}
+              element={!isAuthenticated ? <Login onLogin={login} /> : <Navigate to={home} replace />}
             />
 
-            {/* Protected */}
+            {/* Tablero: coordinación seccional hacia arriba */}
             <Route path="/" element={
               <ProtectedRoute authenticated={isAuthenticated}>
-                {isAdmin ? <Dashboard /> : <Navigate to="/capture" replace />}
+                {can(4) ? <Dashboard /> : <Navigate to="/capture" replace />}
               </ProtectedRoute>
             } />
 
+            {/* Captura y consulta: cualquier usuario con sesión */}
             <Route path="/capture" element={
               <ProtectedRoute authenticated={isAuthenticated}><CaptureForm /></ProtectedRoute>
             } />
-
             <Route path="/reports" element={
               <ProtectedRoute authenticated={isAuthenticated}><ReportsList /></ProtectedRoute>
             } />
-
             <Route path="/calendar" element={
               <ProtectedRoute authenticated={isAuthenticated}><CalendarPage /></ProtectedRoute>
             } />
-
-            <Route path="/users" element={
-              <ProtectedRoute authenticated={isAuthenticated}>
-                {isAdmin ? <UserManagement /> : <Navigate to="/" replace />}
-              </ProtectedRoute>
-            } />
-
-            <Route path="/configuracion" element={
-              <ProtectedRoute authenticated={isAuthenticated}>
-                {isAdmin ? <SettingsPage /> : <Navigate to="/" replace />}
-              </ProtectedRoute>
-            } />
-
             <Route path="/people" element={
-              <ProtectedRoute authenticated={isAuthenticated}>
-                {(user?.role === UserRole.ADMIN || user?.role === UserRole.CAPTURIST)
-                  ? <PeoplePage />
-                  : <Navigate to="/" replace />}
-              </ProtectedRoute>
+              <ProtectedRoute authenticated={isAuthenticated}><PeoplePage /></ProtectedRoute>
             } />
 
+            {/* Inteligencia y brigadas: coordinación seccional hacia arriba */}
             <Route path="/electoral" element={
-              <ProtectedRoute authenticated={isAuthenticated}>
-                {isAdmin ? <ElectoralPage /> : <Navigate to="/" replace />}
+              <ProtectedRoute authenticated={isAuthenticated} allowed={can(4)} redirectTo={home}>
+                <ElectoralPage />
               </ProtectedRoute>
             } />
-
             <Route path="/brigadas" element={
-              <ProtectedRoute authenticated={isAuthenticated}>
-                {isAdmin ? <BrigadasPage /> : <Navigate to="/" replace />}
+              <ProtectedRoute authenticated={isAuthenticated} allowed={can(4)} redirectTo={home}>
+                <BrigadasPage />
               </ProtectedRoute>
             } />
 
+            {/* Red de promoción: la ve el promotor para su propia rama */}
+            <Route path="/estructura" element={
+              <ProtectedRoute authenticated={isAuthenticated} allowed={can(5)} redirectTo={home}>
+                <EstructuraPage />
+              </ProtectedRoute>
+            } />
+
+            {/* Calidad del padrón: mide a los capturistas, no la ven ellos */}
+            <Route path="/calidad" element={
+              <ProtectedRoute authenticated={isAuthenticated} allowed={can(3)} redirectTo={home}>
+                <CalidadPage />
+              </ProtectedRoute>
+            } />
+
+            {/* Campo: brigadas y jornadas — las usa quien sale a territorio */}
+            <Route path="/campo" element={
+              <ProtectedRoute authenticated={isAuthenticated} allowed={can(6)} redirectTo={home}>
+                <CampoPage />
+              </ProtectedRoute>
+            } />
+
+            {/* Encuestas: aplicarlas es trabajo de campo */}
+            <Route path="/encuestas" element={
+              <ProtectedRoute authenticated={isAuthenticated} allowed={can(6)} redirectTo={home}>
+                <EncuestasPage />
+              </ProtectedRoute>
+            } />
+
+            {/* Mensajería: acción externa, reservada a coordinación */}
+            <Route path="/mensajeria" element={
+              <ProtectedRoute authenticated={isAuthenticated} allowed={can(3)} redirectTo={home}>
+                <MensajeriaPage />
+              </ProtectedRoute>
+            } />
+
+            {/* Usuarios: coordinación municipal hacia arriba */}
+            <Route path="/users" element={
+              <ProtectedRoute authenticated={isAuthenticated} allowed={can(3)} redirectTo={home}>
+                <UserManagement />
+              </ProtectedRoute>
+            } />
+
+            {/* Bitácora y configuración: dirección de campaña */}
             <Route path="/bitacora" element={
-              <ProtectedRoute authenticated={isAuthenticated}>
-                {isAdmin ? <AuditPage /> : <Navigate to="/" replace />}
+              <ProtectedRoute authenticated={isAuthenticated} allowed={can(2)} redirectTo={home}>
+                <AuditPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/configuracion" element={
+              <ProtectedRoute authenticated={isAuthenticated} allowed={can(2)} redirectTo={home}>
+                <SettingsPage />
               </ProtectedRoute>
             } />
 
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to={home} replace />} />
           </Routes>
           </Suspense>
         </Layout>

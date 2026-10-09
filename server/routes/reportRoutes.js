@@ -3,6 +3,9 @@ const router = express.Router();
 const reportController = require('../controllers/reportController');
 const { authMiddleware } = require('../middlewares/authMiddleware');
 
+router.get('/stats', authMiddleware, reportController.getReportStats);
+router.get('/map', authMiddleware, reportController.getReportsMap);
+
 router.get('/', authMiddleware, reportController.getReports);
 router.post('/', authMiddleware, reportController.createReport);
 router.get('/:id', authMiddleware, reportController.getReportById);

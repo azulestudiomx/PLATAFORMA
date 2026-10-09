@@ -25,7 +25,8 @@
         "express": "^4.19.2",
         "express-rate-limit": "^8.5.2",
         "jsonwebtoken": "^9.0.3",
-        "mongoose": "^8.2.4"
+        "mongoose": "^8.2.4",
+        "sharp": "^0.35.3"
     },
     "devDependencies": {
         "@types/jsonwebtoken": "^9.0.10",

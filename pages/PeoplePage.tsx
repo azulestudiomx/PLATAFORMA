@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { peopleApi } from '../services/api';
-import { db } from '../services/db'; // Using the centralized Dexie DB
+import { db } from '../services/db';
+import ProtectedImage from '../components/ProtectedImage'; // Using the centralized Dexie DB
 import QRCode from 'qrcode';
 import Webcam from 'react-webcam';
 import Swal from 'sweetalert2';
@@ -92,6 +93,29 @@ interface Person {
     birthday?: string;
     photo?: string;
     inePhoto?: string;
+    // Rutas en el servidor: las fotos ya no viajan dentro del registro.
+    photoUrl?: string | null;
+    inePhotoUrl?: string | null;
+    // La clave llega enmascarada salvo que el rol pueda verla completa.
+    ineMasked?: boolean;
+    ineLast4?: string | null;
+    tieneIne?: boolean;
+    territory?: { id: string; name: string; code: string; type: string } | null;
+    territoryId?: string | null;
+    // Perfil político (Fase 2)
+    afinidad?: string;
+    origen?: string;
+    multiplicador?: number;
+    compromisoVoto?: boolean;
+    verificado?: boolean;
+    esLider?: boolean;
+    requiereTransporte?: boolean;
+    primeraVotacion?: boolean;
+    adultoMayor?: boolean;
+    promotor?: { id: string; nombre: string; rol: string } | null;
+    _count?: { qualityFlags: number };
+    createdBy?: string | null;
+    createdAt?: string;
     lat?: number;
     lng?: number;
     synced?: number;
@@ -113,10 +137,18 @@ const PeoplePage: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterMunicipio, setFilterMunicipio] = useState('');
     const [filterSeccion, setFilterSeccion] = useState('');
+    const [filterAfinidad, setFilterAfinidad] = useState('');
 
     // Paginación
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 15;
+    const [itemsPerPage, setItemsPerPage] = useState(25);
+    // El servidor manda el total: ya no se descarga el padrón completo
+    // para contar filas en el navegador.
+    const [totalCount, setTotalCount] = useState(0);
+    const [totalPages, setTotalPages] = useState(1);
+    const [pendingLocal, setPendingLocal] = useState<Person[]>([]);
+    const [mapPoints, setMapPoints] = useState<any[]>([]);
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState<Person>({
@@ -132,7 +164,16 @@ const PeoplePage: React.FC = () => {
         email: '',
         birthday: '',
         photo: '',
-        inePhoto: ''
+        inePhoto: '',
+        afinidad: 'NO_CONTACTADO',
+        origen: 'BRIGADA',
+        multiplicador: 0,
+        compromisoVoto: false,
+        verificado: false,
+        esLider: false,
+        requiereTransporte: false,
+        primeraVotacion: false,
+        adultoMayor: false
     });
     const [saving, setSaving] = useState(false);
     const [cameraMode, setCameraMode] = useState<'photo' | 'ine' | null>(null);
@@ -187,62 +228,70 @@ const PeoplePage: React.FC = () => {
             name: '', phone: '', address: '', ine: '', photo: '', inePhoto: '', 
             municipio: '', localidad: '', distrito: '', zona: '', seccion: '',
             email: '', birthday: '',
-            lat: undefined, lng: undefined 
+            lat: undefined, lng: undefined,
+            afinidad: 'NO_CONTACTADO', origen: 'BRIGADA', multiplicador: 0,
+            compromisoVoto: false, verificado: false,
+            esLider: false, requiereTransporte: false,
+            primeraVotacion: false, adultoMayor: false
         });
         setUserLoc(null);
     };
 
 
+    // La búsqueda espera a que el usuario deje de escribir: evita una
+    // consulta por tecla contra un padrón de decenas de miles de filas.
+    useEffect(() => {
+        const t = setTimeout(() => setDebouncedSearch(searchTerm), 350);
+        return () => clearTimeout(t);
+    }, [searchTerm]);
+
     useEffect(() => {
         fetchPeople();
-    }, []);
+    }, [currentPage, itemsPerPage, debouncedSearch, filterMunicipio, filterSeccion, filterAfinidad]);
+
+    // Los puntos del mapa se piden aparte y sin fotos: son muchos menos bytes.
+    useEffect(() => {
+        if (!showMap) return;
+        peopleApi.map(3000)
+            .then(setMapPoints)
+            .catch(() => setMapPoints([]));
+    }, [showMap]);
 
     const fetchPeople = async () => {
         setLoading(true);
         try {
-            // 1. Get all local records
-            const localAll = await db.people.toArray();
-            
-            // 2. Fetch from server (API)
+            // Lo capturado sin conexión se muestra siempre arriba, con su
+            // marca de pendiente, aunque el servidor no lo conozca todavía.
+            const localRaw = await db.people.toArray();
+            const pendientes = localRaw.filter(r => r.synced !== 1);
+            setPendingLocal(pendientes);
+
             try {
-                const serverData = await peopleApi.list();
-                
-                // 3. Smart Merge: Start with local data
-                const combined = [...localAll];
-                
-                // Add server records if they don't exist locally (by INE or _id)
-                serverData.forEach((s: any) => {
-                    const localIdx = combined.findIndex(l => (l.ine && s.ine && l.ine === s.ine) || (l._id && s.id && l._id === s.id));
-                    if (localIdx === -1) {
-                        combined.push({ 
-                          ...s, 
-                          id: undefined, 
-                          _id: s.id, 
-                          synced: 1 
-                        });
-                    } else {
-                        // If local record is already synced (== 1), trust the server data
-                        if (combined[localIdx].synced === 1) {
-                            combined[localIdx] = { 
-                                ...combined[localIdx], 
-                                ...s, 
-                                _id: s.id,
-                                synced: 1 
-                            };
-                        } else {
-                            // If local record is pending, just attach server _id if missing
-                            if (!combined[localIdx]._id) combined[localIdx]._id = s.id;
-                        }
-                    }
+                const res = await peopleApi.list({
+                    page: currentPage,
+                    limit: itemsPerPage,
+                    search: debouncedSearch || undefined,
+                    municipio: filterMunicipio || undefined,
+                    seccion: filterSeccion || undefined,
+                    afinidad: filterAfinidad || undefined,
                 });
 
-                setPeople(combined);
+                const serverRows = (res.data || []).map((p: any) => ({
+                    ...p, _id: p.id, synced: 1,
+                }));
+
+                // En la primera página se anteponen los pendientes locales.
+                setPeople(currentPage === 1 ? [...pendientes, ...serverRows] : serverRows);
+                setTotalCount(res.total || 0);
+                setTotalPages(res.pages || 1);
             } catch (err) {
-                console.warn('Backend server unreachable, showing local data only.', err);
-                setPeople(localAll);
+                console.warn('Sin conexión con el servidor; se muestra solo lo local.', err);
+                setPeople(localRaw);
+                setTotalCount(localRaw.length);
+                setTotalPages(1);
             }
         } catch (error) {
-            console.error('Error in fetchPeople:', error);
+            console.error('Error al cargar el padrón:', error);
         } finally {
             setLoading(false);
         }
@@ -274,8 +323,10 @@ const PeoplePage: React.FC = () => {
                     // Critical fallback: If duplicate INE, it means it's ALREADY on server
                     if (apiErr.message.includes('ya está registrada') || apiErr.message.includes('400')) {
                         console.warn('INE Duplicate found during sync. Bridging record...');
-                        const serverAll = await peopleApi.list();
-                        const match = person.ine ? serverAll.find((s: any) => s.ine === person.ine) : null;
+                        const res = person.ine
+                            ? await peopleApi.list({ search: person.ine, limit: 1 })
+                            : null;
+                        const match = res?.data?.[0] || null;
                         if (match) {
                             await db.people.update(person.id!, { synced: 1, _id: match.id });
                             syncedCount++;
@@ -303,6 +354,28 @@ const PeoplePage: React.FC = () => {
         fetchPeople();
     };
 
+    /**
+     * Trae todo el padrón con los filtros vigentes, por lotes.
+     * La vista solo tiene una página en memoria, así que exportar
+     * requiere pedir el resto explícitamente.
+     */
+    const fetchAllForExport = async (): Promise<Person[]> => {
+        const filtros = {
+            search: debouncedSearch || undefined,
+            municipio: filterMunicipio || undefined,
+            seccion: filterSeccion || undefined,
+        };
+        const aLocal = (row: any): Person => ({ ...row, id: undefined, _id: row.id });
+
+        const primera = await peopleApi.list({ ...filtros, page: 1, limit: 200 });
+        const todo: Person[] = (primera.data || []).map(aLocal);
+        for (let page = 2; page <= (primera.pages || 1); page++) {
+            const lote = await peopleApi.list({ ...filtros, page, limit: 200 });
+            todo.push(...(lote.data || []).map(aLocal));
+        }
+        return todo;
+    };
+
     const handleExportPDF = async () => {
         const { jsPDF, autoTable } = await loadPdf();
         const doc = new jsPDF({ orientation: 'landscape' });
@@ -314,7 +387,8 @@ const PeoplePage: React.FC = () => {
         doc.setTextColor(100);
         doc.text(`Generado el: ${new Date().toLocaleDateString()}`, 14, 22);
 
-        const tableData = people.map(p => [
+        const todos = await fetchAllForExport();
+        const tableData = todos.map(p => [
             p.name.toUpperCase(), 
             p.seccion || '-',
             p.municipio || '-',
@@ -618,30 +692,15 @@ const PeoplePage: React.FC = () => {
         }
     };
 
-    // ─── Ciudadanos filtrados ────────────────────────────────────────────────
-    const filteredPeople = React.useMemo(() => {
-        return people.filter(p => {
-            const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (p.ine || '').toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesMunicipio = filterMunicipio === '' || p.municipio === filterMunicipio;
-            const matchesSeccion = filterSeccion === '' || p.seccion?.includes(filterSeccion);
-            
-            return matchesSearch && matchesMunicipio && matchesSeccion;
-        });
-    }, [people, searchTerm, filterMunicipio, filterSeccion]);
+    // El servidor ya aplicó búsqueda, filtros y corte de página.
+    // Estos alias se conservan para no tocar el resto de la vista.
+    const filteredPeople = people;
+    const paginatedPeople = people;
 
-    // Resetear a página 1 cuando cambia algún filtro
+    // Cambiar un filtro siempre regresa a la primera página.
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, filterMunicipio, filterSeccion]);
-
-    const totalPages = Math.ceil(filteredPeople.length / itemsPerPage) || 1;
-
-    const paginatedPeople = React.useMemo(() => {
-        const start = (currentPage - 1) * itemsPerPage;
-        return filteredPeople.slice(start, start + itemsPerPage);
-    }, [filteredPeople, currentPage]);
-
+    }, [debouncedSearch, filterMunicipio, filterSeccion, filterAfinidad, itemsPerPage]);
 
     return (
         <div className="max-w-7xl mx-auto space-y-6 pb-20">
@@ -695,7 +754,7 @@ const PeoplePage: React.FC = () => {
                     </div>
                     <div>
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Total Padrón</p>
-                        <p className="text-xl font-brand font-bold text-slate-800 leading-none">{people.length}</p>
+                        <p className="text-xl font-brand font-bold text-slate-800 leading-none">{totalCount.toLocaleString('es-MX')}</p>
                     </div>
                 </div>
                 <div className="bg-white p-4 rounded-2xl shadow-card border border-gray-50 flex items-center gap-4">
@@ -704,7 +763,7 @@ const PeoplePage: React.FC = () => {
                     </div>
                     <div>
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Pendientes</p>
-                        <p className="text-xl font-brand font-bold text-slate-800 leading-none">{people.filter(p => p.synced !== 1).length}</p>
+                        <p className="text-xl font-brand font-bold text-slate-800 leading-none">{pendingLocal.length}</p>
                     </div>
                 </div>
                 <button onClick={() => setShowMap(!showMap)} className="bg-white p-4 rounded-2xl shadow-card border border-gray-50 flex items-center gap-4 hover:bg-slate-50 transition-colors">
@@ -765,6 +824,18 @@ const PeoplePage: React.FC = () => {
                             value={filterSeccion}
                             onChange={(e) => setFilterSeccion(e.target.value)}
                         />
+                        <select
+                            className="input-modern h-11 text-xs px-4 bg-slate-50 border-none w-auto"
+                            value={filterAfinidad}
+                            onChange={(e) => setFilterAfinidad(e.target.value)}
+                        >
+                            <option value="">Toda afinidad</option>
+                            <option value="DURO">Duro</option>
+                            <option value="BLANDO">Blando</option>
+                            <option value="INDECISO">Indeciso</option>
+                            <option value="OPOSITOR">Opositor</option>
+                            <option value="NO_CONTACTADO">Sin contactar</option>
+                        </select>
                     </div>
 
                 </div>
@@ -782,7 +853,7 @@ const PeoplePage: React.FC = () => {
                                 <span className="font-bold text-slate-600">Aprox. por sección</span>
                             </div>
                             <div className="border-t pt-1 text-slate-400">
-                                {filteredPeople.filter(p => p.lat && p.lng || getApproxCoords(p.seccion, p.name)).length} / {filteredPeople.length} visibles
+                                {mapPoints.length.toLocaleString('es-MX')} de {totalCount.toLocaleString('es-MX')} ubicados
                             </div>
                         </div>
                         <MapContainer center={[19.8301, -90.5349]} zoom={8} style={{ height: "100%", width: "100%" }}>
@@ -791,7 +862,7 @@ const PeoplePage: React.FC = () => {
                                 url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
                             />
-                            {filteredPeople.map((person, idx) => {
+                            {mapPoints.map((person: any, idx: number) => {
                                 const hasGPS = !!(person.lat && person.lng);
                                 const pos: [number, number] | null = hasGPS
                                     ? [person.lat!, person.lng!]
@@ -801,7 +872,7 @@ const PeoplePage: React.FC = () => {
                                     <Marker key={idx} position={pos} icon={hasGPS ? redIcon : blueIcon}>
                                         <Popup>
                                             <div className="p-1 text-center min-w-[140px]">
-                                                {person.photo && <img src={person.photo} className="w-16 h-16 rounded-xl mx-auto mb-2 object-cover" />}
+                                                {person.photoUrl && <ProtectedImage path={person.photoUrl} thumb className="w-16 h-16 rounded-xl mx-auto mb-2 object-cover" alt={person.name} />}
                                                 <h3 className="font-bold text-sm text-brand-primary">{person.name}</h3>
                                                 {person.seccion && <p className="text-[10px] font-bold text-gray-500">Secc. {person.seccion}</p>}
                                                 {person.phone && <p className="text-[10px] text-gray-400">{person.phone}</p>}
@@ -839,7 +910,8 @@ const PeoplePage: React.FC = () => {
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-10 h-10 rounded-xl bg-gray-100 overflow-hidden shrink-0">
-                                                        {p.photo ? <img src={p.photo} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-300"><i className="fas fa-user"></i></div>}
+                                                        <ProtectedImage path={p.photoUrl || p.photo} thumb className="w-full h-full object-cover" alt={p.name}
+                                                            fallback={<div className="w-full h-full flex items-center justify-center text-gray-300"><i className="fas fa-user"></i></div>} />
                                                     </div>
                                                     <div className="min-w-0">
                                                         <p className="text-sm font-bold text-slate-800 truncate">{p.name}</p>
@@ -887,7 +959,7 @@ const PeoplePage: React.FC = () => {
 
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex justify-end gap-1.5 translate-x-2 group-hover:translate-x-0 transition-transform">
-                                                    <button onClick={() => setViewingIne(p.inePhoto || 'NO_PHOTO')} className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-400 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all" title="Ver INE">
+                                                    <button onClick={() => setViewingIne(p.inePhotoUrl || p.inePhoto || 'NO_PHOTO')} className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-400 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all" title="Ver INE">
                                                         <i className="fas fa-id-badge text-xs"></i>
                                                     </button>
                                                     <button onClick={() => generateCredential(p)} className="w-8 h-8 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center hover:bg-violet-600 hover:text-white transition-all">
@@ -913,7 +985,7 @@ const PeoplePage: React.FC = () => {
                     <div className="p-4 border-t border-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/30">
                         {/* Estado de registros */}
                         <div className="text-xs text-slate-500 font-medium">
-                            Mostrando <span className="font-bold text-slate-800">{Math.min(filteredPeople.length, (currentPage - 1) * itemsPerPage + 1)}</span> a <span className="font-bold text-slate-800">{Math.min(filteredPeople.length, currentPage * itemsPerPage)}</span> de <span className="font-bold text-slate-800">{filteredPeople.length}</span> ciudadanos
+                            Mostrando <span className="font-bold text-slate-800">{totalCount === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</span> a <span className="font-bold text-slate-800">{Math.min(totalCount, currentPage * itemsPerPage)}</span> de <span className="font-bold text-slate-800">{totalCount.toLocaleString('es-MX')}</span> ciudadanos
                             {filterMunicipio && <span> en <span className="text-indigo-600 font-bold">{filterMunicipio}</span></span>}
                         </div>
 
@@ -1104,6 +1176,101 @@ const PeoplePage: React.FC = () => {
                                     </div>
                                     
                                     <div className="space-y-4">
+                                        {/* ── Perfil político ──
+                                            Sin esto el padrón es una lista de contactos:
+                                            no dice a dónde mandar brigadas ni a quién movilizar. */}
+                                        <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100 space-y-3">
+                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                                <i className="fas fa-user-check mr-1.5"></i> Perfil político
+                                            </p>
+
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Afinidad</label>
+                                                    <select
+                                                        value={formData.afinidad || 'NO_CONTACTADO'}
+                                                        onChange={e => setFormData({ ...formData, afinidad: e.target.value })}
+                                                        className="input-modern"
+                                                    >
+                                                        <option value="NO_CONTACTADO">Sin contactar</option>
+                                                        <option value="DURO">Duro (voto seguro)</option>
+                                                        <option value="BLANDO">Blando (simpatiza)</option>
+                                                        <option value="INDECISO">Indeciso</option>
+                                                        <option value="OPOSITOR">Opositor</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Origen del contacto</label>
+                                                    <select
+                                                        value={formData.origen || 'BRIGADA'}
+                                                        onChange={e => setFormData({ ...formData, origen: e.target.value })}
+                                                        className="input-modern"
+                                                    >
+                                                        <option value="BRIGADA">Brigada</option>
+                                                        <option value="EVENTO">Evento</option>
+                                                        <option value="REFERIDO">Referido</option>
+                                                        <option value="GESTION">Gestión resuelta</option>
+                                                        <option value="REDES">Redes sociales</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">
+                                                        Multiplicador
+                                                    </label>
+                                                    <input
+                                                        type="number" min={0}
+                                                        value={formData.multiplicador ?? 0}
+                                                        onChange={e => setFormData({ ...formData, multiplicador: Number(e.target.value) })}
+                                                        className="input-modern tabular-nums"
+                                                        placeholder="0"
+                                                    />
+                                                    <p className="text-[9px] text-slate-400 mt-1 ml-1">A cuántos más se compromete a llevar</p>
+                                                </div>
+                                                <div className="flex flex-col justify-center gap-2 pt-4">
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={Boolean(formData.compromisoVoto)}
+                                                            onChange={e => setFormData({ ...formData, compromisoVoto: e.target.checked })}
+                                                            className="rounded border-gray-300"
+                                                        />
+                                                        <span className="text-xs font-semibold text-slate-600">Comprometió su voto</span>
+                                                    </label>
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={Boolean(formData.verificado)}
+                                                            onChange={e => setFormData({ ...formData, verificado: e.target.checked })}
+                                                            className="rounded border-gray-300"
+                                                        />
+                                                        <span className="text-xs font-semibold text-slate-600">Verificado en visita</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex flex-wrap gap-x-4 gap-y-2 pt-1">
+                                                {[
+                                                    { k: 'esLider', label: 'Líder local' },
+                                                    { k: 'requiereTransporte', label: 'Requiere transporte' },
+                                                    { k: 'primeraVotacion', label: 'Primera votación' },
+                                                    { k: 'adultoMayor', label: 'Adulto mayor' },
+                                                ].map(m => (
+                                                    <label key={m.k} className="flex items-center gap-1.5 cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={Boolean((formData as any)[m.k])}
+                                                            onChange={e => setFormData({ ...formData, [m.k]: e.target.checked } as any)}
+                                                            className="rounded border-gray-300"
+                                                        />
+                                                        <span className="text-[11px] text-slate-500">{m.label}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+
                                         <div>
                                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Dirección / Colonia</label>
                                             <textarea rows={2} value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} className="input-modern resize-none" placeholder="Calle, Número, Colonia..."></textarea>
@@ -1156,8 +1323,8 @@ const PeoplePage: React.FC = () => {
                             </button>
                         </div>
                         <div className="p-6 bg-slate-50 flex items-center justify-center min-h-[300px]">
-                            {(viewingIne.startsWith('data:image') || viewingIne.startsWith('http')) ? (
-                                <img src={viewingIne} alt="INE Frontal" className="max-w-full max-h-[60vh] rounded-xl shadow-lg border-4 border-white" />
+                            {viewingIne !== 'NO_PHOTO' ? (
+                                <ProtectedImage path={viewingIne} alt="Credencial de elector" className="max-w-full max-h-[60vh] rounded-xl shadow-lg border-4 border-white" />
                             ) : (
                                 <div className="text-center py-12">
                                     <i className="fas fa-id-card text-slate-200 text-6xl mb-4"></i>
@@ -1167,10 +1334,10 @@ const PeoplePage: React.FC = () => {
                         </div>
                         <div className="p-4 bg-white border-t flex gap-3">
                             <button onClick={() => setViewingIne(null)} className="btn-ghost flex-1">Cerrar</button>
-                            {(viewingIne.startsWith('data:image') || viewingIne.startsWith('http')) && (
+                            {(viewingIne.startsWith('data:image') || viewingIne.startsWith('blob:')) && (
                                 <a 
                                     href={viewingIne} 
-                                    download={`INE_${filteredPeople.find(p => p.inePhoto === viewingIne)?.name || 'Ciudadano'}.jpg`}
+                                    download={`INE_${filteredPeople.find(p => (p.inePhotoUrl || p.inePhoto) === viewingIne)?.name || 'Ciudadano'}.jpg`}
                                     className="btn-primary flex-1 no-underline text-center justify-center"
                                 >
                                     <i className="fas fa-download mr-2"></i> Descargar Imagen

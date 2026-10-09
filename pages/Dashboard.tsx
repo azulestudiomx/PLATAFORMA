@@ -56,17 +56,18 @@ const Dashboard: React.FC = () => {
 
     const { data: reportsData, isLoading: loadingReports, refetch } = useQuery({
         queryKey: ['reports', 'dashboard'],
-        queryFn: () => reportsApi.list(1, 500), // Get a larger sample for stats
+        queryFn: () => reportsApi.list({ page: 1, limit: 200 }),
         refetchInterval: 60000,
     });
 
-    const { data: peopleData } = useQuery({
+    // Solo el conteo: antes esto descargaba el padrón completo con fotos.
+    const { data: peopleStats } = useQuery({
         queryKey: ['people', 'stats'],
-        queryFn: () => peopleApi.list(),
+        queryFn: () => peopleApi.stats(),
     });
 
     const reports: Report[] = reportsData?.data || [];
-    const peopleCount = peopleData?.length || 0;
+    const peopleCount = peopleStats?.total || 0;
     const loading = loadingReports;
 
     // --- Analytics Logic ---

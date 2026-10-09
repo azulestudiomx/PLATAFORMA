@@ -1,435 +1,520 @@
 /**
- * electoralController.js
- * Motor de Inteligencia Electoral para Campeche 2027.
- * Lee los datos históricos de los JSON y los cruza con el padrón SQLite.
+ * controllers/electoralController.js
+ * Motor de inteligencia electoral.
+ *
+ * Cruza los resultados del IEEC 2024 (560 secciones) con el padrón propio y
+ * con la geografía del INE. El cruce con el padrón se cachea: antes se
+ * recalculaba en cada petición.
  */
 
-const path = require('path');
-const fs = require('fs');
 const prisma = require('../services/db');
+const {
+  MUNICIPIOS_INE, MUNICIPIOS_INEGI, ineToInegi, norm,
+  getSecciones, getAgeb, getGeoMeta, demografiaCobertura
+} = require('../services/electoralData');
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Carga de datos electorales desde los JSON estáticos
-// ─────────────────────────────────────────────────────────────────────────────
-const DATA_ROOT = path.join(__dirname, '..', '..');
+// ── Cache del cruce con el padrón ──
+let _padronCache = { at: 0, bySeccion: {}, total: 0 };
+const PADRON_TTL = 60_000;
 
-// Nombres de los 13 municipios de Campeche por ID (IEEC — orden REAL verificado por centroides)
-const MUNICIPIO_NOMBRES = {
-    1:  'Campeche',    // 19.81°N -90.48°W — capital del estado ✓
-    2:  'Calkiní',     // 20.39°N -90.12°W — municipio norte ✓
-    3:  'Carmen',      // 18.64°N -91.71°W — costa suroeste ✓
-    4:  'Champotón',   // 19.22°N -90.64°W — sur de la capital ✓
-    5:  'Hecelchakán', // 20.17°N -90.15°W — noreste ✓
-    6:  'Hopelchén',   // 19.65°N -89.72°W — este ✓
-    7:  'Palizada',    // 18.25°N -91.99°W — extremo suroeste ✓
-    8:  'Tenabo',      // 19.99°N -90.27°W — norte-centro ✓
-    9:  'Escárcega',   // 18.58°N -90.69°W — sur-centro ✓
-    10: 'Candelaria',  // 18.10°N -90.86°W — sureste ✓
-    11: 'Calakmul',    // 18.43°N -89.46°W — extremo este ✓
-    12: 'Dzitbalché',  // 20.30°N -90.05°W — norte ✓
-    13: 'Seybaplaya',  // 19.61°N -90.68°W — costa sur capital ✓
+const getPadronBySeccion = async () => {
+  if (Date.now() - _padronCache.at < PADRON_TTL) return _padronCache;
+
+  const [grouped, total] = await Promise.all([
+    prisma.person.groupBy({ by: ['seccion'], _count: { seccion: true } }),
+    prisma.person.count()
+  ]);
+
+  const bySeccion = {};
+  for (const row of grouped) {
+    if (!row.seccion) continue;
+    // Se indexa por número para que "0001", "1" y " 1 " coincidan.
+    const num = Number(String(row.seccion).replace(/\D/g, ''));
+    if (num) bySeccion[num] = (bySeccion[num] || 0) + row._count.seccion;
+  }
+
+  _padronCache = { at: Date.now(), bySeccion, total };
+  return _padronCache;
 };
 
-const TIPO_NOMBRES = { 2: 'Urbana', 3: 'Mixta', 4: 'Rural' };
+// ── Semáforo de participación ──
+const getSemaforoColor = (p) => (p < 0.55 ? 'rojo' : p < 0.70 ? 'amarillo' : 'verde');
+const getSemaforoPriority = (p) => (p < 0.55 ? 'CRÍTICA' : p < 0.70 ? 'MEDIA' : 'CONSOLIDADA');
 
-let _secciones = null;
-let _ageb = null;
-let _geoMeta = null; // mapa seccion -> { distrito_f, distrito_l, municipio_id, municipio_nombre, tipo }
+/** Meta de votos para ganar, según los parámetros que fije el estratega. */
+const calcularMeta = (secciones, cfg = {}) => {
+  const {
+    participacion_estimada = 0.633,
+    porcentaje_necesario = 0.50,
+    municipios = [],
+    distritos = []
+  } = cfg;
 
-const getSecciones = () => {
-    if (_secciones) return _secciones;
-    const raw = fs.readFileSync(path.join(DATA_ROOT, 'campeche2027_master_completo.json'), 'utf-8');
-    const data = JSON.parse(raw);
-    _secciones = data.secciones || [];
-    return _secciones;
+  let filtradas = secciones;
+
+  if (municipios.length) {
+    const wanted = new Set(municipios.map(norm));
+    filtradas = filtradas.filter(s => wanted.has(norm(s.municipio)));
+  }
+
+  if (distritos.length) {
+    const geo = getGeoMeta();
+    const wanted = new Set(distritos.map(Number));
+    filtradas = filtradas.filter(s => wanted.has(geo[Number(s.seccion)]?.distrito_l));
+  }
+
+  const lista_nominal_total = filtradas.reduce((a, s) => a + (s.lista_nominal || 0), 0);
+  const votos_historicos = filtradas.reduce((a, s) => a + (s.total_votos || 0), 0);
+  const votos_esperados = Math.round(lista_nominal_total * participacion_estimada);
+  const meta_votos = Math.round(votos_esperados * porcentaje_necesario) + 1;
+  const votos_dormidos = filtradas.reduce(
+    (a, s) => a + ((s.lista_nominal || 0) - (s.total_votos || 0)), 0
+  );
+
+  return {
+    lista_nominal_total,
+    votos_historicos_2024: votos_historicos,
+    participacion_historica: lista_nominal_total > 0 ? votos_historicos / lista_nominal_total : 0,
+    participacion_estimada,
+    votos_esperados_2027: votos_esperados,
+    meta_votos,
+    votos_dormidos,
+    porcentaje_necesario,
+    secciones_count: filtradas.length
+  };
 };
 
-const getAgeb = () => {
-    if (_ageb) return _ageb;
-    const raw = fs.readFileSync(path.join(DATA_ROOT, 'campeche2027_master.json'), 'utf-8');
-    const data = JSON.parse(raw);
-    _ageb = data.ageb_preview || [];
-    return _ageb;
-};
-
-// Carga el GeoJSON WGS84 y construye un mapa rápido seccion → metadatos
-const getGeoMeta = () => {
-    if (_geoMeta) return _geoMeta;
-    try {
-        const geoPath = path.join(DATA_ROOT, 'src', 'campeche_secciones_wgs84.json');
-        const raw = fs.readFileSync(geoPath, 'utf-8');
-        const geo = JSON.parse(raw);
-        _geoMeta = {};
-        (geo.features || []).forEach(feat => {
-            const p = feat.properties;
-            const seccion = Number(p.seccion);
-            _geoMeta[seccion] = {
-                distrito_f:       Number(p.distrito_f),
-                distrito_l:       Number(p.distrito_l),
-                municipio_id:     Number(p.municipio),
-                municipio_nombre: MUNICIPIO_NOMBRES[Number(p.municipio)] || `Municipio ${p.municipio}`,
-                tipo:             Number(p.tipo),
-                tipo_nombre:      TIPO_NOMBRES[Number(p.tipo)] || 'Desconocido',
-                control:          Number(p.control),
-            };
-        });
-    } catch (e) {
-        console.warn('[electoralController] GeoJSON no encontrado, metadatos no disponibles:', e.message);
-        _geoMeta = {};
-    }
-    return _geoMeta;
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers de cálculo
-// ─────────────────────────────────────────────────────────────────────────────
-const getSemaforoColor = (participacion) => {
-    if (participacion < 0.55) return 'rojo';
-    if (participacion < 0.70) return 'amarillo';
-    return 'verde';
-};
-
-const getSemaforoPriority = (participacion) => {
-    if (participacion < 0.55) return 'CRÍTICA';
-    if (participacion < 0.70) return 'MEDIA';
-    return 'CONSOLIDADA';
-};
-
-// Calcular meta de votos para ganar según puesto y configuración
-const calcularMeta = (secciones, puestoConfig) => {
-    const { participacion_estimada, porcentaje_necesario, distritos } = puestoConfig;
-
-    let seccionesFiltradas = secciones;
-    if (distritos && distritos.length > 0) {
-        // Para diputados: filtrar por distrito (usamos seccion range como proxy)
-        seccionesFiltradas = secciones.filter(s => distritos.includes(String(s.seccion)));
-    }
-
-    const lista_nominal_total = seccionesFiltradas.reduce((acc, s) => acc + s.lista_nominal, 0);
-    const votos_esperados = Math.round(lista_nominal_total * (participacion_estimada || 0.633));
-    const meta_votos = Math.round(votos_esperados * (porcentaje_necesario || 0.50)) + 1;
-    const votos_dormidos = seccionesFiltradas.reduce((acc, s) => acc + (s.lista_nominal - s.total_votos), 0);
-    const votos_historicos = seccionesFiltradas.reduce((acc, s) => acc + s.total_votos, 0);
-
-    return {
-        lista_nominal_total,
-        votos_historicos_2024: votos_historicos,
-        participacion_historica: lista_nominal_total > 0 ? votos_historicos / lista_nominal_total : 0,
-        participacion_estimada: participacion_estimada || 0.633,
-        votos_esperados_2027: votos_esperados,
-        meta_votos,
-        votos_dormidos,
-        porcentaje_necesario: porcentaje_necesario || 0.50,
-        secciones_count: seccionesFiltradas.length,
-    };
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────
 // GET /api/electoral/resumen
-// Devuelve KPIs globales del módulo
-// ─────────────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────
 const getResumen = async (req, res) => {
-    try {
-        const secciones = getSecciones();
-        const stats = calcularMeta(secciones, {
-            participacion_estimada: 0.633,
-            porcentaje_necesario: 0.50,
-        });
+  try {
+    const secciones = getSecciones();
+    const stats = calcularMeta(secciones);
+    const { total: totalPadron } = await getPadronBySeccion();
 
-        // Cruce con padrón: contar ciudadanos por sección
-        const padron = await prisma.person.groupBy({
-            by: ['seccion'],
-            _count: { seccion: true },
-        });
-        const padronBySec = {};
-        padron.forEach(p => {
-            if (p.seccion) padronBySec[p.seccion] = p._count.seccion;
-        });
-
-        const totalPadron = await prisma.person.count();
-
-        res.json({
-            ...stats,
-            total_padron_registrado: totalPadron,
-            cobertura_padron: stats.lista_nominal_total > 0 ? (totalPadron / stats.lista_nominal_total) : 0,
-            metadata: { municipio: 'Campeche', fuente: 'IEEC 2024', objetivo: 'Ayuntamiento 2027' }
-        });
-    } catch (err) {
-        console.error('Electoral resumen error:', err);
-        res.status(500).json({ error: 'Error al calcular resumen electoral' });
-    }
+    res.json({
+      ...stats,
+      total_padron_registrado: totalPadron,
+      cobertura_padron: stats.lista_nominal_total > 0
+        ? totalPadron / stats.lista_nominal_total
+        : 0,
+      metadata: {
+        ambito: 'Estatal — Campeche',
+        municipios: Object.values(MUNICIPIOS_INE).length,
+        secciones: secciones.length,
+        fuente: 'IEEC 2024',
+        objetivo: 'Elección 2027'
+      }
+    });
+  } catch (err) {
+    console.error('Electoral resumen error:', err);
+    res.status(500).json({ error: 'Error al calcular el resumen electoral' });
+  }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────
 // GET /api/electoral/secciones
-// Devuelve las 151 secciones enriquecidas con semáforo + cruce de padrón
-// ─────────────────────────────────────────────────────────────────────────────
-const getSecciones_ = async (req, res) => {
-    try {
-        const secciones = getSecciones();
+// ───────────────────────────────────────────────────────────────────────────
+const getSeccionesEnriquecidas = async (req, res) => {
+  try {
+    const secciones = getSecciones();
+    const { bySeccion } = await getPadronBySeccion();
+    const geoMeta = getGeoMeta();
 
-        // Cruce con padrón
-        const padron = await prisma.person.groupBy({
-            by: ['seccion'],
-            _count: { seccion: true },
-        });
-        const padronBySec = {};
-        padron.forEach(p => {
-            if (p.seccion) padronBySec[p.seccion] = p._count.seccion;
-        });
+    const { municipio, semaforo, distrito } = req.query;
 
-        const geoMeta = getGeoMeta();
+    let enriquecidas = secciones.map(s => {
+      const num = Number(s.seccion);
+      const geo = geoMeta[num] || {};
+      const votos_dormidos = (s.lista_nominal || 0) - (s.total_votos || 0);
+      const ciudadanos_registrados = bySeccion[num] || 0;
 
-        const enriquecidas = secciones.map(s => {
-            const votos_dormidos = s.lista_nominal - s.total_votos;
-            const seccionStr = String(s.seccion);
-            const ciudadanos_registrados = padronBySec[seccionStr] || 0;
-            const geo = geoMeta[Number(s.seccion)] || {};
+      return {
+        ...s,
+        votos_dormidos,
+        semaforo: getSemaforoColor(s.participacion),
+        prioridad: getSemaforoPriority(s.participacion),
+        ciudadanos_registrados,
+        cobertura_padron: s.lista_nominal > 0 ? ciudadanos_registrados / s.lista_nominal : 0,
+        // Prioriza donde hay mucho voto dormido y poca participación.
+        score_recuperacion: votos_dormidos * (1 - s.participacion),
+        distrito_f: geo.distrito_f ?? null,
+        distrito_l: geo.distrito_l ?? null,
+        municipio_id: geo.municipio_ine ?? null,
+        municipio_nombre: geo.municipio_nombre ?? s.municipio ?? null,
+        tipo: geo.tipo ?? null,
+        tipo_nombre: geo.tipo_nombre ?? null,
+        lat: geo.lat ?? null,
+        lng: geo.lng ?? null
+      };
+    });
 
-            return {
-                ...s,
-                votos_dormidos,
-                semaforo: getSemaforoColor(s.participacion),
-                prioridad: getSemaforoPriority(s.participacion),
-                ciudadanos_registrados,
-                // Score de recuperabilidad: muchos dormidos + baja participación = mayor urgencia
-                score_recuperacion: votos_dormidos * (1 - s.participacion),
-                // Metadatos del GeoJSON
-                distrito_f:       geo.distrito_f       ?? null,
-                distrito_l:       geo.distrito_l       ?? null,
-                municipio_id:     geo.municipio_id     ?? null,
-                municipio_nombre: geo.municipio_nombre ?? (s.municipio || null),
-                tipo:             geo.tipo             ?? null,
-                tipo_nombre:      geo.tipo_nombre      ?? null,
-            };
-        }).sort((a, b) => b.score_recuperacion - a.score_recuperacion);
-
-        res.json(enriquecidas);
-    } catch (err) {
-        console.error('Electoral secciones error:', err);
-        res.status(500).json({ error: 'Error al obtener secciones' });
+    if (municipio) {
+      const wanted = norm(municipio);
+      enriquecidas = enriquecidas.filter(
+        s => norm(s.municipio_nombre) === wanted || norm(s.municipio) === wanted
+      );
     }
+    if (semaforo) {
+      enriquecidas = enriquecidas.filter(s => s.semaforo === String(semaforo).toLowerCase());
+    }
+    if (distrito) {
+      enriquecidas = enriquecidas.filter(s => s.distrito_l === Number(distrito));
+    }
+
+    enriquecidas.sort((a, b) => b.score_recuperacion - a.score_recuperacion);
+    res.json(enriquecidas);
+  } catch (err) {
+    console.error('Electoral secciones error:', err);
+    res.status(500).json({ error: 'Error al obtener las secciones' });
+  }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────
 // GET /api/electoral/demografia/:seccion
-// Devuelve el perfil INEGI para una sección específica
-// ─────────────────────────────────────────────────────────────────────────────
+//
+// Los datos del censo que trae el proyecto son una muestra: solo cubren un
+// municipio y el total estatal. Antes se devolvía siempre el mismo registro
+// aunque no correspondiera a la sección pedida, lo que hacía pasar cifras de
+// un municipio por las de otro. Ahora se responde con el dato que realmente
+// aplica, se declara a qué nivel está agregado, y si no hay dato se dice.
+// ───────────────────────────────────────────────────────────────────────────
 const getDemografia = async (req, res) => {
-    try {
-        const ageb = getAgeb();
-        // El ageb_preview incluye datos por municipio/localidad/manzana
-        // Retornamos los datos del municipio de Campeche como contexto general
-        const campeche = ageb.find(a => a.MUN === 1 && a.LOC === 0) || ageb[0];
+  try {
+    const seccionNum = Number(String(req.params.seccion || '').replace(/\D/g, ''));
+    const geoMeta = getGeoMeta();
+    const geo = geoMeta[seccionNum];
 
-        if (!campeche) {
-            return res.json({ nota: 'No hay datos demográficos disponibles para esa sección.' });
-        }
-
-        // Extraer los indicadores más relevantes electoralmente
-        const pobtot = Number(campeche.POBTOT) || 0;
-        const p18ymas = Number(campeche.P_18YMAS) || 0;
-        const pea = Number(campeche.PEA) || 0;
-        const psinder = Number(campeche.PSINDER) || 0;
-        const p15ym_se = Number(campeche.P15YM_SE) || 0;
-        const pcatolica = Number(campeche.PCATOLICA) || 0;
-        const p60ymas = Number(campeche.P_60YMAS) || 0;
-        const vph_inter = Number(campeche.VPH_INTER) || 0;
-        const tvivhab = Number(campeche.TVIVHAB) || 1;
-
-        res.json({
-            seccion: req.params.seccion,
-            poblacion_total: pobtot,
-            mayores_18: p18ymas,
-            pct_mayores_18: pobtot > 0 ? (p18ymas / pobtot * 100).toFixed(1) : 0,
-            pea,
-            pct_pea: pobtot > 0 ? (pea / pobtot * 100).toFixed(1) : 0,
-            sin_derechohabiencia: psinder,
-            pct_sin_salud: pobtot > 0 ? (psinder / pobtot * 100).toFixed(1) : 0,
-            analfabetismo_15mas: p15ym_se,
-            pct_analfabetismo: p18ymas > 0 ? (p15ym_se / p18ymas * 100).toFixed(1) : 0,
-            religion_catolica: pcatolica,
-            pct_catolicos: pobtot > 0 ? (pcatolica / pobtot * 100).toFixed(1) : 0,
-            adultos_mayores_60: p60ymas,
-            pct_adultos_mayores: pobtot > 0 ? (p60ymas / pobtot * 100).toFixed(1) : 0,
-            viviendas_con_internet: vph_inter,
-            pct_internet: tvivhab > 0 ? (vph_inter / tvivhab * 100).toFixed(1) : 0,
-            fuente: 'INEGI Censo 2020',
-        });
-    } catch (err) {
-        console.error('Electoral demografia error:', err);
-        res.status(500).json({ error: 'Error al obtener demografía' });
+    if (!geo) {
+      return res.status(404).json({
+        error: `La sección ${req.params.seccion} no existe en la geografía electoral de Campeche.`,
+        disponible: false
+      });
     }
-};
 
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /api/electoral/meta
-// Calcula la meta de victoria según configuración dinámica
-// ─────────────────────────────────────────────────────────────────────────────
-const calcularMetaEndpoint = async (req, res) => {
-    try {
-        const { participacion_estimada = 0.633, porcentaje_necesario = 0.50, distritos = [] } = req.body;
-        const secciones = getSecciones();
-        const resultado = calcularMeta(secciones, { participacion_estimada, porcentaje_necesario, distritos });
-        res.json(resultado);
-    } catch (err) {
-        console.error('Electoral meta error:', err);
-        res.status(500).json({ error: 'Error al calcular meta' });
-    }
-};
+    const ageb = getAgeb();
+    const cobertura = demografiaCobertura();
 
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /api/electoral/ai-consult
-// Consulta estratégica a Gemini con contexto electoral completo
-// ─────────────────────────────────────────────────────────────────────────────
-const aiConsult = async (req, res) => {
-    try {
-        const { pregunta, puesto = 'Presidente Municipal' } = req.body;
-        if (!pregunta) return res.status(400).json({ error: 'Se requiere una pregunta.' });
+    // La clave INEGI no es la misma que la del INE: hay que traducirla.
+    const munInegi = geo.municipio_inegi;
 
-        const GEMINI_KEY = process.env.GEMINI_API_KEY;
-        if (!GEMINI_KEY) {
-            return res.json({
-                respuesta: `⚠️ El Consultor IA requiere una GEMINI_API_KEY en el servidor. Por ahora, aquí un análisis manual:\n\n**Para ${puesto} - Campeche 2027:**\n- Lista Nominal: 217,472 electores\n- Meta mínima: ~68,797 votos\n- Secciones CRÍTICAS (más votos dormidos): Secc. 4 (5,512 dormidos), Secc. 105 (3,899), Secc. 79 (3,329)\n- Estrategia recomendada: Concentrar brigadas en las 10 secciones con mayor cantidad de votos dormidos antes de atacar nuevos territorios.`
-            });
-        }
+    // 1º intento: total del municipio al que pertenece la sección.
+    let fuente = ageb.find(a => Number(a.MUN) === munInegi && Number(a.LOC) === 0);
+    let nivel = 'MUNICIPAL';
 
-        const secciones = getSecciones();
-
-        // Detección dinámica del municipio en la pregunta del usuario
-        const preguntaNormalizada = pregunta.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const MUNI_SEARCH = {
-            'campeche': 'CAMPECHE',
-            'calkini': 'CALKINÍ',
-            'carmen': 'CARMEN',
-            'champoton': 'CHAMPOTÓN',
-            'hecelchakan': 'HECELCHAKÁN',
-            'hopelchen': 'HOPELCHÉN',
-            'palizada': 'PALIZADA',
-            'tenabo': 'TENABO',
-            'escarcega': 'ESCÁRCEGA',
-            'candelaria': 'CANDELARIA',
-            'calakmul': 'CALAKMUL',
-            'dzitbalche': 'DZITBALCHÉ',
-            'seybaplaya': 'SEYBAPLAYA'
-        };
-
-        let muniDetectado = null;
-        let muniDbName = null;
-        for (const [key, value] of Object.entries(MUNI_SEARCH)) {
-            if (preguntaNormalizada.includes(key)) {
-                muniDetectado = key.charAt(0).toUpperCase() + key.slice(1);
-                muniDbName = value;
-                break;
+    // 2º intento: agregado de los AGEB de ese municipio.
+    if (!fuente) {
+      const delMunicipio = ageb.filter(a => Number(a.MUN) === munInegi);
+      if (delMunicipio.length) {
+        fuente = delMunicipio.reduce((acc, row) => {
+          for (const [k, v] of Object.entries(row)) {
+            const n = Number(v);
+            if (Number.isFinite(n) && !['ENTIDAD', 'MUN', 'LOC', 'MZA'].includes(k)) {
+              acc[k] = (acc[k] || 0) + n;
             }
-        }
+          }
+          return acc;
+        }, { NOM_MUN: MUNICIPIOS_INEGI[munInegi] });
+        nivel = 'MUNICIPAL_AGREGADO';
+      }
+    }
 
-        let seccionesFiltradas = secciones;
-        let topContextoLabel = "estatales";
+    // Si no hay nada del municipio, se dice claramente en lugar de devolver
+    // las cifras de otro lugar.
+    if (!fuente) {
+      return res.json({
+        seccion: seccionNum,
+        municipio: geo.municipio_nombre,
+        disponible: false,
+        nivel: null,
+        mensaje:
+          `El censo cargado no incluye a ${geo.municipio_nombre}. ` +
+          `Solo hay datos de: ${cobertura.municipios.join(', ') || 'ninguno'} ` +
+          `y el total estatal.`,
+        cobertura,
+        fuente: 'INEGI Censo 2020 (muestra parcial)'
+      });
+    }
 
-        if (muniDbName) {
-            // Filtrar secciones del municipio detectado para dar contexto local preciso
-            const normMuniDbName = muniDbName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-            seccionesFiltradas = secciones.filter(s => 
-                s.municipio && s.municipio.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase() === normMuniDbName
-            );
-            topContextoLabel = `del municipio de ${muniDetectado}`;
-        }
+    const num = (k) => Number(fuente[k]) || 0;
+    const pobtot = num('POBTOT');
+    const p18ymas = num('P_18YMAS');
+    const tvivhab = num('TVIVHAB') || 1;
+    const pct = (part, whole) => (whole > 0 ? Number(((part / whole) * 100).toFixed(1)) : null);
 
-        const top15 = [...seccionesFiltradas]
-            .map(s => ({ ...s, dormidos: s.lista_nominal - s.total_votos }))
-            .sort((a, b) => b.dormidos - a.dormidos)
-            .slice(0, 15);
+    res.json({
+      seccion: seccionNum,
+      municipio: geo.municipio_nombre,
+      municipio_inegi: MUNICIPIOS_INEGI[munInegi] || null,
+      distrito_local: geo.distrito_l,
+      distrito_federal: geo.distrito_f,
+      tipo_seccion: geo.tipo_nombre,
 
-        const totalPadron = await prisma.person.count();
-        const stats = calcularMeta(secciones, { participacion_estimada: 0.633, porcentaje_necesario: 0.50 });
+      disponible: true,
+      // Es información del municipio, no de la sección: decirlo evita que se
+      // tomen decisiones creyendo que el dato es más fino de lo que es.
+      nivel,
+      advertencia: 'Cifras agregadas a nivel municipal, no seccional.',
 
-        // Calcular agregados de votación por partido para la IA
-        const ganadorCounts = { MORENA: 0, MC: 0, PRI_PRD: 0, PAN: 0, OTROS: 0, SIN_DATOS: 0 };
-        let totalMorenaVotes = 0;
-        let totalMcVotes = 0;
-        let totalPriPrdVotes = 0;
-        let totalPanVotes = 0;
-        let totalOtrosVotes = 0;
+      poblacion_total: pobtot,
+      mayores_18: p18ymas,
+      pct_mayores_18: pct(p18ymas, pobtot),
+      pea: num('PEA'),
+      pct_pea: pct(num('PEA'), pobtot),
+      sin_derechohabiencia: num('PSINDER'),
+      pct_sin_salud: pct(num('PSINDER'), pobtot),
+      analfabetismo_15mas: num('P15YM_SE'),
+      pct_analfabetismo: pct(num('P15YM_SE'), num('P_15YMAS') || p18ymas),
+      religion_catolica: num('PCATOLICA'),
+      pct_catolicos: pct(num('PCATOLICA'), pobtot),
+      adultos_mayores_60: num('P_60YMAS'),
+      pct_adultos_mayores: pct(num('P_60YMAS'), pobtot),
+      viviendas_con_internet: num('VPH_INTER'),
+      pct_internet: pct(num('VPH_INTER'), tvivhab),
+      poblacion_femenina: num('POBFEM'),
+      poblacion_masculina: num('POBMAS'),
 
-        secciones.forEach(s => {
-            const g = s.ganador || 'SIN_DATOS';
-            ganadorCounts[g] = (ganadorCounts[g] || 0) + 1;
-            totalMorenaVotes += s.votos_coalicion_morena || 0;
-            totalMcVotes += s.votos_mc || 0;
-            totalPriPrdVotes += s.votos_coalicion_pri_prd || 0;
-            totalPanVotes += s.votos_pan || 0;
-            totalOtrosVotes += s.votos_otros || 0;
-        });
+      cobertura,
+      fuente: 'INEGI Censo 2020'
+    });
+  } catch (err) {
+    console.error('Electoral demografia error:', err);
+    res.status(500).json({ error: 'Error al obtener la demografía' });
+  }
+};
 
-        const totalVotosCalculados = totalMorenaVotes + totalMcVotes + totalPriPrdVotes + totalPanVotes + totalOtrosVotes;
+// ───────────────────────────────────────────────────────────────────────────
+// GET /api/electoral/cobertura-demografica
+// ───────────────────────────────────────────────────────────────────────────
+const getCoberturaDemografica = async (req, res) => {
+  try {
+    res.json(demografiaCobertura());
+  } catch (err) {
+    res.status(500).json({ error: 'Error al calcular la cobertura' });
+  }
+};
 
-        const contexto = `
-Eres un consultor electoral estratégico experto en campañas políticas en México, especializado en análisis geo-electoral y movilización territorial de tierra.
-Estás trabajando en la campaña para ${puesto} en el estado de Campeche con miras a la elección de 2027.
+// ───────────────────────────────────────────────────────────────────────────
+// POST /api/electoral/meta
+// ───────────────────────────────────────────────────────────────────────────
+const calcularMetaEndpoint = async (req, res) => {
+  try {
+    const {
+      participacion_estimada = 0.633,
+      porcentaje_necesario = 0.50,
+      municipios = [],
+      distritos = []
+    } = req.body;
 
-Tienes acceso al MAPA DE CALOR ELECTORAL REAL del estado, cruzado con el padrón actual de simpatizantes del candidato y los resultados oficiales de la elección 2024 por sección.
+    const resultado = calcularMeta(getSecciones(), {
+      participacion_estimada: Number(participacion_estimada),
+      porcentaje_necesario: Number(porcentaje_necesario),
+      municipios, distritos
+    });
 
-DATOS ELECTORALES GENERALES (Elección 2024):
-- Lista Nominal Total: ${stats.lista_nominal_total.toLocaleString()} electores registrados en el estado.
-- Votos emitidos 2024: ${stats.votos_historicos_2024.toLocaleString()} (Votos válidos en las secciones procesadas: ${totalVotosCalculados.toLocaleString()})
-- Participación promedio histórica: ${(stats.participacion_historica * 100).toFixed(1)}%
-- Votos dormidos (personas con credencial que no votaron): ${stats.votos_dormidos.toLocaleString()} electores.
-- META MÍNIMA PARA GANAR (mayoría simple estimada): ${stats.meta_votos.toLocaleString()} votos.
-- Afiliados/ciudadanos en tu padrón de simpatizantes capturados en el sistema: ${totalPadron} ciudadanos.
+    const { total: totalPadron } = await getPadronBySeccion();
+    res.json({
+      ...resultado,
+      padron_propio: totalPadron,
+      falta_para_meta: Math.max(0, resultado.meta_votos - totalPadron)
+    });
+  } catch (err) {
+    console.error('Electoral meta error:', err);
+    res.status(500).json({ error: 'Error al calcular la meta' });
+  }
+};
 
-VOTACIÓN REAL Y SECCIONES GANADAS EN 2024 (Mapa de Calor):
-1. MORENA-PT-PVEM: ${totalMorenaVotes.toLocaleString()} votos (${((totalMorenaVotes / totalVotosCalculados) * 100).toFixed(1)}% del voto válido) - Ganó ${ganadorCounts.MORENA} secciones electorales.
-2. Movimiento Ciudadano (MC): ${totalMcVotes.toLocaleString()} votos (${((totalMcVotes / totalVotosCalculados) * 100).toFixed(1)}% del voto válido) - Ganó ${ganadorCounts.MC} secciones electorales.
-3. PRI-PRD: ${totalPriPrdVotes.toLocaleString()} votos (${((totalPriPrdVotes / totalVotosCalculados) * 100).toFixed(1)}% del voto válido) - Ganó ${ganadorCounts.PRI_PRD} secciones electorales.
-4. PAN: ${totalPanVotes.toLocaleString()} votos (${((totalPanVotes / totalVotosCalculados) * 100).toFixed(1)}% del voto válido) - Ganó ${ganadorCounts.PAN} secciones electorales.
-5. Otros partidos locales: ${totalOtrosVotes.toLocaleString()} votos (${((totalOtrosVotes / totalVotosCalculados) * 100).toFixed(1)}%) - Ganó ${ganadorCounts.OTROS} secciones.
-- Secciones sin datos/comicios: ${ganadorCounts.SIN_DATOS}
+// ───────────────────────────────────────────────────────────────────────────
+// GET /api/electoral/municipios — resumen por municipio
+// ───────────────────────────────────────────────────────────────────────────
+const getMunicipios = async (req, res) => {
+  try {
+    const secciones = getSecciones();
+    const { bySeccion } = await getPadronBySeccion();
+    const geoMeta = getGeoMeta();
 
-TOP 15 SECCIONES CON MAYOR CANTIDAD DE VOTOS DORMIDOS ${topContextoLabel.toUpperCase()} (Mayor oportunidad de movilización):
-${top15.map((s, i) => `${i+1}. Sección ${s.seccion} (${s.municipio}): ${s.dormidos.toLocaleString()} votos dormidos (Participación: ${(s.participacion*100).toFixed(1)}%, Lista Nominal: ${s.lista_nominal.toLocaleString()}, Ganador 2024: ${s.ganador_label || 'Sin datos'} con ${s.ganador_votos?.toLocaleString()} votos. Votos desglosados -> MORENA-PT-PVEM: ${s.votos_coalicion_morena?.toLocaleString()} v., MC: ${s.votos_mc?.toLocaleString()} v., PRI-PRD: ${s.votos_coalicion_pri_prd?.toLocaleString()} v., PAN: ${s.votos_pan?.toLocaleString()} v.).`).join('\n')}
+    const acc = {};
+    for (const s of secciones) {
+      const num = Number(s.seccion);
+      const nombre = geoMeta[num]?.municipio_nombre || s.municipio || 'Sin municipio';
+      acc[nombre] ??= {
+        municipio: nombre,
+        municipio_ine: geoMeta[num]?.municipio_ine ?? null,
+        municipio_inegi: geoMeta[num]?.municipio_inegi ?? null,
+        secciones: 0, lista_nominal: 0, votos: 0, dormidos: 0, padron_propio: 0
+      };
+      const a = acc[nombre];
+      a.secciones++;
+      a.lista_nominal += s.lista_nominal || 0;
+      a.votos += s.total_votos || 0;
+      a.dormidos += (s.lista_nominal || 0) - (s.total_votos || 0);
+      a.padron_propio += bySeccion[num] || 0;
+    }
 
-PREGUNTA DEL ESTRATEGA DE CAMPAÑA:
+    const salida = Object.values(acc).map(m => ({
+      ...m,
+      participacion: m.lista_nominal > 0 ? m.votos / m.lista_nominal : 0,
+      cobertura_padron: m.lista_nominal > 0 ? m.padron_propio / m.lista_nominal : 0
+    })).sort((a, b) => b.lista_nominal - a.lista_nominal);
+
+    res.json(salida);
+  } catch (err) {
+    console.error('Electoral municipios error:', err);
+    res.status(500).json({ error: 'Error al agrupar por municipio' });
+  }
+};
+
+// ───────────────────────────────────────────────────────────────────────────
+// POST /api/electoral/ai-consult
+// ───────────────────────────────────────────────────────────────────────────
+const aiConsult = async (req, res) => {
+  try {
+    const { pregunta, puesto = 'Presidente Municipal' } = req.body;
+    if (!pregunta || !String(pregunta).trim()) {
+      return res.status(400).json({ error: 'Se requiere una pregunta.' });
+    }
+    if (String(pregunta).length > 2000) {
+      return res.status(400).json({ error: 'La pregunta es demasiado larga (máximo 2000 caracteres).' });
+    }
+
+    const secciones = getSecciones();
+    const stats = calcularMeta(secciones);
+    const { total: totalPadron } = await getPadronBySeccion();
+
+    const GEMINI_KEY = process.env.GEMINI_API_KEY;
+    if (!GEMINI_KEY) {
+      const top = [...secciones]
+        .map(s => ({ ...s, dormidos: (s.lista_nominal || 0) - (s.total_votos || 0) }))
+        .sort((a, b) => b.dormidos - a.dormidos)
+        .slice(0, 5);
+      return res.json({
+        respuesta:
+          `El Consultor IA necesita una GEMINI_API_KEY configurada en el servidor. ` +
+          `Mientras tanto, el análisis directo de los datos:\n\n` +
+          `**${puesto} — Campeche 2027**\n` +
+          `- Lista nominal: ${stats.lista_nominal_total.toLocaleString('es-MX')} electores\n` +
+          `- Meta mínima estimada: ${stats.meta_votos.toLocaleString('es-MX')} votos\n` +
+          `- Votos dormidos: ${stats.votos_dormidos.toLocaleString('es-MX')}\n` +
+          `- Padrón propio capturado: ${totalPadron.toLocaleString('es-MX')}\n\n` +
+          `Secciones con más voto dormido:\n` +
+          top.map((s, i) =>
+            `${i + 1}. Sección ${s.seccion} (${s.municipio}): ${s.dormidos.toLocaleString('es-MX')} dormidos`
+          ).join('\n'),
+        fuente: 'Cálculo directo (sin IA)',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Contexto acotado al municipio si la pregunta lo menciona.
+    const preguntaNorm = norm(pregunta);
+    let muniDetectado = null;
+    for (const nombre of Object.values(MUNICIPIOS_INE)) {
+      if (preguntaNorm.includes(norm(nombre))) { muniDetectado = nombre; break; }
+    }
+
+    const filtradas = muniDetectado
+      ? secciones.filter(s => norm(s.municipio) === norm(muniDetectado))
+      : secciones;
+
+    const top15 = [...filtradas]
+      .map(s => ({ ...s, dormidos: (s.lista_nominal || 0) - (s.total_votos || 0) }))
+      .sort((a, b) => b.dormidos - a.dormidos)
+      .slice(0, 15);
+
+    // Agregados de votación para dar contexto de fuerza relativa.
+    const tot = { MORENA: 0, MC: 0, PRI_PRD: 0, PAN: 0, OTROS: 0 };
+    const ganadas = { MORENA: 0, MC: 0, PRI_PRD: 0, PAN: 0, OTROS: 0, SIN_DATOS: 0 };
+    for (const s of secciones) {
+      ganadas[s.ganador || 'SIN_DATOS'] = (ganadas[s.ganador || 'SIN_DATOS'] || 0) + 1;
+      tot.MORENA += s.votos_coalicion_morena || 0;
+      tot.MC += s.votos_mc || 0;
+      tot.PRI_PRD += s.votos_coalicion_pri_prd || 0;
+      tot.PAN += s.votos_pan || 0;
+      tot.OTROS += s.votos_otros || 0;
+    }
+    const totalVotos = Object.values(tot).reduce((a, b) => a + b, 0) || 1;
+    const pctOf = (v) => ((v / totalVotos) * 100).toFixed(1);
+
+    const contexto = `
+Eres un consultor electoral estratégico experto en campañas en México, especializado en análisis geo-electoral y movilización territorial.
+Trabajas en la campaña para ${puesto} en Campeche con miras a la elección de 2027.
+
+DATOS ELECTORALES (elección 2024, fuente IEEC):
+- Secciones analizadas: ${secciones.length}
+- Lista nominal: ${stats.lista_nominal_total.toLocaleString('es-MX')} electores
+- Votos emitidos: ${stats.votos_historicos_2024.toLocaleString('es-MX')}
+- Participación histórica: ${(stats.participacion_historica * 100).toFixed(1)}%
+- Votos dormidos: ${stats.votos_dormidos.toLocaleString('es-MX')}
+- Meta mínima para ganar: ${stats.meta_votos.toLocaleString('es-MX')} votos
+- Padrón propio de simpatizantes capturado: ${totalPadron.toLocaleString('es-MX')}
+
+FUERZA RELATIVA EN 2024:
+1. MORENA-PT-PVEM: ${tot.MORENA.toLocaleString('es-MX')} votos (${pctOf(tot.MORENA)}%) — ganó ${ganadas.MORENA} secciones
+2. Movimiento Ciudadano: ${tot.MC.toLocaleString('es-MX')} votos (${pctOf(tot.MC)}%) — ganó ${ganadas.MC} secciones
+3. PRI-PRD: ${tot.PRI_PRD.toLocaleString('es-MX')} votos (${pctOf(tot.PRI_PRD)}%) — ganó ${ganadas.PRI_PRD} secciones
+4. PAN: ${tot.PAN.toLocaleString('es-MX')} votos (${pctOf(tot.PAN)}%) — ganó ${ganadas.PAN} secciones
+5. Otros: ${tot.OTROS.toLocaleString('es-MX')} votos (${pctOf(tot.OTROS)}%) — ganó ${ganadas.OTROS} secciones
+
+TOP 15 SECCIONES CON MÁS VOTO DORMIDO${muniDetectado ? ` EN ${muniDetectado.toUpperCase()}` : ' (ESTATAL)'}:
+${top15.map((s, i) =>
+  `${i + 1}. Sección ${s.seccion} (${s.municipio}): ${s.dormidos.toLocaleString('es-MX')} dormidos, ` +
+  `participación ${(s.participacion * 100).toFixed(1)}%, lista nominal ${(s.lista_nominal || 0).toLocaleString('es-MX')}, ` +
+  `ganador 2024: ${s.ganador_label || 'sin datos'}`
+).join('\n')}
+
+PREGUNTA DEL ESTRATEGA:
 ${pregunta}
 
-Responde en español con recomendaciones tácticas específicas, citando números de sección y datos de votación/municipio cuando sea relevante. Analiza la fuerza relativa de MORENA, MC y PRI-PRD, el abstencionismo (votos dormidos) y propón tácticas concretas para el padrón (por ejemplo, dónde capturar más simpatizantes).
-IMPORTANTE: Sé extremadamente directo, conciso y altamente accionable. Limita tu respuesta a un máximo de 3 a 5 puntos clave cortos (máximo 300 palabras en total) para asegurar una respuesta rápida y evitar que la conexión expire (Timeout). Usa viñetas y estructura clara.`;
+Responde en español con recomendaciones tácticas concretas, citando números de sección y municipio.
+Sé directo y accionable: máximo 5 puntos clave, 300 palabras en total. Usa viñetas.`;
 
-        const { GoogleGenerativeAI } = require('@google/generative-ai');
-        const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-        
-        const modelsToTry = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-3.1-flash-lite'];
-        let result = null;
-        let chosenModel = '';
-        let lastError = null;
+    const { GoogleGenerativeAI } = require('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(GEMINI_KEY);
 
-        for (const modelName of modelsToTry) {
-            try {
-                console.log(`Intentando consultar Gemini con el modelo: ${modelName}`);
-                const model = genAI.getGenerativeModel({ model: modelName });
-                result = await model.generateContent(contexto);
-                chosenModel = modelName;
-                break;
-            } catch (err) {
-                console.error(`Error con modelo ${modelName}:`, err.message);
-                lastError = err;
-            }
-        }
+    // Modelos reales, del más capaz al más ligero. Se puede fijar uno con
+    // GEMINI_MODEL. Antes la lista empezaba por identificadores inexistentes,
+    // así que cada consulta gastaba una llamada fallida antes de acertar.
+    const modelsToTry = process.env.GEMINI_MODEL
+      ? [process.env.GEMINI_MODEL]
+      : ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.5-pro'];
 
-        if (!result) {
-            throw lastError || new Error('Todos los modelos fallaron.');
-        }
+    let result = null;
+    let chosenModel = '';
+    let lastError = null;
 
-        const text = result.response.text();
-        res.json({ 
-            respuesta: text, 
-            fuente: `Gemini (${chosenModel.replace('gemini-', '').toUpperCase()})`, 
-            timestamp: new Date().toISOString() 
-        });
-    } catch (err) {
-        console.error('Electoral AI error:', err);
-        res.status(500).json({ error: 'Error en el consultor IA: ' + err.message });
+    for (const modelName of modelsToTry) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        result = await model.generateContent(contexto);
+        chosenModel = modelName;
+        break;
+      } catch (err) {
+        console.error(`Gemini falló con ${modelName}: ${err.message}`);
+        lastError = err;
+      }
     }
+
+    if (!result) throw lastError || new Error('Ningún modelo respondió.');
+
+    res.json({
+      respuesta: result.response.text(),
+      fuente: `Gemini (${chosenModel})`,
+      contexto: muniDetectado ? `Municipio: ${muniDetectado}` : 'Estatal',
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('Electoral AI error:', err);
+    res.status(500).json({ error: 'Error en el consultor IA: ' + err.message });
+  }
 };
 
-module.exports = { getResumen, getSecciones: getSecciones_, getDemografia, calcularMetaEndpoint, aiConsult };
+module.exports = {
+  getResumen,
+  getSecciones: getSeccionesEnriquecidas,
+  getDemografia,
+  getCoberturaDemografica,
+  calcularMetaEndpoint,
+  getMunicipios,
+  aiConsult
+};
